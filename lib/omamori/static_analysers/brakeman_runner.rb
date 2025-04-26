@@ -9,9 +9,10 @@ module Omamori
 
       def run
         puts "Running Brakeman..."
-        # TODO: Determine Brakeman command based on options
-        # Example: brakeman -f json .
-        brakeman_command = "brakeman -f json ."
+        # Determine Brakeman command based on options
+        # Use --force to run scan even if it's not a Rails application
+        # Use -f json for JSON output
+        brakeman_command = "brakeman -f json . --force"
 
         begin
           # Execute the Brakeman command and capture output

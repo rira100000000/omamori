@@ -30,6 +30,7 @@ Gem::Specification.new do |spec|
 
   # Specify your gem's dependencies in omamori.gemspec
   spec.add_dependency "colorize", "~> 0.8" # Add dependency for colorize
+  spec.add_dependency "dotenv", "~> 2.0" # Add dependency for dotenv
 
   # Development dependencies
   spec.add_development_dependency "bundler", "~> 2.0"

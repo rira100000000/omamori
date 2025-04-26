@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'ruby-gemini-api'
+require 'gemini'
 
 module Omamori
   module AIAnalysisEngine
