@@ -1,12 +1,55 @@
 # frozen_string_literal: true
 
 require 'optparse'
+require_relative 'ai_analysis_engine/gemini_client'
+require 'json' # Required for JSON Schema
 
 module Omamori
   class CoreRunner
+    # Define the JSON Schema for Structured Output
+    JSON_SCHEMA = {
+      "type": "object",
+      "properties": {
+        "security_risks": {
+          "type": "array",
+          "description": "検出されたセキュリティリスクのリスト。",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "検出されたリスクの種類 (例: XSS, CSRF, IDORなど)。3.3の診断対象脆弱性リストのいずれかであること。"
+              },
+              "location": {
+                "type": "string",
+                "description": "リスクが存在するコードのファイル名、行番号、またはコードスニペット。差分分析の場合は差分の該当箇所を示す形式 (例: ファイル名:+行番号) であること。"
+              },
+              "details": {
+                "type": "string",
+                "description": "リスクの詳細な説明と、なぜそれがリスクなのかの理由。"
+              },
+              "severity": {
+                "type": "string",
+                "description": "リスクの深刻度。",
+                "enum": ["Critical", "High", "Medium", "Low", "Info"]
+              },
+              "code_snippet": {
+                "type": "string",
+                "description": "該当するコードスニペット。"
+              }
+            },
+            "required": ["type", "location", "details", "severity"]
+          }
+        }
+      },
+      "required": ["security_risks"]
+    }.freeze # Freeze the hash to make it immutable
+
     def initialize(args)
       @args = args
       @options = {}
+      # TODO: Get API key from config file
+      @gemini_client = AIAnalysisEngine::GeminiClient.new("YOUR_DUMMY_API_KEY") # Use dummy key for now
     end
 
     def run
@@ -15,12 +58,29 @@ module Omamori
       case @options[:scan_mode]
       when :diff
         diff_content = get_staged_diff
-        puts "Staged Diff Content:\n#{diff_content}" # TODO: Pass diff to AI analysis
+        if diff_content.empty?
+          puts "No staged changes to scan."
+          return
+        end
+        puts "Scanning staged differences..."
+        # TODO: Generate appropriate prompt for diff scan
+        prompt = "以下のコード差分を解析し、潜在的なセキュリティリスクを検出してください。\n\n#{diff_content}"
+        analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
+        puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
       when :all
-        puts "Full code scan not yet implemented." # TODO: Implement full code scan
+        full_code_content = get_full_codebase
+        if full_code_content.strip.empty?
+          puts "No code found to scan."
+          return
+        end
+        puts "Scanning entire codebase..."
+        # TODO: Generate appropriate prompt for full code scan
+        prompt = "以下のコードベースを解析し、潜在的なセキュリティリスクを検出してください。\n\n#{full_code_content}"
+        analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
+        puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
       end
 
-      puts "Running omamori with options: #{@options}"
+      puts "Scan complete."
     end
 
     private
@@ -48,6 +108,23 @@ module Omamori
 
     def get_staged_diff
       `git diff --staged`
+    end
+
+    def get_full_codebase
+      code_content = ""
+      # TODO: Get target directories/files from config
+      Dir.glob("**/*.rb").each do |file_path|
+        next if file_path.include?("vendor/") || file_path.include?(".git/") # Exclude vendor and .git directories
+
+        begin
+          code_content += "# File: #{file_path}\n"
+          code_content += File.read(file_path)
+          code_content += "\n\n"
+        rescue => e
+          puts "Error reading file #{file_path}: #{e.message}"
+        end
+      end
+      code_content
     end
   end
 end
