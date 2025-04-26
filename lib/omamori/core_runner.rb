@@ -8,6 +8,7 @@ require_relative 'report_generator/console_formatter' # Require ConsoleFormatter
 require_relative 'report_generator/html_formatter' # Require HTMLFormatter
 require_relative 'report_generator/json_formatter' # Require JSONFormatter
 require_relative 'static_analysers/brakeman_runner' # Require BrakemanRunner
+require_relative 'static_analysers/bundler_audit_runner' # Require BundlerAuditRunner
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -71,6 +72,7 @@ module Omamori
       @html_formatter = ReportGenerator::HTMLFormatter.new # Initialize HTMLFormatter
       @json_formatter = ReportGenerator::JSONFormatter.new # Initialize JSONFormatter
       @brakeman_runner = StaticAnalysers::BrakemanRunner.new # Initialize BrakemanRunner
+      @bundler_audit_runner = StaticAnalysers::BundlerAuditRunner.new # Initialize BundlerAuditRunner
     end
 
     def run
@@ -79,6 +81,10 @@ module Omamori
       # Run static analysers first
       brakeman_result = @brakeman_runner.run
       puts "Brakeman Result: #{brakeman_result}" if brakeman_result # TODO: Integrate into main report
+
+      bundler_audit_result = @bundler_audit_runner.run
+      puts "Bundler-Audit Result: #{bundler_audit_result}" if bundler_audit_result # TODO: Integrate into main report
+
 
       case @options[:scan_mode]
       when :diff
