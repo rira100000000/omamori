@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+
+# frozen_string_literal: true
+
+require "omamori"
+
+# Main entry point for the omamori CLI
+module Omamori
+  class CLI
+    def self.start(args)
+      CoreRunner.new(args).run
+    end
+  end
+end
+
+Omamori::CLI.start(ARGV)
