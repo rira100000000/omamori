@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 require 'optparse'
-require 'optparse'
 require_relative 'ai_analysis_engine/gemini_client'
 require_relative 'ai_analysis_engine/prompt_manager' # Require PromptManager
 require_relative 'ai_analysis_engine/diff_splitter' # Require DiffSplitter
 require_relative 'report_generator/console_formatter' # Require ConsoleFormatter
 require_relative 'report_generator/html_formatter' # Require HTMLFormatter
+require_relative 'report_generator/json_formatter' # Require JSONFormatter
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -68,6 +68,7 @@ module Omamori
       @diff_splitter = AIAnalysisEngine::DiffSplitter.new # Initialize DiffSplitter
       @console_formatter = ReportGenerator::ConsoleFormatter.new # Initialize ConsoleFormatter
       @html_formatter = ReportGenerator::HTMLFormatter.new # Initialize HTMLFormatter
+      @json_formatter = ReportGenerator::JSONFormatter.new # Initialize JSONFormatter
     end
 
     def run
@@ -167,8 +168,10 @@ module Omamori
         File.write(output_path, @html_formatter.format(analysis_result))
         puts "HTML report generated: #{output_path}"
       when :json
-        # TODO: Implement JSON formatter and output to file
-        puts "JSON output not yet implemented."
+        # TODO: Specify output file path from config/options
+        output_path = "omamori_report.json"
+        File.write(output_path, @json_formatter.format(analysis_result))
+        puts "JSON report generated: #{output_path}"
       end
     end
   end
