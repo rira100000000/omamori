@@ -13,11 +13,14 @@ module Omamori
         "Info" => :green,
       }.freeze
 
-      def format(analysis_result)
+      def format(combined_results)
         output = ""
-        if analysis_result && analysis_result["security_risks"] && !analysis_result["security_risks"].empty?
-          output += "Detected Security Risks:\n".colorize(:bold)
-          analysis_result["security_risks"].each do |risk|
+
+        # Format AI Analysis Results
+        ai_risks = combined_results && combined_results["ai_security_risks"] ? combined_results["ai_security_risks"] : []
+        if !ai_risks.empty?
+          output += "--- AI Analysis Results ---\n".colorize(:bold)
+          ai_risks.each do |risk|
             severity_color = SEVERITY_COLORS[risk["severity"]] || :white
             output += "  - Type: #{risk["type"].colorize(severity_color)}\n"
             output += "    Severity: #{risk["severity"].colorize(severity_color)}\n"
@@ -28,8 +31,50 @@ module Omamori
             output += "\n"
           end
         else
-          output += "No security risks detected.\n".colorize(:green)
+          output += "--- AI Analysis Results ---\n".colorize(:bold)
+          output += "No AI-detected security risks.\n".colorize(:green)
         end
+        output += "\n"
+
+        # Format Static Analysis Results
+        static_results = combined_results && combined_results["static_analysis_results"] ? combined_results["static_analysis_results"] : {}
+        output += "--- Static Analysis Results ---\n".colorize(:bold)
+
+        # Format Brakeman Results
+        brakeman_result = static_results["brakeman"]
+        if brakeman_result
+          output += "Brakeman:\n".colorize(:underline)
+          if brakeman_result["warnings"] && !brakeman_result["warnings"].empty?
+            brakeman_result["warnings"].each do |warning|
+              severity_color = SEVERITY_COLORS[warning["confidence"]] || :white # Map Brakeman confidence to severity color
+              output += "  - Warning Type: #{warning["warning_type"].colorize(severity_color)}\n"
+              output += "    Message: #{warning["message"]}\n"
+              output += "    File: #{warning["file"]}\n"
+              output += "    Line: #{warning["line"]}\n"
+              output += "    Code: #{warning["code"]}\n"
+              output += "    Link: #{warning["link"]}\n"
+              output += "\n"
+            end
+          else
+            output += "No Brakeman warnings found.\n".colorize(:green)
+          end
+        else
+          output += "Brakeman results not available.\n".colorize(:yellow)
+        end
+        output += "\n"
+
+        # Format Bundler-Audit Results
+        bundler_audit_result = static_results["bundler_audit"]
+        if bundler_audit_result
+          output += "Bundler-Audit:\n".colorize(:underline)
+          # TODO: Parse and format Bundler-Audit JSON output
+          output += "Bundler-Audit raw result (parsing not yet implemented):\n"
+          output += JSON.pretty_generate(bundler_audit_result) + "\n"
+        else
+          output += "Bundler-Audit results not available.\n".colorize(:yellow)
+        end
+        output += "\n"
+
         output
       end
 

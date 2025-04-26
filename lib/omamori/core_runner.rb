@@ -80,12 +80,10 @@ module Omamori
 
       # Run static analysers first
       brakeman_result = @brakeman_runner.run
-      puts "Brakeman Result: #{brakeman_result}" if brakeman_result # TODO: Integrate into main report
-
       bundler_audit_result = @bundler_audit_runner.run
-      puts "Bundler-Audit Result: #{bundler_audit_result}" if bundler_audit_result # TODO: Integrate into main report
 
-
+      # Perform AI analysis
+      analysis_result = nil
       case @options[:scan_mode]
       when :diff
         diff_content = get_staged_diff
@@ -93,7 +91,7 @@ module Omamori
           puts "No staged changes to scan."
           return
         end
-        puts "Scanning staged differences..."
+        puts "Scanning staged differences with AI..."
         if diff_content.length > SPLIT_THRESHOLD
           puts "Diff content exceeds threshold, splitting..."
           analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, RISKS_TO_CHECK)
@@ -101,14 +99,13 @@ module Omamori
           prompt = @prompt_manager.build_prompt(diff_content, RISKS_TO_CHECK)
           analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
         end
-        display_report(analysis_result) # Display report
       when :all
         full_code_content = get_full_codebase
         if full_code_content.strip.empty?
           puts "No code found to scan."
           return
         end
-        puts "Scanning entire codebase..."
+        puts "Scanning entire codebase with AI..."
         if full_code_content.length > SPLIT_THRESHOLD
           puts "Full code content exceeds threshold, splitting..."
           analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, RISKS_TO_CHECK)
@@ -116,13 +113,28 @@ module Omamori
           prompt = @prompt_manager.build_prompt(full_code_content, RISKS_TO_CHECK)
           analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
         end
-        display_report(analysis_result) # Display report
       end
+
+      # Combine results and display report
+      combined_results = combine_results(analysis_result, brakeman_result, bundler_audit_result)
+      display_report(combined_results)
 
       puts "Scan complete."
     end
 
     private
+
+    # Combine AI analysis results and static analyser results
+    def combine_results(ai_result, brakeman_result, bundler_audit_result)
+      combined = {
+        "ai_security_risks" => ai_result && ai_result["security_risks"] ? ai_result["security_risks"] : [],
+        "static_analysis_results" => {
+          "brakeman" => brakeman_result,
+          "bundler_audit" => bundler_audit_result
+        }
+      }
+      combined
+    end
 
     def parse_options
       OptionParser.new do |opts|
@@ -170,19 +182,19 @@ module Omamori
       code_content
     end
 
-    def display_report(analysis_result)
+    def display_report(combined_results)
       case @options[:format]
       when :console
-        puts @console_formatter.format(analysis_result)
+        puts @console_formatter.format(combined_results)
       when :html
         # TODO: Specify output file path from config/options
         output_path = "omamori_report.html"
-        File.write(output_path, @html_formatter.format(analysis_result))
+        File.write(output_path, @html_formatter.format(combined_results))
         puts "HTML report generated: #{output_path}"
       when :json
         # TODO: Specify output file path from config/options
         output_path = "omamori_report.json"
-        File.write(output_path, @json_formatter.format(analysis_result))
+        File.write(output_path, @json_formatter.format(combined_results))
         puts "JSON report generated: #{output_path}"
       end
     end
