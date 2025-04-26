@@ -7,6 +7,7 @@ require_relative 'ai_analysis_engine/diff_splitter' # Require DiffSplitter
 require_relative 'report_generator/console_formatter' # Require ConsoleFormatter
 require_relative 'report_generator/html_formatter' # Require HTMLFormatter
 require_relative 'report_generator/json_formatter' # Require JSONFormatter
+require_relative 'static_analysers/brakeman_runner' # Require BrakemanRunner
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -69,10 +70,15 @@ module Omamori
       @console_formatter = ReportGenerator::ConsoleFormatter.new # Initialize ConsoleFormatter
       @html_formatter = ReportGenerator::HTMLFormatter.new # Initialize HTMLFormatter
       @json_formatter = ReportGenerator::JSONFormatter.new # Initialize JSONFormatter
+      @brakeman_runner = StaticAnalysers::BrakemanRunner.new # Initialize BrakemanRunner
     end
 
     def run
       parse_options
+
+      # Run static analysers first
+      brakeman_result = @brakeman_runner.run
+      puts "Brakeman Result: #{brakeman_result}" if brakeman_result # TODO: Integrate into main report
 
       case @options[:scan_mode]
       when :diff
