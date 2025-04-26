@@ -58,11 +58,45 @@
 
     <h3>Bundler-Audit</h3>
     <% bundler_audit_result = @static_results['bundler_audit'] %>
-    <% if bundler_audit_result %>
-      <p>Bundler-Audit raw result (parsing not yet implemented):</p>
-      <pre><%= JSON.pretty_generate(bundler_audit_result) %></pre>
+    <% if bundler_audit_result && bundler_audit_result['scan'] %>
+      <% scan_results = bundler_audit_result['scan'] %>
+      <% if scan_results['vulnerabilities'] && !scan_results['vulnerabilities'].empty? %>
+        <h4>Vulnerabilities</h4>
+        <ul>
+          <% scan_results['vulnerabilities'].each do |vulnerability| %>
+            <li>
+              <strong>ID:</strong> <span class="severity-<%= vulnerability['criticality'].downcase %>"><%= vulnerability['id'] %></span><br>
+              <strong>Gem:</strong> <%= vulnerability['gem'] %><br>
+              <strong>Title:</strong> <%= vulnerability['title'] %><br>
+              <strong>URL:</strong> <a href="<%= vulnerability['url'] %>" target="_blank"><%= vulnerability['url'] %></a><br>
+              <strong>Criticality:</strong> <span class="severity-<%= vulnerability['criticality'].downcase %>"><%= vulnerability['criticality'] %></span><br>
+              <strong>Description:</strong> <%= vulnerability['description'] %><br>
+              <strong>Introduced In:</strong> <%= vulnerability['introduced_in'] %><br>
+              <strong>Patched Versions:</strong> <%= vulnerability['patched_versions'].join(', ') %><br>
+              <strong>Advisory Date:</strong> <%= vulnerability['advisory_date'] %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p>No vulnerabilities found.</p>
+      <% end %>
+
+      <% if scan_results['unpatched_gems'] && !scan_results['unpatched_gems'].empty? %>
+        <h4>Unpatched Gems</h4>
+        <ul>
+          <% scan_results['unpatched_gems'].each do |gem| %>
+            <li>
+              <strong>Name:</strong> <%= gem['name'] %><br>
+              <strong>Version:</strong> <%= gem['version'] %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p>No unpatched gems found.</p>
+      <% end %>
+
     <% else %>
-      <p>Bundler-Audit results not available.</p>
+      <p>Bundler-Audit results not available or in unexpected format.</p>
     <% end %>
   <% end %>
 

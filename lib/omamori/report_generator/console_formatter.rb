@@ -65,13 +65,44 @@ module Omamori
 
         # Format Bundler-Audit Results
         bundler_audit_result = static_results["bundler_audit"]
-        if bundler_audit_result
+        if bundler_audit_result && bundler_audit_result["scan"]
           output += "Bundler-Audit:\n".colorize(:underline)
-          # TODO: Parse and format Bundler-Audit JSON output
-          output += "Bundler-Audit raw result (parsing not yet implemented):\n"
-          output += JSON.pretty_generate(bundler_audit_result) + "\n"
+          scan_results = bundler_audit_result["scan"]
+
+          # Format vulnerabilities
+          if scan_results["vulnerabilities"] && !scan_results["vulnerabilities"].empty?
+            output += "  Vulnerabilities:\n".colorize(:bold)
+            scan_results["vulnerabilities"].each do |vulnerability|
+              severity_color = SEVERITY_COLORS[vulnerability["criticality"]] || :white # Map criticality to severity color
+              output += "    - ID: #{vulnerability["id"].colorize(severity_color)}\n"
+              output += "      Gem: #{vulnerability["gem"]}\n"
+              output += "      Title: #{vulnerability["title"]}\n"
+              output += "      URL: #{vulnerability["url"]}\n"
+              output += "      Criticality: #{vulnerability["criticality"].colorize(severity_color)}\n"
+              output += "      Description: #{vulnerability["description"]}\n"
+              output += "      Introduced In: #{vulnerability["introduced_in"]}\n"
+              output += "      Patched Versions: #{vulnerability["patched_versions"].join(', ')}\n"
+              output += "      Advisory Date: #{vulnerability["advisory_date"]}\n"
+              output += "\n"
+            end
+          else
+            output += "  No vulnerabilities found.\n".colorize(:green)
+          end
+
+          # Format unpatched gems
+          if scan_results["unpatched_gems"] && !scan_results["unpatched_gems"].empty?
+            output += "  Unpatched Gems:\n".colorize(:bold)
+            scan_results["unpatched_gems"].each do |gem|
+              output += "    - Name: #{gem["name"]}\n"
+              output += "      Version: #{gem["version"]}\n"
+              output += "\n"
+            end
+          else
+            output += "  No unpatched gems found.\n".colorize(:green)
+          end
+
         else
-          output += "Bundler-Audit results not available.\n".colorize(:yellow)
+          output += "Bundler-Audit results not available or in unexpected format.\n".colorize(:yellow)
         end
         output += "\n"
 
