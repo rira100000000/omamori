@@ -11,6 +11,7 @@
 /tmp/
 /.cline
 .clinerules
+.omamorirc
 
 # Used by dotenv library to load environment variables.
 .env

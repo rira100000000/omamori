@@ -83,48 +83,61 @@ module Omamori
     def run
       parse_options
 
-      # Run static analysers first
-      brakeman_result = @brakeman_runner.run
-      bundler_audit_result = @bundler_audit_runner.run
+      case @options[:command]
+      when :scan
+        # Run static analysers first
+        brakeman_result = @brakeman_runner.run
+        bundler_audit_result = @bundler_audit_runner.run
 
-      # Perform AI analysis
-      analysis_result = nil
-      case @options[:scan_mode]
-      when :diff
-        diff_content = get_staged_diff
-        if diff_content.empty?
-          puts "No staged changes to scan."
-          return
+        # Perform AI analysis
+        analysis_result = nil
+        case @options[:scan_mode]
+        when :diff
+          diff_content = get_staged_diff
+          if diff_content.empty?
+            puts "No staged changes to scan."
+            return
+          end
+          puts "Scanning staged differences with AI..."
+          if diff_content.length > SPLIT_THRESHOLD # TODO: Use token count
+            puts "Diff content exceeds threshold, splitting..."
+            analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
+          else
+            prompt = @prompt_manager.build_prompt(diff_content, get_risks_to_check)
+            analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
+          end
+        when :all
+          full_code_content = get_full_codebase
+          if full_code_content.strip.empty?
+            puts "No code found to scan."
+            return
+          end
+          puts "Scanning entire codebase with AI..."
+          if full_code_content.length > SPLIT_THRESHOLD # TODO: Use token count
+            puts "Full code content exceeds threshold, splitting..."
+            analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
+          else
+            prompt = @prompt_manager.build_prompt(full_code_content, get_risks_to_check)
+            analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
+          end
         end
-        puts "Scanning staged differences with AI..."
-        if diff_content.length > SPLIT_THRESHOLD
-          puts "Diff content exceeds threshold, splitting..."
-          analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, RISKS_TO_CHECK)
-        else
-          prompt = @prompt_manager.build_prompt(diff_content, RISKS_TO_CHECK)
-          analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
-        end
-      when :all
-        full_code_content = get_full_codebase
-        if full_code_content.strip.empty?
-          puts "No code found to scan."
-          return
-        end
-        puts "Scanning entire codebase with AI..."
-        if full_code_content.length > SPLIT_THRESHOLD
-          puts "Full code content exceeds threshold, splitting..."
-          analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, RISKS_TO_CHECK)
-        else
-          prompt = @prompt_manager.build_prompt(full_code_content, RISKS_TO_CHECK)
-          analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
-        end
+
+        # Combine results and display report
+        combined_results = combine_results(analysis_result, brakeman_result, bundler_audit_result)
+        display_report(combined_results)
+
+        puts "Scan complete."
+
+      when :ci_setup
+        generate_ci_setup(@options[:ci_service])
+
+      when :init
+        generate_config_file # Generate initial config file
+
+      else
+        puts "Unknown command: #{@options[:command]}"
+        puts @opt_parser # Display help for unknown command
       end
-
-      # Combine results and display report
-      combined_results = combine_results(analysis_result, brakeman_result, bundler_audit_result)
-      display_report(combined_results)
-
-      puts "Scan complete."
     end
 
     private
@@ -166,24 +179,20 @@ module Omamori
         opts.separator "Scan Options:"
         opts.on("--diff", "Scan only the staged differences (default)") do
           @options[:scan_mode] = :diff
-          @options[:command] = :scan # Ensure command is scan
         end
 
         opts.on("--all", "Scan the entire codebase") do
           @options[:scan_mode] = :all
-          @options[:command] = :scan # Ensure command is scan
         end
 
         opts.on("--format FORMAT", [:console, :html, :json], "Output format (console, html, json)") do |format|
           @options[:format] = format
-          @options[:command] ||= :scan # Default command to scan if format is specified
         end
 
         opts.separator ""
         opts.separator "CI Setup Options:"
         opts.on("--ci SERVICE", [:github_actions, :gitlab_ci], "Generate setup for specified CI service (github_actions, gitlab_ci)") do |service|
           @options[:ci_service] = service
-          @options[:command] = :ci_setup # Ensure command is ci_setup
         end
 
         opts.separator ""
@@ -194,24 +203,24 @@ module Omamori
         end
       end
 
-      # Parse command first
-      command = ARGV.shift.to_sym rescue nil
-      @options[:command] = command if command && [:scan, :ci_setup, :init].include?(command)
+      # Determine command before parsing options
+      command = ARGV.first.to_s.downcase.to_sym rescue nil
+      if [:scan, :ci_setup, :init].include?(command)
+        @options[:command] = ARGV.shift.to_sym # Consume the command argument
+      else
+        @options[:command] = :scan # Default command is scan if not specified
+      end
 
       @opt_parser.parse!(@args)
 
-      # Default command to scan if none is specified but scan options are present
-      if @options[:command].nil? && (@options.key?(:scan_mode) || @options.key?(:format))
-         @options[:command] = :scan
-      end
+      # Default scan mode to diff if command is scan and mode is not specified
+      @options[:scan_mode] ||= :diff if @options[:command] == :scan
 
-      # Display help if no command is specified
-      if @options[:command].nil?
+      # Display help if command is not recognized after parsing
+      unless [:scan, :ci_setup, :init].include?(@options[:command])
         puts @opt_parser
         exit
       end
-
-      @options[:scan_mode] ||= :diff # Default to diff scan for scan command
     end
 
     def get_staged_diff
