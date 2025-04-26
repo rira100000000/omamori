@@ -4,3 +4,4 @@ source "https://rubygems.org"
 
 # Specify your gem's dependencies in omamori.gemspec
 gemspec
+gem "brakeman", "~> 7.0"

@@ -8,6 +8,8 @@ GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.3)
+    brakeman (7.0.2)
+      racc
     colorize (0.8.1)
     diff-lcs (1.6.1)
     faraday (2.13.1)
@@ -76,6 +78,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  brakeman (~> 7.0)
   bundler (~> 2.0)
   omamori!
   rake (~> 13.0)
