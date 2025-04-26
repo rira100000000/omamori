@@ -11,9 +11,10 @@ module Omamori
         @template = ERB.new(File.read(template_path))
       end
 
-      def format(analysis_result)
+      def format(combined_results)
         # Prepare data for the template
-        @risks = analysis_result && analysis_result["security_risks"] ? analysis_result["security_risks"] : []
+        @ai_risks = combined_results && combined_results["ai_security_risks"] ? combined_results["ai_security_risks"] : []
+        @static_results = combined_results && combined_results["static_analysis_results"] ? combined_results["static_analysis_results"] : {}
 
         # Render the template
         @template.result(binding)

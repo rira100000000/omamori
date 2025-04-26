@@ -18,19 +18,51 @@
 <body>
   <h1>Omamori Security Report</h1>
 
-  <% if @risks.empty? %>
-    <p>No security risks detected.</p>
+  <h2>AI Analysis Results</h2>
+  <% if @ai_risks.empty? %>
+    <p>No AI-detected security risks.</p>
   <% else %>
-    <h2>Detected Security Risks</h2>
-    <% @risks.each do |risk| %>
+    <% @ai_risks.each do |risk| %>
       <div class="risk">
-        <h2 class="severity-<%= risk['severity'].downcase %>"><%= risk['type'] %></h2>
+        <h3 class="severity-<%= risk['severity'].downcase %>"><%= risk['type'] %></h3>
         <p><strong>Severity:</strong> <span class="severity-<%= risk['severity'].downcase %>"><%= risk['severity'] %></span></p>
         <p><strong>Location:</strong> <%= risk['location'] %></p>
         <p><strong>Details:</strong> <%= risk['details'] %></p>
         <p><strong>Code Snippet:</strong></p>
         <pre><%= risk['code_snippet'] %></pre>
       </div>
+    <% end %>
+  <% end %>
+
+  <h2>Static Analysis Results</h2>
+  <% if @static_results.empty? %>
+    <p>No static analysis results available.</p>
+  <% else %>
+    <h3>Brakeman</h3>
+    <% brakeman_result = @static_results['brakeman'] %>
+    <% if brakeman_result && brakeman_result['warnings'] && !brakeman_result['warnings'].empty? %>
+      <% brakeman_result['warnings'].each do |warning| %>
+        <div class="risk">
+          <h4 class="severity-<%= warning['confidence'].downcase %>">Brakeman Warning: <%= warning['warning_type'] %></h4>
+          <p><strong>Confidence:</strong> <span class="severity-<%= warning['confidence'].downcase %>"><%= warning['confidence'] %></span></p>
+          <p><strong>Message:</strong> <%= warning['message'] %></p>
+          <p><strong>File:</strong> <%= warning['file'] %></p>
+          <p><strong>Line:</strong> <%= warning['line'] %></p>
+          <p><strong>Code:</strong> <%= warning['code'] %></p>
+          <p><strong>Link:</strong> <a href="<%= warning['link'] %>" target="_blank"><%= warning['link'] %></a></p>
+        </div>
+      <% end %>
+    <% else %>
+      <p>No Brakeman warnings found.</p>
+    <% end %>
+
+    <h3>Bundler-Audit</h3>
+    <% bundler_audit_result = @static_results['bundler_audit'] %>
+    <% if bundler_audit_result %>
+      <p>Bundler-Audit raw result (parsing not yet implemented):</p>
+      <pre><%= JSON.pretty_generate(bundler_audit_result) %></pre>
+    <% else %>
+      <p>Bundler-Audit results not available.</p>
     <% end %>
   <% end %>
 
