@@ -28,8 +28,8 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{\Aexe/}) { |f| File.basename(f) }
   spec.require_paths = ["lib"]
 
-  # Uncomment to register a dependency for your gem
-  # spec.add_dependency "example-gem", "~> 1.0"
+  # Specify your gem's dependencies in omamori.gemspec
+  spec.add_dependency "colorize", "~> 0.8" # Add dependency for colorize
 
   # Development dependencies
   spec.add_development_dependency "bundler", "~> 2.0"

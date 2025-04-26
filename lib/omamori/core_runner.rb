@@ -4,6 +4,7 @@ require 'optparse'
 require_relative 'ai_analysis_engine/gemini_client'
 require_relative 'ai_analysis_engine/prompt_manager' # Require PromptManager
 require_relative 'ai_analysis_engine/diff_splitter' # Require DiffSplitter
+require_relative 'report_generator/console_formatter' # Require ConsoleFormatter
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -63,6 +64,7 @@ module Omamori
       @gemini_client = AIAnalysisEngine::GeminiClient.new("YOUR_DUMMY_API_KEY") # Use dummy key for now
       @prompt_manager = AIAnalysisEngine::PromptManager.new # Initialize PromptManager
       @diff_splitter = AIAnalysisEngine::DiffSplitter.new # Initialize DiffSplitter
+      @console_formatter = ReportGenerator::ConsoleFormatter.new # Initialize ConsoleFormatter
     end
 
     def run
@@ -83,7 +85,7 @@ module Omamori
           prompt = @prompt_manager.build_prompt(diff_content, RISKS_TO_CHECK)
           analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
         end
-        puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
+        display_report(analysis_result) # Display report
       when :all
         full_code_content = get_full_codebase
         if full_code_content.strip.empty?
@@ -98,7 +100,7 @@ module Omamori
           prompt = @prompt_manager.build_prompt(full_code_content, RISKS_TO_CHECK)
           analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
         end
-        puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
+        display_report(analysis_result) # Display report
       end
 
       puts "Scan complete."
@@ -146,6 +148,10 @@ module Omamori
         end
       end
       code_content
+    end
+
+    def display_report(analysis_result)
+      puts @console_formatter.format(analysis_result)
     end
   end
 end
