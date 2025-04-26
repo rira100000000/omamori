@@ -1,0 +1,41 @@
+# frozen_string_literal: true
+
+module Omamori
+  module AIAnalysisEngine
+    class PromptManager
+      # TODO: Load prompt templates from config file
+      DEFAULT_PROMPT_TEMPLATE = <<~TEXT
+        あなたはRubyのセキュリティ専門家です。以下のコードを解析し、潜在的なセキュリティリスクを検出してください。
+        特に以下の種類の脆弱性に注目してください: %{risk_list}
+        検出したリスクは、定義されたJSON Schemaの形式で報告してください。
+        リスクが見つからない場合は、"security_risks"配列を空のリストとして出力してください。
+
+        【解析対象コード】:
+        %{code_content}
+      TEXT
+
+      RISK_PROMPTS = {
+        xss: "XSS（クロスサイトスクリプティング）",
+        csrf: "CSRF（クロスサイトリクエストフォージェリ）",
+        idor: "IDOR（Insecure Direct Object Reference）",
+        open_redirect: "オープンリダイレクト",
+        ssrf: "SSRF（Server-Side Request Forgery）",
+        session_fixation: "セッション固定（Session Fixation）",
+        # TODO: Add other risks from requirements
+      }.freeze
+
+      def initialize(config = {})
+        # TODO: Use config to load custom templates
+        @prompt_templates = { default: DEFAULT_PROMPT_TEMPLATE }
+        @risk_prompts = RISK_PROMPTS
+      end
+
+      def build_prompt(code_content, risks_to_check, template_key: :default)
+        template = @prompt_templates[template_key]
+        risk_list = risks_to_check.map { |risk_key| @risk_prompts[risk_key] }.compact.join(", ")
+
+        template % { risk_list: risk_list, code_content: code_content }
+      end
+    end
+  end
+end

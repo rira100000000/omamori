@@ -2,6 +2,7 @@
 
 require 'optparse'
 require_relative 'ai_analysis_engine/gemini_client'
+require_relative 'ai_analysis_engine/prompt_manager' # Require PromptManager
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -45,11 +46,18 @@ module Omamori
       "required": ["security_risks"]
     }.freeze # Freeze the hash to make it immutable
 
+    # TODO: Get risks to check from config file
+    RISKS_TO_CHECK = [
+      :xss, :csrf, :idor, :open_redirect, :ssrf, :session_fixation
+      # TODO: Add other risks from requirements
+    ].freeze
+
     def initialize(args)
       @args = args
       @options = {}
       # TODO: Get API key from config file
       @gemini_client = AIAnalysisEngine::GeminiClient.new("YOUR_DUMMY_API_KEY") # Use dummy key for now
+      @prompt_manager = AIAnalysisEngine::PromptManager.new # Initialize PromptManager
     end
 
     def run
@@ -63,8 +71,8 @@ module Omamori
           return
         end
         puts "Scanning staged differences..."
-        # TODO: Generate appropriate prompt for diff scan
-        prompt = "以下のコード差分を解析し、潜在的なセキュリティリスクを検出してください。\n\n#{diff_content}"
+        # Use PromptManager to build the prompt for diff scan
+        prompt = @prompt_manager.build_prompt(diff_content, RISKS_TO_CHECK)
         analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
         puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
       when :all
@@ -74,8 +82,8 @@ module Omamori
           return
         end
         puts "Scanning entire codebase..."
-        # TODO: Generate appropriate prompt for full code scan
-        prompt = "以下のコードベースを解析し、潜在的なセキュリティリスクを検出してください。\n\n#{full_code_content}"
+        # Use PromptManager to build the prompt for full code scan
+        prompt = @prompt_manager.build_prompt(full_code_content, RISKS_TO_CHECK)
         analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
         puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
       end
@@ -114,7 +122,7 @@ module Omamori
       code_content = ""
       # TODO: Get target directories/files from config
       Dir.glob("**/*.rb").each do |file_path|
-        next if file_path.include?("vendor/") || file_path.include?(".git/") # Exclude vendor and .git directories
+        next if file_path.include?("vendor/") || file_path.include?(".git/") || file_path.include?(".cline/") # Exclude vendor, .git, and .cline directories
 
         begin
           code_content += "# File: #{file_path}\n"
