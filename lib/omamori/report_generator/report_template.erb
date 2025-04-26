@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Omamori Security Report</title>
+<style>
+  body { font-family: sans-serif; line-height: 1.6; margin: 20px; }
+  h1 { color: #333; }
+  .risk { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 5px; }
+  .risk h2 { margin-top: 0; }
+  .severity-critical { color: red; font-weight: bold; }
+  .severity-high { color: red; font-weight: bold; }
+  .severity-medium { color: orange; }
+  .severity-low { color: blue; }
+  .severity-info { color: green; }
+  pre { background-color: #f4f4f4; padding: 10px; overflow-x: auto; }
+</style>
+</head>
+<body>
+  <h1>Omamori Security Report</h1>
+
+  <% if @risks.empty? %>
+    <p>No security risks detected.</p>
+  <% else %>
+    <h2>Detected Security Risks</h2>
+    <% @risks.each do |risk| %>
+      <div class="risk">
+        <h2 class="severity-<%= risk['severity'].downcase %>"><%= risk['type'] %></h2>
+        <p><strong>Severity:</strong> <span class="severity-<%= risk['severity'].downcase %>"><%= risk['severity'] %></span></p>
+        <p><strong>Location:</strong> <%= risk['location'] %></p>
+        <p><strong>Details:</strong> <%= risk['details'] %></p>
+        <p><strong>Code Snippet:</strong></p>
+        <pre><%= risk['code_snippet'] %></pre>
+      </div>
+    <% end %>
+  <% end %>
+
+</body>
+</html>

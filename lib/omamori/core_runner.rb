@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
 require 'optparse'
+require 'optparse'
 require_relative 'ai_analysis_engine/gemini_client'
 require_relative 'ai_analysis_engine/prompt_manager' # Require PromptManager
 require_relative 'ai_analysis_engine/diff_splitter' # Require DiffSplitter
 require_relative 'report_generator/console_formatter' # Require ConsoleFormatter
+require_relative 'report_generator/html_formatter' # Require HTMLFormatter
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -59,12 +61,13 @@ module Omamori
 
     def initialize(args)
       @args = args
-      @options = {}
+      @options = { format: :console } # Default format is console
       # TODO: Get API key from config file
       @gemini_client = AIAnalysisEngine::GeminiClient.new("YOUR_DUMMY_API_KEY") # Use dummy key for now
       @prompt_manager = AIAnalysisEngine::PromptManager.new # Initialize PromptManager
       @diff_splitter = AIAnalysisEngine::DiffSplitter.new # Initialize DiffSplitter
       @console_formatter = ReportGenerator::ConsoleFormatter.new # Initialize ConsoleFormatter
+      @html_formatter = ReportGenerator::HTMLFormatter.new # Initialize HTMLFormatter
     end
 
     def run
@@ -120,6 +123,10 @@ module Omamori
           @options[:scan_mode] = :all
         end
 
+        opts.on("--format FORMAT", [:console, :html, :json], "Output format (console, html, json)") do |format|
+          @options[:format] = format
+        end
+
         opts.on("-h", "--help", "Prints this help") do
           puts opts
           exit
@@ -151,7 +158,18 @@ module Omamori
     end
 
     def display_report(analysis_result)
-      puts @console_formatter.format(analysis_result)
+      case @options[:format]
+      when :console
+        puts @console_formatter.format(analysis_result)
+      when :html
+        # TODO: Specify output file path from config/options
+        output_path = "omamori_report.html"
+        File.write(output_path, @html_formatter.format(analysis_result))
+        puts "HTML report generated: #{output_path}"
+      when :json
+        # TODO: Implement JSON formatter and output to file
+        puts "JSON output not yet implemented."
+      end
     end
   end
 end
