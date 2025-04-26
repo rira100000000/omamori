@@ -10,6 +10,7 @@ require_relative 'report_generator/json_formatter' # Require JSONFormatter
 require_relative 'static_analysers/brakeman_runner' # Require BrakemanRunner
 require_relative 'static_analysers/bundler_audit_runner' # Require BundlerAuditRunner
 require 'json' # Required for JSON Schema
+require_relative 'config' # Require Config class
 
 module Omamori
   class CoreRunner
@@ -63,16 +64,20 @@ module Omamori
 
     def initialize(args)
       @args = args
-      @options = { format: :console } # Default format is console
-      # TODO: Get API key from config file
-      @gemini_client = AIAnalysisEngine::GeminiClient.new("YOUR_DUMMY_API_KEY") # Use dummy key for now
-      @prompt_manager = AIAnalysisEngine::PromptManager.new # Initialize PromptManager
-      @diff_splitter = AIAnalysisEngine::DiffSplitter.new # Initialize DiffSplitter
-      @console_formatter = ReportGenerator::ConsoleFormatter.new # Initialize ConsoleFormatter
-      @html_formatter = ReportGenerator::HTMLFormatter.new # Initialize HTMLFormatter
-      @json_formatter = ReportGenerator::JSONFormatter.new # Initialize JSONFormatter
-      @brakeman_runner = StaticAnalysers::BrakemanRunner.new # Initialize BrakemanRunner
-      @bundler_audit_runner = StaticAnalysers::BundlerAuditRunner.new # Initialize BundlerAuditRunner
+      @options = { command: :scan, format: :console } # Default command is scan, default format is console
+      @config = Omamori::Config.new # Initialize Config
+
+      # Initialize components with config
+      api_key = @config.get("api_key", ENV["GEMINI_API_KEY"]) # Get API key from config or environment variable
+      gemini_model = @config.get("model", "gemini-1.5-pro-latest") # Get Gemini model from config
+      @gemini_client = AIAnalysisEngine::GeminiClient.new(api_key)
+      @prompt_manager = AIAnalysisEngine::PromptManager.new(@config.get("prompt_templates", {})) # Pass prompt templates from config
+      @diff_splitter = AIAnalysisEngine::DiffSplitter.new # TODO: Get chunk size from config
+      @console_formatter = ReportGenerator::ConsoleFormatter.new # TODO: Pass config for colors/options
+      @html_formatter = ReportGenerator::HTMLFormatter.new # TODO: Pass config for template path/output path
+      @json_formatter = ReportGenerator::JSONFormatter.new # TODO: Pass config for output path
+      @brakeman_runner = StaticAnalysers::BrakemanRunner.new # TODO: Pass config for options
+      @bundler_audit_runner = StaticAnalysers::BundlerAuditRunner.new # TODO: Pass config for options
     end
 
     def run
@@ -136,29 +141,77 @@ module Omamori
       combined
     end
 
-    def parse_options
-      OptionParser.new do |opts|
-        opts.banner = "Usage: omamori scan [options]"
+    # Default risks to check if not specified in config
+    DEFAULT_RISKS_TO_CHECK = [
+      :xss, :csrf, :idor, :open_redirect, :ssrf, :session_fixation
+      # TODO: Add other risks from requirements
+    ].freeze
 
+    def get_risks_to_check
+      # Get risks to check from config, default to hardcoded list if not specified
+      @config.get("checks", DEFAULT_RISKS_TO_CHECK)
+    end
+
+    def parse_options
+      @opt_parser = OptionParser.new do |opts|
+        opts.banner = "Usage: omamori [command] [options]"
+
+        opts.separator ""
+        opts.separator "Commands:"
+        opts.separator "  scan [options]  : Scan code or diff for security vulnerabilities"
+        opts.separator "  ci-setup [options] : Generate CI/CD setup files"
+        opts.separator "  init          : Generate initial config file (.omamorirc)"
+
+        opts.separator ""
+        opts.separator "Scan Options:"
         opts.on("--diff", "Scan only the staged differences (default)") do
           @options[:scan_mode] = :diff
+          @options[:command] = :scan # Ensure command is scan
         end
 
         opts.on("--all", "Scan the entire codebase") do
           @options[:scan_mode] = :all
+          @options[:command] = :scan # Ensure command is scan
         end
 
         opts.on("--format FORMAT", [:console, :html, :json], "Output format (console, html, json)") do |format|
           @options[:format] = format
+          @options[:command] ||= :scan # Default command to scan if format is specified
         end
 
+        opts.separator ""
+        opts.separator "CI Setup Options:"
+        opts.on("--ci SERVICE", [:github_actions, :gitlab_ci], "Generate setup for specified CI service (github_actions, gitlab_ci)") do |service|
+          @options[:ci_service] = service
+          @options[:command] = :ci_setup # Ensure command is ci_setup
+        end
+
+        opts.separator ""
+        opts.separator "General Options:"
         opts.on("-h", "--help", "Prints this help") do
           puts opts
           exit
         end
-      end.parse!(@args)
+      end
 
-      @options[:scan_mode] ||= :diff # Default to diff scan
+      # Parse command first
+      command = ARGV.shift.to_sym rescue nil
+      @options[:command] = command if command && [:scan, :ci_setup, :init].include?(command)
+
+      @opt_parser.parse!(@args)
+
+      # Default command to scan if none is specified but scan options are present
+      if @options[:command].nil? && (@options.key?(:scan_mode) || @options.key?(:format))
+         @options[:command] = :scan
+      end
+
+      # Display help if no command is specified
+      if @options[:command].nil?
+        puts @opt_parser
+        exit
+      end
+
+      @options[:scan_mode] ||= :diff # Default to diff scan for scan command
     end
 
     def get_staged_diff
@@ -196,6 +249,106 @@ module Omamori
         output_path = "omamori_report.json"
         File.write(output_path, @json_formatter.format(combined_results))
         puts "JSON report generated: #{output_path}"
+      end
+    end
+
+    def generate_ci_setup(ci_service)
+      case ci_service
+      when :github_actions
+        generate_github_actions_workflow
+      when :gitlab_ci
+        puts "GitLab CI setup not yet implemented." # TODO: Implement GitLab CI setup
+      else
+        puts "Unsupported CI service: #{ci_service}"
+      end
+    end
+
+    def generate_github_actions_workflow
+      workflow_content = <<~YAML
+        # .github/workflows/omamori_scan.yml
+        name: Omamori Security Scan
+
+        on: [push, pull_request]
+
+        jobs:
+          security_scan:
+            runs-on: ubuntu-latest
+
+            steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Ruby
+              uses: ruby/setup-ruby@v1
+              with:
+                ruby-version: 2.7 # Or your project's Ruby version
+
+            - name: Install dependencies
+              run: bundle install
+
+            - name: Install Brakeman (if not in Gemfile)
+              run: gem install brakeman || true # Install if not already present
+
+            - name: Install Bundler-Audit (if not in Gemfile)
+              run: gem install bundler-audit || true # Install if not already present
+
+            - name: Run Omamori Scan
+              env:
+                GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Ensure you add GEMINI_API_KEY to GitHub Secrets
+              run: bundle exec omamori scan --all --format console # Or --diff for diff scan
+
+      YAML
+      # TODO: Specify output file path from config/options
+      output_path = ".github/workflows/omamori_scan.yml"
+      File.write(output_path, workflow_content)
+      puts "GitHub Actions workflow generated: #{output_path}"
+    end
+
+    def generate_config_file
+      config_content = <<~YAML
+        # .omamorirc
+        # Configuration file for omamori gem
+
+        # Gemini API Key (required for AI analysis)
+        # You can also set this via the GEMINI_API_KEY environment variable
+        api_key: YOUR_GEMINI_API_KEY # Replace with your actual API key
+
+        # Gemini Model to use (optional, default: gemini-1.5-pro-latest)
+        # model: gemini-1.5-flash-latest
+
+        # Security checks to enable (optional, default: all implemented checks)
+        # checks:
+        #   xss: true
+        #   csrf: true
+        #   idor: true
+        #   ...
+
+        # Custom prompt templates (optional)
+        # prompt_templates:
+        #   default: |
+        #     Your custom prompt template here...
+
+        # Report output settings (optional)
+        # report:
+        #   output_path: ./omamori_report # Output directory/prefix for html/json reports
+        #   html_template: path/to/custom/template.erb # Custom HTML template
+
+        # Static analyser options (optional)
+        # static_analysers:
+        #   brakeman:
+        #     options: "--force" # Additional Brakeman options
+        #   bundler_audit:
+        #     options: "--quiet" # Additional Bundler-Audit options
+
+      YAML
+      # TODO: Specify output file path from options
+      output_path = Omamori::Config::DEFAULT_CONFIG_PATH
+      if File.exist?(output_path)
+        puts "Config file already exists at #{output_path}. Aborting init."
+      else
+        File.write(output_path, config_content)
+        puts "Config file generated: #{output_path}"
+        puts "Please replace 'YOUR_GEMINI_API_KEY' with your actual API key."
       end
     end
   end
