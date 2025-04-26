@@ -3,6 +3,7 @@
 require 'optparse'
 require_relative 'ai_analysis_engine/gemini_client'
 require_relative 'ai_analysis_engine/prompt_manager' # Require PromptManager
+require_relative 'ai_analysis_engine/diff_splitter' # Require DiffSplitter
 require 'json' # Required for JSON Schema
 
 module Omamori
@@ -52,12 +53,16 @@ module Omamori
       # TODO: Add other risks from requirements
     ].freeze
 
+    # TODO: Determine threshold for splitting based on token limits
+    SPLIT_THRESHOLD = 7000 # Characters as a proxy for tokens
+
     def initialize(args)
       @args = args
       @options = {}
       # TODO: Get API key from config file
       @gemini_client = AIAnalysisEngine::GeminiClient.new("YOUR_DUMMY_API_KEY") # Use dummy key for now
       @prompt_manager = AIAnalysisEngine::PromptManager.new # Initialize PromptManager
+      @diff_splitter = AIAnalysisEngine::DiffSplitter.new # Initialize DiffSplitter
     end
 
     def run
@@ -71,9 +76,13 @@ module Omamori
           return
         end
         puts "Scanning staged differences..."
-        # Use PromptManager to build the prompt for diff scan
-        prompt = @prompt_manager.build_prompt(diff_content, RISKS_TO_CHECK)
-        analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
+        if diff_content.length > SPLIT_THRESHOLD
+          puts "Diff content exceeds threshold, splitting..."
+          analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, RISKS_TO_CHECK)
+        else
+          prompt = @prompt_manager.build_prompt(diff_content, RISKS_TO_CHECK)
+          analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
+        end
         puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
       when :all
         full_code_content = get_full_codebase
@@ -82,9 +91,13 @@ module Omamori
           return
         end
         puts "Scanning entire codebase..."
-        # Use PromptManager to build the prompt for full code scan
-        prompt = @prompt_manager.build_prompt(full_code_content, RISKS_TO_CHECK)
-        analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
+        if full_code_content.length > SPLIT_THRESHOLD
+          puts "Full code content exceeds threshold, splitting..."
+          analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, RISKS_TO_CHECK)
+        else
+          prompt = @prompt_manager.build_prompt(full_code_content, RISKS_TO_CHECK)
+          analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA)
+        end
         puts "Analysis Result: #{analysis_result}" # TODO: Pass result to ReportGenerator
       end
 
