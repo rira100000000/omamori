@@ -10,11 +10,10 @@ module Omamori
       end
 
       def run
-        puts "Running Bundler-Audit..."
         # TODO: Determine Bundler-Audit command based on options
         # Example: bundle audit --format json
         # Include options passed during initialization
-        bundler_audit_command = "bundle audit --format json #{@options}"
+        bundler_audit_command = "bundle audit --format json#{@options.empty? ? '' : " #{@options}"}"
 
         begin
           # Execute the Bundler-Audit command and capture output
@@ -25,7 +24,9 @@ module Omamori
           # Parse the JSON output
           # Bundler-Audit JSON output structure might vary, need to confirm
           # Assuming it returns a JSON object with vulnerability information
-          JSON.parse(bundler_audit_output)
+          parsed_output = JSON.parse(bundler_audit_output)
+          # Extract the 'results' array from the parsed JSON
+          parsed_output['results']
         rescue Errno::ENOENT
           puts "Error: bundle command not found. Is Bundler installed?"
           nil

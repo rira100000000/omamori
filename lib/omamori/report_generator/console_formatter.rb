@@ -47,13 +47,13 @@ module Omamori
           if brakeman_result["warnings"] && !brakeman_result["warnings"].empty?
             brakeman_result["warnings"].each do |warning|
               severity_color = SEVERITY_COLORS[warning["confidence"]] || :white # Map Brakeman confidence to severity color
-              output += "  - Warning Type: #{warning["warning_type"].colorize(severity_color)}\n"
-              output += "    Message: #{warning["message"]}\n"
-              output += "    File: #{warning["file"]}\n"
-              output += "    Line: #{warning["line"]}\n"
-              output += "    Code: #{warning["code"]}\n"
-              output += "    Link: #{warning["link"]}\n"
-              output += "\n"
+              output += "    - Warning Type: #{warning["warning_type"].colorize(severity_color)}\n"
+              output += "      Message: #{warning["message"]}\n"
+              output += "      File: #{warning["file"]}\n"
+              output += "      Line: #{warning["line"]}\n"
+              output += "      Code: #{warning["code"]}\n"
+              output += "      Link: #{warning["link"]}\n"
+              output += "    \n"
             end
           else
             output += "No Brakeman warnings found.\n".colorize(:green)

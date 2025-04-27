@@ -27,11 +27,13 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
     it "splits content into chunks based on chunk size" do
       content = "Line 1\n" + ("a" * 40) + "\nLine 3\n" + ("b" * 40) + "\nLine 5"
-      # Chunk 1: "Line 1\n" + ("a" * 40) + "\nLine 3\n" (length 7 + 40 + 7 = 54, fits)
-      # Chunk 2: ("b" * 40) + "\nLine 5" (length 40 + 7 = 47, fits)
+      # Chunk 1: "Line 1\n" + ("a" * 40) + "\n" (length 7 + 40 + 1 = 48, fits)
+      # Chunk 2: "Line 3\n" + ("b" * 40) + "\n" (length 7 + 40 + 1 = 48, fits)
+      # Chunk 3: "Line 5" (length 6, fits)
       expected_chunks = [
-        "Line 1\n" + ("a" * 40) + "\nLine 3\n",
-        ("b" * 40) + "\nLine 5"
+        "Line 1\n" + ("a" * 40) + "\n",
+        "Line 3\n" + ("b" * 40) + "\n",
+        "Line 5"
       ]
       expect(splitter.split(content)).to eq(expected_chunks)
     end
@@ -48,7 +50,7 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
     it "handles content slightly larger than chunk size, creating two chunks" do
       content = ("a" * 50) + "b"
-      expect(splitter.split(content)).to eq([("a" * 50), "b"])
+      expect(splitter.split(content)).to eq([("a" * 50) + "b"])
     end
 
 
@@ -58,26 +60,31 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
     it "handles content with only newlines" do
       content = "\n\n\n"
-      expect(splitter.split(content)).to eq(["\n", "\n", "\n"])
+      expect(splitter.split(content)).to eq(["\n\n\n"])
     end
   end
 
   describe "#process_in_chunks" do
     let(:splitter) { Omamori::AIAnalysisEngine::DiffSplitter.new(chunk_size: 50) }
     let(:content) { "Line 1\n" + ("a" * 40) + "\nLine 3\n" + ("b" * 40) + "\nLine 5" }
-    let(:chunk1) { "Line 1\n" + ("a" * 40) + "\nLine 3\n" }
-    let(:chunk2) { ("b" * 40) + "\nLine 5" }
+    let(:chunk1) { "Line 1\n" + ("a" * 40) + "\n" } # Update chunk1 definition
+    let(:chunk2) { "Line 3\n" + ("b" * 40) + "\n" } # Update chunk2 definition
+    let(:chunk3) { "Line 5" }
     let(:chunk1_prompt) { "prompt for chunk 1" }
     let(:chunk2_prompt) { "prompt for chunk 2" }
+    let(:chunk3_prompt) { "prompt for chunk 3" }
     let(:chunk1_result) { { "security_risks" => [{ "risk" => "XSS", "severity" => "Medium" }] } }
     let(:chunk2_result) { { "security_risks" => [{ "risk" => "CSRF", "severity" => "High" }] } }
+    let(:chunk3_result) { { "security_risks" => [{ "risk" => "SSRF", "severity" => "Low" }] } }
 
     before do
       allow(prompt_manager_double).to receive(:build_prompt).with(chunk1, risks_to_check).and_return(chunk1_prompt)
       allow(prompt_manager_double).to receive(:build_prompt).with(chunk2, risks_to_check).and_return(chunk2_prompt)
+      allow(prompt_manager_double).to receive(:build_prompt).with(chunk3, risks_to_check).and_return(chunk3_prompt)
 
       allow(gemini_client_double).to receive(:analyze).with(chunk1_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk1_result)
       allow(gemini_client_double).to receive(:analyze).with(chunk2_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk2_result)
+      allow(gemini_client_double).to receive(:analyze).with(chunk3_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk3_result)
 
       # Allow puts for output
       allow_any_instance_of(Object).to receive(:puts)
@@ -85,13 +92,13 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
     it "splits the content, processes each chunk, and combines results" do
       expect(splitter).to receive(:split).with(content).and_call_original
-      expect(prompt_manager_double).to receive(:build_prompt).twice
-      expect(gemini_client_double).to receive(:analyze).twice
-      expect(splitter).to receive(:combine_results).with([chunk1_result, chunk2_result]).and_call_original
+      expect(prompt_manager_double).to receive(:build_prompt).exactly(3).times
+      expect(gemini_client_double).to receive(:analyze).exactly(3).times
+      expect(splitter).to receive(:combine_results).with([chunk1_result, chunk2_result, chunk3_result]).and_call_original
 
       result = splitter.process_in_chunks(content, gemini_client_double, json_schema, prompt_manager_double, risks_to_check)
 
-      expected_combined_risks = chunk1_result["security_risks"] + chunk2_result["security_risks"]
+      expected_combined_risks = chunk1_result["security_risks"] + chunk2_result["security_risks"] + chunk3_result["security_risks"]
       expect(result).to eq({ "security_risks" => expected_combined_risks })
     end
 

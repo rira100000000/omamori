@@ -13,7 +13,8 @@
 .clinerules
 .omamorirc
 .rspec_status
-
+omamori_report.html
+omamori_report.json
 # Used by dotenv library to load environment variables.
 .env
 

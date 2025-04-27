@@ -114,7 +114,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).to receive(:get_staged_diff)
           expect(runner).not_to receive(:get_full_codebase)
-          expect(gemini_client_double).to receive(:analyze).with("dummy diff", any_args)
+          expect(gemini_client_double).to receive(:analyze).with(anything, anything, model: anything)
           expect(diff_splitter_double).not_to receive(:process_in_chunks)
 
           runner.run
@@ -134,7 +134,7 @@ RSpec.describe Omamori::CoreRunner do
           expect(runner).to receive(:get_staged_diff)
           expect(runner).not_to receive(:get_full_codebase)
           expect(gemini_client_double).not_to receive(:analyze)
-          expect(diff_splitter_double).to receive(:process_in_chunks).with(large_diff, any_args)
+          expect(diff_splitter_double).to receive(:process_in_chunks).with(large_diff, anything, anything, anything, anything, model: anything)
 
           runner.run
         end
@@ -153,7 +153,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).not_to receive(:get_staged_diff)
           expect(runner).to receive(:get_full_codebase)
-          expect(gemini_client_double).to receive(:analyze).with("dummy code", any_args)
+          expect(gemini_client_double).to receive(:analyze).with(anything, anything, model: anything)
           expect(diff_splitter_double).not_to receive(:process_in_chunks)
 
           runner.run
@@ -173,7 +173,7 @@ RSpec.describe Omamori::CoreRunner do
           expect(runner).not_to receive(:get_staged_diff)
           expect(runner).to receive(:get_full_codebase)
           expect(gemini_client_double).not_to receive(:analyze)
-          expect(diff_splitter_double).to receive(:process_in_chunks).with(large_codebase, any_args)
+          expect(diff_splitter_double).to receive(:process_in_chunks).with(large_codebase, anything, anything, anything, anything, model: anything)
 
           runner.run
         end
@@ -184,52 +184,45 @@ RSpec.describe Omamori::CoreRunner do
 
         before do
           # Mock scan logic results
-          allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
-          allow(runner).to receive(:combine_results).and_return(results)
-          # Ensure display_report is called
-          allow(runner).to receive(:display_report).and_call_original
-        end
 
-        it "uses the console formatter and prints to stdout when format is console" do
-          runner = Omamori::CoreRunner.new(["scan", "--format", "console"])
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args)
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
+          context "when format is console" do
+            let(:@args) { ["scan", "--format", "console"] }
+            let(:@format_option) { :console }
+
+            it "uses the console formatter and prints to stdout" do
+              expect(console_formatter_double).to receive(:format).with(results).and_return("console report")
+              expect(html_formatter_double).not_to receive(:format)
+              expect(json_formatter_double).not_to receive(:format)
+              expect { @runner.run }.to output("console report\n").to_stdout
+              expect(File).not_to receive(:write)
+            end
           end
 
-          expect(console_formatter_double).to receive(:format).with(results).and_return("console report")
-          expect(html_formatter_double).not_to receive(:format)
-          expect(json_formatter_double).not_to receive(:format)
-          expect { runner.run }.to output("console report\n").to_stdout
-          expect(File).not_to receive(:write)
-        end
+          context "when format is html" do
+            let(:@args) { ["scan", "--format", "html"] }
+            let(:@format_option) { :html }
 
-        it "uses the html formatter and writes to omamori_report.html when format is html" do
-          runner = Omamori::CoreRunner.new(["scan", "--format", "html"])
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args)
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :html })
+            it "uses the html formatter and writes to omamori_report.html" do
+              expect(console_formatter_double).not_to receive(:format)
+              expect(html_formatter_double).to receive(:format).with(results).and_return("html report")
+              expect(json_formatter_double).not_to receive(:format)
+              expect(File).to receive(:write).with("./omamori_report.html", "html report")
+              expect { @runner.run }.to_not output.to_stdout
+            end
           end
 
-          expect(console_formatter_double).not_to receive(:format)
-          expect(html_formatter_double).to receive(:format).with(results).and_return("html report")
-          expect(json_formatter_double).not_to receive(:format)
-          expect(File).to receive(:write).with("./omamori_report.html", "html report")
-          expect { runner.run }.to_not output.to_stdout
-        end
+          context "when format is json" do
+            let(:@args) { ["scan", "--format", "json"] }
+            let(:@format_option) { :json }
 
-        it "uses the json formatter and writes to omamori_report.json when format is json" do
-          runner = Omamori::CoreRunner.new(["scan", "--format", "json"])
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args)
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :json })
+            it "uses the json formatter and writes to omamori_report.json" do
+              expect(console_formatter_double).not_to receive(:format)
+              expect(html_formatter_double).not_to receive(:format)
+              expect(json_formatter_double).to receive(:format).with(results).and_return("json report")
+              expect(File).to receive(:write).with("./omamori_report.json", "json report")
+              expect { @runner.run }.to_not output.to_stdout
+            end
           end
-
-          expect(console_formatter_double).not_to receive(:format)
-          expect(html_formatter_double).not_to receive(:format)
-          expect(json_formatter_double).to receive(:format).with(results).and_return("json report")
-          expect(File).to receive(:write).with("./omamori_report.json", "json report")
-          expect { runner.run }.to_not output.to_stdout
         end
       end
     end

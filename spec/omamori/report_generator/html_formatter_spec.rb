@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'pathname'
 require 'omamori/report_generator/html_formatter'
 
 RSpec.describe Omamori::ReportGenerator::HTMLFormatter do
@@ -15,10 +16,14 @@ RSpec.describe Omamori::ReportGenerator::HTMLFormatter do
   end
   let(:rendered_html) { "<html><body>Report Content</body></html>" }
 
+  let(:project_root) { Pathname.new(__dir__).join("..", "..", "..").expand_path
+}
+  let(:actual_template_path) { File.join(project_root, "lib", "omamori", "report_generator", "report_template.erb") }
+
   before do
     # Mock File.read for the template file
     allow(File).to receive(:read).with(template_path).and_return("<%= @ai_risks %> <%= @static_results %>")
-    allow(File).to receive(:read).with(File.join(__dir__, "report_template.erb")).and_return("<%= @ai_risks %> <%= @static_results %>")
+    allow(File).to receive(:read).with(actual_template_path).and_return("<%= @ai_risks %> <%= @static_results %>")
 
     # Mock ERB.new
     allow(ERB).to receive(:new).and_return(erb_template_double)
@@ -34,7 +39,7 @@ RSpec.describe Omamori::ReportGenerator::HTMLFormatter do
     end
 
     it "initializes with the default template path if none is provided" do
-      default_template = File.join(__dir__, "report_template.erb")
+      default_template = actual_template_path
       expect(File).to receive(:read).with(default_template).and_return("") # Ensure default is read
       formatter = Omamori::ReportGenerator::HTMLFormatter.new(output_path_prefix)
       expect(formatter.instance_variable_get(:@template_path)).to eq(default_template)
