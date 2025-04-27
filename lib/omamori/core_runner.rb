@@ -72,12 +72,22 @@ module Omamori
       gemini_model = @config.get("model", "gemini-1.5-pro-latest") # Get Gemini model from config
       @gemini_client = AIAnalysisEngine::GeminiClient.new(api_key)
       @prompt_manager = AIAnalysisEngine::PromptManager.new(@config.get("prompt_templates", {})) # Pass prompt templates from config
-      @diff_splitter = AIAnalysisEngine::DiffSplitter.new # TODO: Get chunk size from config
+      # Get chunk size from config, default to 7000 characters if not specified
+      chunk_size = @config.get("chunk_size", SPLIT_THRESHOLD)
+      @diff_splitter = AIAnalysisEngine::DiffSplitter.new(chunk_size) # Pass chunk size to DiffSplitter
+      # Get report output path and html template path from config
+      report_config = @config.get("report", {})
+      report_output_path = report_config.fetch("output_path", "./omamori_report")
+      html_template_path = report_config.fetch("html_template", nil) # Default to nil, formatter will use default template
       @console_formatter = ReportGenerator::ConsoleFormatter.new # TODO: Pass config for colors/options
-      @html_formatter = ReportGenerator::HTMLFormatter.new # TODO: Pass config for template path/output path
-      @json_formatter = ReportGenerator::JSONFormatter.new # TODO: Pass config for output path
-      @brakeman_runner = StaticAnalysers::BrakemanRunner.new # TODO: Pass config for options
-      @bundler_audit_runner = StaticAnalysers::BundlerAuditRunner.new # TODO: Pass config for options
+      @html_formatter = ReportGenerator::HTMLFormatter.new(report_output_path, html_template_path) # Pass output path and template path
+      @json_formatter = ReportGenerator::JSONFormatter.new(report_output_path) # Pass output path
+      # Get static analyser options from config
+      static_analyser_config = @config.get("static_analysers", {})
+      brakeman_options = static_analyser_config.fetch("brakeman", {}).fetch("options", "")
+      bundler_audit_options = static_analyser_config.fetch("bundler_audit", {}).fetch("options", "")
+      @brakeman_runner = StaticAnalysers::BrakemanRunner.new(brakeman_options) # Pass options
+      @bundler_audit_runner = StaticAnalysers::BundlerAuditRunner.new(bundler_audit_options) # Pass options
     end
 
     def run
@@ -249,13 +259,17 @@ module Omamori
       when :console
         puts @console_formatter.format(combined_results)
       when :html
-        # TODO: Specify output file path from config/options
-        output_path = "omamori_report.html"
+        # Get output file path from config/options
+        report_config = @config.get("report", {})
+        output_path_prefix = report_config.fetch("output_path", "./omamori_report")
+        output_path = "#{output_path_prefix}.html"
         File.write(output_path, @html_formatter.format(combined_results))
         puts "HTML report generated: #{output_path}"
       when :json
-        # TODO: Specify output file path from config/options
-        output_path = "omamori_report.json"
+        # Get output file path from config/options
+        report_config = @config.get("report", {})
+        output_path_prefix = report_config.fetch("output_path", "./omamori_report")
+        output_path = "#{output_path_prefix}.json"
         File.write(output_path, @json_formatter.format(combined_results))
         puts "JSON report generated: #{output_path}"
       end
