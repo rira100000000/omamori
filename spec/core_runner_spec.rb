@@ -101,181 +101,158 @@ RSpec.describe Omamori::CoreRunner do
         runner.run
       end
 
-      context "with --diff option" do
-        it "scans staged differences" do
+      context "when the scan command is specified" do
+        it "runs the scan logic" do
           # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--diff"])
-  
+          runner = Omamori::CoreRunner.new(["scan"])
+
           # Mock parse_options to set expected options
           allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
             method.call(*args) # Call original parse_options
             runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
           end
-  
-          # Expect scan command logic
+
+          # Expect scan command logic to be executed
+          expect(runner).to receive(:parse_options)
           expect(runner).to receive(:get_staged_diff).and_return("dummy diff")
-          expect(runner).not_to receive(:get_full_codebase)
-          expect(gemini_client_double).to receive(:analyze) # Assuming diff is small
-          expect(runner).to receive(:combine_results)
-          expect(runner).to receive(:display_report)
-  
-          runner.run
-        end
-
-        it "splits and processes in chunks if diff is large" do
-          # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--diff"])
-
-          # Mock parse_options to set expected options
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args) # Call original parse_options
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
-          end
-
-          # Mock get_staged_diff to return large content
-          allow(runner).to receive(:get_staged_diff).and_return("a" * (Omamori::CoreRunner::SPLIT_THRESHOLD + 1))
-
-          # Expect scan command logic with splitting
-          expect(runner).to receive(:get_staged_diff)
-          expect(runner).not_to receive(:get_full_codebase)
-          expect(diff_splitter_double).to receive(:process_in_chunks)
-          expect(gemini_client_double).not_to receive(:analyze) # Should use splitter
-          expect(runner).to receive(:combine_results)
-          expect(runner).to receive(:display_report)
-
-          runner.run
-        end
-      end
-
-      context "with --all option" do
-        it "scans the entire codebase" do
-          # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--all"])
-
-          # Mock parse_options to set expected options
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args) # Call original parse_options
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :all, format: :console })
-          end
-
-          # Mock get_full_codebase to return dummy content
-          allow(runner).to receive(:get_full_codebase).and_return("dummy code")
-
-          # Expect scan command logic
-          expect(runner).not_to receive(:get_staged_diff)
-          expect(runner).to receive(:get_full_codebase)
-          expect(gemini_client_double).to receive(:analyze) # Assuming code is small
           expect(runner).to receive(:combine_results)
           expect(runner).to receive(:display_report)
 
           runner.run
         end
 
-        it "splits and processes in chunks if codebase is large" do
-          # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--all"])
+        context "with --diff option" do
+          it "calls get_staged_diff and analyzes the diff if diff is small" do
+            runner = Omamori::CoreRunner.new(["scan", "--diff"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
+            end
+            allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
+            allow(runner).to receive(:combine_results).and_return({})
+            allow(runner).to receive(:display_report)
 
-          # Mock parse_options to set expected options
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args) # Call original parse_options
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :all, format: :console })
+            expect(runner).to receive(:get_staged_diff)
+            expect(runner).not_to receive(:get_full_codebase)
+            expect(gemini_client_double).to receive(:analyze).with("dummy diff", any_args)
+            expect(diff_splitter_double).not_to receive(:process_in_chunks)
+
+            runner.run
           end
 
-          # Mock get_full_codebase to return large content
-          allow(runner).to receive(:get_full_codebase).and_return("a" * (Omamori::CoreRunner::SPLIT_THRESHOLD + 1))
+          it "calls diff_splitter if the diff is large" do
+            runner = Omamori::CoreRunner.new(["scan", "--diff"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
+            end
+            large_diff = "a" * (Omamori::CoreRunner::SPLIT_THRESHOLD + 1)
+            allow(runner).to receive(:get_staged_diff).and_return(large_diff)
+            allow(runner).to receive(:combine_results).and_return({})
+            allow(runner).to receive(:display_report)
 
-          # Expect scan command logic with splitting
-          expect(runner).not_to receive(:get_staged_diff)
-          expect(runner).to receive(:get_full_codebase)
-          expect(diff_splitter_double).to receive(:process_in_chunks)
-          expect(gemini_client_double).not_to receive(:analyze) # Should use splitter
-          expect(runner).to receive(:combine_results)
-          expect(runner).to receive(:display_report)
+            expect(runner).to receive(:get_staged_diff)
+            expect(runner).not_to receive(:get_full_codebase)
+            expect(gemini_client_double).not_to receive(:analyze)
+            expect(diff_splitter_double).to receive(:process_in_chunks).with(large_diff, any_args)
 
-          runner.run
+            runner.run
+          end
         end
-      end
 
-      context "with --format option" do
-        it "uses the specified formatter (console)" do
-          # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--format", "console"])
+        context "with --all option" do
+          it "calls get_full_codebase and analyzes the codebase if codebase is small" do
+            runner = Omamori::CoreRunner.new(["scan", "--all"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :all, format: :console })
+            end
+            allow(runner).to receive(:get_full_codebase).and_return("dummy code")
+            allow(runner).to receive(:combine_results).and_return({})
+            allow(runner).to receive(:display_report)
 
-          # Mock parse_options to set expected options
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args) # Call original parse_options
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
+            expect(runner).not_to receive(:get_staged_diff)
+            expect(runner).to receive(:get_full_codebase)
+            expect(gemini_client_double).to receive(:analyze).with("dummy code", any_args)
+            expect(diff_splitter_double).not_to receive(:process_in_chunks)
+
+            runner.run
           end
 
-          # Mock scan logic results
-          allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
-          allow(runner).to receive(:combine_results).and_return({})
+          it "calls diff_splitter if the codebase is large" do
+            runner = Omamori::CoreRunner.new(["scan", "--all"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :all, format: :console })
+            end
+            large_codebase = "a" * (Omamori::CoreRunner::SPLIT_THRESHOLD + 1)
+            allow(runner).to receive(:get_full_codebase).and_return(large_codebase)
+            allow(runner).to receive(:combine_results).and_return({})
+            allow(runner).to receive(:display_report)
 
-          # Expect display_report to use console formatter
-          expect(runner).to receive(:display_report).and_wrap_original do |method, *args|
-            expect(console_formatter_double).to receive(:format)
+            expect(runner).not_to receive(:get_staged_diff)
+            expect(runner).to receive(:get_full_codebase)
+            expect(gemini_client_double).not_to receive(:analyze)
+            expect(diff_splitter_double).to receive(:process_in_chunks).with(large_codebase, any_args)
+
+            runner.run
+          end
+        end
+
+        context "with --format option" do
+          let(:results) { { "security_risks" => [{ "risk" => "SQL Injection", "severity" => "High", "message" => "Example" }] } }
+
+          before do
+            # Mock scan logic results
+            allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
+            allow(runner).to receive(:combine_results).and_return(results)
+            # Ensure display_report is called
+            allow(runner).to receive(:display_report).and_call_original
+          end
+
+          it "uses the console formatter and prints to stdout when format is console" do
+            runner = Omamori::CoreRunner.new(["scan", "--format", "console"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console })
+            end
+
+            expect(console_formatter_double).to receive(:format).with(results).and_return("console report")
             expect(html_formatter_double).not_to receive(:format)
             expect(json_formatter_double).not_to receive(:format)
-            expect(File).not_to receive(:write) # Console format doesn't write to file
-            method.call(*args) # Call original display_report
+            expect { runner.run }.to output("console report\n").to_stdout
+            expect(File).not_to receive(:write)
           end
 
-          runner.run
-        end
+          it "uses the html formatter and writes to omamori_report.html when format is html" do
+            runner = Omamori::CoreRunner.new(["scan", "--format", "html"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :html })
+            end
 
-        it "uses the specified formatter (html)" do
-          # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--format", "html"])
-
-          # Mock parse_options to set expected options
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args) # Call original parse_options
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :html })
-          end
-
-          # Mock scan logic results
-          allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
-          allow(runner).to receive(:combine_results).and_return({})
-
-          # Expect display_report to use html formatter
-          expect(runner).to receive(:display_report).and_wrap_original do |method, *args|
             expect(console_formatter_double).not_to receive(:format)
-            expect(html_formatter_double).to receive(:format)
+            expect(html_formatter_double).to receive(:format).with(results).and_return("html report")
             expect(json_formatter_double).not_to receive(:format)
-            expect(File).to receive(:write).with("./omamori_report.html", any_args) # HTML format writes to file
-            method.call(*args) # Call original display_report
+            expect(File).to receive(:write).with("./omamori_report.html", "html report")
+            expect { runner.run }.to_not output.to_stdout
           end
 
-          runner.run
-        end
+          it "uses the json formatter and writes to omamori_report.json when format is json" do
+            runner = Omamori::CoreRunner.new(["scan", "--format", "json"])
+            allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+              method.call(*args)
+              runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :json })
+            end
 
-        it "uses the specified formatter (json)" do
-          # Create runner instance
-          runner = Omamori::CoreRunner.new(["scan", "--format", "json"])
-
-          # Mock parse_options to set expected options
-          allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
-            method.call(*args) # Call original parse_options
-            runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :json })
-          end
-
-          # Mock scan logic results
-          allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
-          allow(runner).to receive(:combine_results).and_return({})
-
-          # Expect display_report to use json formatter
-          expect(runner).to receive(:display_report).and_wrap_original do |method, *args|
             expect(console_formatter_double).not_to receive(:format)
             expect(html_formatter_double).not_to receive(:format)
-            expect(json_formatter_double).to receive(:format)
-            expect(File).to receive(:write).with("./omamori_report.json", any_args) # JSON format writes to file
-            method.call(*args) # Call original display_report
+            expect(json_formatter_double).to receive(:format).with(results).and_return("json report")
+            expect(File).to receive(:write).with("./omamori_report.json", "json report")
+            expect { runner.run }.to_not output.to_stdout
           end
-
-          runner.run
         end
       end
-    end
 
     context "when the ci-setup command is specified" do
       context "with --ci github_actions option" do
