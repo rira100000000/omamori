@@ -214,9 +214,10 @@ module Omamori
       end
 
       # Determine command before parsing options
-      command = ARGV.first.to_s.downcase.to_sym rescue nil
+      # Use @args instead of ARGV
+      command = @args.first.to_s.downcase.to_sym rescue nil
       if [:scan, :ci_setup, :init].include?(command)
-        @options[:command] = ARGV.shift.to_sym # Consume the command argument
+        @options[:command] = @args.shift.to_sym # Consume the command argument from @args
       else
         @options[:command] = :scan # Default command is scan if not specified
       end
