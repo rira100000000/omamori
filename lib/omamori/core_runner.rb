@@ -280,7 +280,7 @@ module Omamori
       when :github_actions
         generate_github_actions_workflow
       when :gitlab_ci
-        puts "GitLab CI setup not yet implemented." # TODO: Implement GitLab CI setup
+        generate_gitlab_ci_workflow
       else
         puts "Unsupported CI service: #{ci_service}"
       end
@@ -321,10 +321,43 @@ module Omamori
               run: bundle exec omamori scan --all --format console # Or --diff for diff scan
 
       YAML
-      # TODO: Specify output file path from config/options
-      output_path = ".github/workflows/omamori_scan.yml"
+      # Get output file path from config/options, default to .github/workflows/omamori_scan.yml
+      ci_config = @config.get("ci_setup", {})
+      output_path = ci_config.fetch("github_actions_path", ".github/workflows/omamori_scan.yml")
       File.write(output_path, workflow_content)
       puts "GitHub Actions workflow generated: #{output_path}"
+    end
+
+    def generate_gitlab_ci_workflow
+      workflow_content = <<~YAML
+        # .gitlab-ci.yml
+        stages:
+          - security_scan
+
+        omamori_security_scan:
+          stage: security_scan
+          image: ruby:latest # Use a Ruby image
+          before_script:
+            - apt-get update -qq && apt-get install -y nodejs # Install nodejs if needed for some tools
+            - gem install bundler # Ensure bundler is installed
+            - bundle install --jobs $(nproc) --retry 3 # Install dependencies
+            - gem install brakeman || true # Install Brakeman if not in Gemfile
+            - gem install bundler-audit || true # Install Bundler-Audit if not in Gemfile
+          script:
+            - bundle exec omamori scan --all --format console # Or --diff for diff scan
+          variables:
+            GEMINI_API_KEY: $GEMINI_API_KEY # Ensure you set GEMINI_API_KEY as a CI/CD variable in GitLab
+          # Optional: Define rules for when to run this job
+          # rules:
+          #   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+          #   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+      YAML
+      # Get output file path from config/options, default to .gitlab-ci.yml
+      ci_config = @config.get("ci_setup", {})
+      output_path = ci_config.fetch("gitlab_ci_path", ".gitlab-ci.yml")
+      File.write(output_path, workflow_content)
+      puts "GitLab CI workflow generated: #{output_path}"
     end
 
     def generate_config_file

@@ -13,7 +13,8 @@ module Omamori
         puts "Running Bundler-Audit..."
         # TODO: Determine Bundler-Audit command based on options
         # Example: bundle audit --format json
-        bundler_audit_command = "bundle audit --format json"
+        # Include options passed during initialization
+        bundler_audit_command = "bundle audit --format json #{@options}"
 
         begin
           # Execute the Bundler-Audit command and capture output

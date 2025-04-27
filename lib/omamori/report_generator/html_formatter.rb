@@ -5,10 +5,13 @@ require 'erb'
 module Omamori
   module ReportGenerator
     class HTMLFormatter
-      def initialize
-        # TODO: Load template file path from config
-        template_path = File.join(__dir__, "report_template.erb")
-        @template = ERB.new(File.read(template_path))
+      def initialize(output_path_prefix, template_path = nil)
+        @output_path_prefix = output_path_prefix
+        # Use provided template_path if not nil, otherwise use default
+        @template_path = template_path || File.join(__dir__, "report_template.erb")
+        @template = ERB.new(File.read(@template_path))
+      rescue Errno::ENOENT
+        raise "HTML template file not found at #{@template_path}" # Raise error if template is not found
       end
 
       def format(combined_results)

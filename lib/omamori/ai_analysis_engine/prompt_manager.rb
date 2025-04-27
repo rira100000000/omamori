@@ -25,13 +25,15 @@ module Omamori
       }.freeze
 
       def initialize(config = {})
-        # TODO: Use config to load custom templates
-        @prompt_templates = { default: DEFAULT_PROMPT_TEMPLATE }
+        # Load custom templates from config, merge with default
+        custom_templates = config.fetch("prompt_templates", {})
+        @prompt_templates = { default: DEFAULT_PROMPT_TEMPLATE }.merge(custom_templates)
         @risk_prompts = RISK_PROMPTS
       end
 
       def build_prompt(code_content, risks_to_check, template_key: :default)
-        template = @prompt_templates[template_key]
+        # Use the template from @prompt_templates, defaulting to :default if template_key is not found
+        template = @prompt_templates.fetch(template_key, @prompt_templates[:default])
         risk_list = risks_to_check.map { |risk_key| @risk_prompts[risk_key] }.compact.join(", ")
 
         template % { risk_list: risk_list, code_content: code_content }
