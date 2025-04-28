@@ -95,9 +95,13 @@ module Omamori
 
       case @options[:command]
       when :scan
-        # Run static analysers first
-        brakeman_result = @brakeman_runner.run
-        bundler_audit_result = @bundler_audit_runner.run
+        # Run static analysers first unless --ai option is specified
+        brakeman_result = nil
+        bundler_audit_result = nil
+        unless @options[:only_ai]
+          brakeman_result = @brakeman_runner.run
+          bundler_audit_result = @bundler_audit_runner.run
+        end
 
         # Perform AI analysis
         analysis_result = nil
@@ -197,6 +201,10 @@ module Omamori
 
         opts.on("--format FORMAT", [:console, :html, :json], "Output format (console, html, json)") do |format|
           @options[:format] = format
+        end
+
+        opts.on("--ai", "Run only AI analysis, skipping static analysers") do
+          @options[:only_ai] = true
         end
 
         opts.separator ""

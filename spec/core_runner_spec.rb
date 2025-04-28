@@ -227,6 +227,37 @@ RSpec.describe Omamori::CoreRunner do
       end
     end
 
+    context "when the scan command is specified with --ai option" do
+      it "runs only AI analysis, skipping static analysers" do
+        # Create runner instance with --ai option
+        runner = Omamori::CoreRunner.new(["scan", "--ai"])
+
+        # Mock parse_options to set expected options including :only_ai
+        allow(runner).to receive(:parse_options).and_wrap_original do |method, *args|
+          method.call(*args) # Call original parse_options
+          runner.instance_variable_set(:@options, { command: :scan, scan_mode: :diff, format: :console, only_ai: true })
+        end
+
+        # Mock necessary methods for scan logic
+        allow(runner).to receive(:get_staged_diff).and_return("dummy diff")
+        allow(runner).to receive(:combine_results).and_return({})
+        allow(runner).to receive(:display_report)
+        allow(gemini_client_double).to receive(:analyze).and_return({ "security_risks" => [] })
+        allow(prompt_manager_double).to receive(:build_prompt).and_return("dummy prompt")
+
+
+        # Expect static analyser run methods NOT to be called
+        expect(brakeman_runner_double).not_to receive(:run)
+        expect(bundler_audit_runner_double).not_to receive(:run)
+
+        # Expect AI analysis methods to be called
+        expect(runner).to receive(:get_staged_diff) # Or get_full_codebase depending on scan_mode
+        expect(gemini_client_double).to receive(:analyze) # Or diff_splitter_double.process_in_chunks
+
+        runner.run
+      end
+    end
+
     context "when the ci-setup command is specified" do
       context "with --ci github_actions option" do
         it "generates GitHub Actions workflow" do
