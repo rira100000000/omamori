@@ -142,3 +142,12 @@ The gem is available as open source under the terms of the [MIT License](https:/
 ## Code of Conduct
 
 Everyone interacting in the Omamori project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [Code of Conduct](http://contributor-covenant.org/version/2/0/).
+
+## Demo Files
+
+The `demo` directory contains example files with known vulnerabilities that can be used to demonstrate Omamori's capabilities.
+
+- `demo/static_analysis_vulnerability.rb`: Contains vulnerabilities detectable by static analysis tools like Brakeman (e.g., SQL injection).
+- `demo/ai_analysis_vulnerability.rb`: Contains vulnerabilities that AI analysis can help detect (e.g., hardcoded secrets, insufficient input validation).
+
+You can use these files to see how Omamori identifies different types of security risks.

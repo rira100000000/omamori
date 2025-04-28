@@ -65,14 +65,17 @@ module Omamori
 
         # Format Bundler-Audit Results
         bundler_audit_result = static_results["bundler_audit"]
-        if bundler_audit_result && bundler_audit_result["scan"]
+        if bundler_audit_result && bundler_audit_result["results"]
           output += "Bundler-Audit:\n".colorize(:underline)
-          scan_results = bundler_audit_result["scan"]
+          scan_results = bundler_audit_result["results"]
 
           # Format vulnerabilities
-          if scan_results["vulnerabilities"] && !scan_results["vulnerabilities"].empty?
+          # Check for vulnerabilities within the results array
+          vulnerabilities = scan_results.select { |result| result["type"] == "unpatched_gem" }
+          if !vulnerabilities.empty?
             output += "  Vulnerabilities:\n".colorize(:bold)
-            scan_results["vulnerabilities"].each do |vulnerability|
+            vulnerabilities.each do |vulnerability_entry|
+              vulnerability = vulnerability_entry["advisory"]
               severity_color = SEVERITY_COLORS[vulnerability["criticality"]] || :white # Map criticality to severity color
               output += "    - ID: #{vulnerability["id"].colorize(severity_color)}\n"
               output += "      Gem: #{vulnerability["gem"]}\n"
@@ -87,18 +90,6 @@ module Omamori
             end
           else
             output += "  No vulnerabilities found.\n".colorize(:green)
-          end
-
-          # Format unpatched gems
-          if scan_results["unpatched_gems"] && !scan_results["unpatched_gems"].empty?
-            output += "  Unpatched Gems:\n".colorize(:bold)
-            scan_results["unpatched_gems"].each do |gem|
-              output += "    - Name: #{gem["name"]}\n"
-              output += "      Version: #{gem["version"]}\n"
-              output += "\n"
-            end
-          else
-            output += "  No unpatched gems found.\n".colorize(:green)
           end
 
         else

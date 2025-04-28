@@ -74,7 +74,7 @@ module Omamori
       @prompt_manager = AIAnalysisEngine::PromptManager.new(@config.get("prompt_templates", {})) # Pass prompt templates from config
       # Get chunk size from config, default to 7000 characters if not specified
       chunk_size = @config.get("chunk_size", SPLIT_THRESHOLD)
-      @diff_splitter = AIAnalysisEngine::DiffSplitter.new(chunk_size) # Pass chunk size to DiffSplitter
+      @diff_splitter = AIAnalysisEngine::DiffSplitter.new(chunk_size: chunk_size) # Pass chunk size to DiffSplitter
       # Get report output path and html template path from config
       report_config = @config.get("report", {})
       report_output_path = report_config.fetch("output_path", "./omamori_report")
@@ -84,8 +84,8 @@ module Omamori
       @json_formatter = ReportGenerator::JSONFormatter.new(report_output_path) # Pass output path
       # Get static analyser options from config
       static_analyser_config = @config.get("static_analysers", {})
-      brakeman_options = static_analyser_config.fetch("brakeman", {}).fetch("options", "")
-      bundler_audit_options = static_analyser_config.fetch("bundler_audit", {}).fetch("options", "")
+      brakeman_options = static_analyser_config.fetch("brakeman", {}).fetch("options", {}) # Default to empty hash
+      bundler_audit_options = static_analyser_config.fetch("bundler_audit", {}).fetch("options", {}) # Default to empty hash
       @brakeman_runner = StaticAnalysers::BrakemanRunner.new(brakeman_options) # Pass options
       @bundler_audit_runner = StaticAnalysers::BundlerAuditRunner.new(bundler_audit_options) # Pass options
     end

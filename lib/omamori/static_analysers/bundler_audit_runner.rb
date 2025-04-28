@@ -13,7 +13,9 @@ module Omamori
         # TODO: Determine Bundler-Audit command based on options
         # Example: bundle audit --format json
         # Include options passed during initialization
-        bundler_audit_command = "bundle audit --format json#{@options.empty? ? '' : " #{@options}"}"
+        # Build options string from the options hash
+        options_string = @options.map { |key, value| value == true ? key.to_s : "#{key} #{value}" }.join(" ")
+        bundler_audit_command = "bundle audit --format json#{options_string.empty? ? '' : " #{options_string}"}"
 
         begin
           # Execute the Bundler-Audit command and capture output
@@ -25,8 +27,15 @@ module Omamori
           # Bundler-Audit JSON output structure might vary, need to confirm
           # Assuming it returns a JSON object with vulnerability information
           parsed_output = JSON.parse(bundler_audit_output)
-          # Extract the 'results' array from the parsed JSON
-          parsed_output['results']
+          # Validate the parsed output structure
+          if parsed_output.is_a?(Hash) && parsed_output.key?('results')
+            # Return the entire parsed output hash
+            parsed_output
+          else
+            puts "Error: Unexpected Bundler-Audit JSON output structure."
+            puts "Raw output:\n#{bundler_audit_output}"
+            nil # Return nil if the structure is unexpected
+          end
         rescue Errno::ENOENT
           puts "Error: bundle command not found. Is Bundler installed?"
           nil
