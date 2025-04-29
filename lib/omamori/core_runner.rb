@@ -413,8 +413,8 @@ module Omamori
         #   bundler_audit:
         #     options: "--quiet" # Additional Bundler-Audit options
         
-                # Language setting for AI analysis details (optional, default: en)
-                # language: ja
+        # Language setting for AI analysis details (optional, default: en)
+        # language: ja
         
               YAML
       # TODO: Specify output file path from options
