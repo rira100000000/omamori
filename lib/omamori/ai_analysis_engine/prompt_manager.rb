@@ -4,17 +4,18 @@ module Omamori
   module AIAnalysisEngine
     class PromptManager
       # TODO: Load prompt templates from config file
-      DEFAULT_PROMPT_TEMPLATE = <<~TEXT
-        あなたはRubyのセキュリティ専門家です。以下のコードを解析し、潜在的なセキュリティリスクを検出してください。
-        特に以下の種類の脆弱性に注目してください: %{risk_list}
-        検出したリスクは、以下のJSON Schemaの形式で報告してください。
-        %{json_schema}
-        リスクが見つからない場合は、"security_risks"配列を空のリストとして出力してください。
-        回答は%{language}でお願いします。
+    DEFAULT_PROMPT_TEMPLATE = <<~TEXT
+      You are a security expert specializing in Ruby. Analyze the following code and detect any potential security risks.
+      Focus particularly on identifying the following types of vulnerabilities: %{risk_list}
+      Report any detected risks in the format specified by the following JSON Schema:
+      %{json_schema}
+      If no risks are found, output an empty list for the "security_risks" array.
+      Please provide your response in %{language}.
 
-        【解析対象コード】:
-        %{code_content}
-      TEXT
+      【Code to Analyze】:
+      %{code_content}
+    TEXT
+
 
       RISK_PROMPTS = {
         xss: "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding.",

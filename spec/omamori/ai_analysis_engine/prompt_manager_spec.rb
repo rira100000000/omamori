@@ -2,21 +2,43 @@
 
 require 'spec_helper'
 require 'omamori/ai_analysis_engine/prompt_manager'
+require 'omamori/config' # Require Config class for stubbing
 
 RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
+  # Define a stub Config class for testing
+  let(:stub_config_class) do
+    Class.new do
+      def initialize(config_hash = {})
+        @config_hash = config_hash
+      end
+
+      def get(key, default = nil)
+        @config_hash.fetch(key.to_s, default)
+      end
+    end
+  end
+
+  # Stub the actual Config class with the stub class
+  before(:each) do
+    stub_const("Omamori::Config", stub_config_class)
+  end
+
   let(:default_template) { Omamori::AIAnalysisEngine::PromptManager::DEFAULT_PROMPT_TEMPLATE }
   let(:risk_prompts) { Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS }
 
   describe "#initialize" do
     it "initializes with default prompt template if no config is provided" do
-      manager = Omamori::AIAnalysisEngine::PromptManager.new
+      # Pass a stub Config instance with empty config
+      manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
       expect(manager.instance_variable_get(:@prompt_templates)).to eq({ default: default_template })
       expect(manager.instance_variable_get(:@risk_prompts)).to eq(risk_prompts)
+      expect(manager.instance_variable_get(:@language)).to eq("en") # Check default language
     end
 
     it "merges custom prompt templates from config" do
-      custom_config = { "prompt_templates" => { "custom_scan" => "Custom scan template: %{code_content}" } }
-      manager = Omamori::AIAnalysisEngine::PromptManager.new(custom_config)
+      custom_config_hash = { "prompt_templates" => { "custom_scan" => "Custom scan template: %{code_content}" }, "language" => "ja" }
+      # Pass a stub Config instance with custom config
+      manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new(custom_config_hash))
       expected_templates = {
         default: default_template,
         "custom_scan" => "Custom scan template: %{code_content}"
@@ -27,7 +49,8 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
 
     it "uses default risk prompts if not specified in config (current behavior)" do
       # Current implementation doesn't allow overriding risk_prompts via config
-      manager = Omamori::AIAnalysisEngine::PromptManager.new({})
+      # Pass a stub Config instance with empty config
+      manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
       expect(manager.instance_variable_get(:@risk_prompts)).to eq(risk_prompts)
     end
   end
@@ -43,9 +66,11 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
 
 
     it "builds the prompt using the default template and provided data" do
-      manager = Omamori::AIAnalysisEngine::PromptManager.new
-      expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
-      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
+      # Pass a stub Config instance with empty config
+      manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
+      expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., コード評価（evalなど）"
+      # Note: The default template now includes %{language}
+      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
  
        prompt = manager.build_prompt(code_content, risks_to_check, {})
        expect(prompt).to eq(expected_prompt)
@@ -53,11 +78,12 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
  
      it "builds the prompt using a custom template if specified" do
        custom_template = "Custom template for %{risk_list}:\n%{code_content}"
-       custom_config = { "prompt_templates" => { "custom_scan" => custom_template } }
-       manager = Omamori::AIAnalysisEngine::PromptManager.new(custom_config)
+       custom_config_hash = { "prompt_templates" => { "custom_scan" => custom_template }, "language" => "ja" }
+       # Pass a stub Config instance with custom config
+       manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new(custom_config_hash))
  
-       expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
-       # Note: Custom template does not have %{json_schema}, so it's not included in the expected prompt
+       expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., コード評価（evalなど）"
+       # Note: Custom template does not have %{json_schema} or %{language}, so they are not included in the expected prompt
        expected_prompt = custom_template % { risk_list: expected_risk_list, code_content: code_content }
  
        prompt = manager.build_prompt(code_content, risks_to_check, {}, template_key: "custom_scan")
@@ -65,29 +91,35 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
      end
  
      it "uses the default template if the specified template_key is not found" do
-       manager = Omamori::AIAnalysisEngine::PromptManager.new
-       expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
-       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
- 
+       # Pass a stub Config instance with empty config
+       manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
+       expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., コード評価（evalなど）"
+       # Note: The default template now includes %{language}
+       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
+
        prompt = manager.build_prompt(code_content, risks_to_check, {}, template_key: :non_existent_template)
        expect(prompt).to eq(expected_prompt)
      end
  
      it "handles an empty risks_to_check list" do
-       manager = Omamori::AIAnalysisEngine::PromptManager.new
+       # Pass a stub Config instance with empty config
+       manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
        expected_risk_list = ""
-       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
- 
+       # Note: The default template now includes %{language}
+       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
+
        prompt = manager.build_prompt(code_content, [], {})
        expect(prompt).to eq(expected_prompt)
      end
  
      it "ignores risk keys not present in RISK_PROMPTS" do
-       manager = Omamori::AIAnalysisEngine::PromptManager.new
+       # Pass a stub Config instance with empty config
+       manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
        risks_with_invalid = [:xss, :invalid_risk, :csrf]
-       expected_risk_list = "XSS（クロスサイトスクリプティング）, CSRF（クロスサイトリクエストフォージェリ）"
-       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
- 
+       expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., Cross-Site Request Forgery (CSRF): An attack that forces an authenticated user to perform unwanted actions via forged requests. Detect missing CSRF tokens or absence of referer/origin validation."
+       # Note: The default template now includes %{language}
+       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
+
        prompt = manager.build_prompt(code_content, risks_with_invalid, {})
        expect(prompt).to eq(expected_prompt)
      end
