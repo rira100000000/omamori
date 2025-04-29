@@ -5,12 +5,12 @@ require_relative "lib/omamori/version"
 Gem::Specification.new do |spec|
   spec.name = "omamori"
   spec.version = Omamori::VERSION
-  spec.authors = ["Your Name"] # TODO: Replace with actual author name
-  spec.email = ["your.email@example.com"] # TODO: Replace with actual email
+  spec.authors = ["rira100000000"]
+  spec.email = ["101010hayakawa@gmail"]
 
   spec.summary = "AI-powered security vulnerability scanner for Ruby projects."
   spec.description = "omamori scans Ruby code and diffs using AI (Google Gemini) to detect security vulnerabilities often missed by traditional tools."
-  spec.homepage = "https://github.com/your-github-user/omamori" # TODO: Replace with actual homepage
+  spec.homepage = "https://github.com/rira100000000/omamori"
 
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
