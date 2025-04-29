@@ -71,7 +71,7 @@ module Omamori
       api_key = @config.get("api_key", ENV["GEMINI_API_KEY"]) # Get API key from config or environment variable
       gemini_model = @config.get("model", "gemini-1.5-pro-latest") # Get Gemini model from config
       @gemini_client = AIAnalysisEngine::GeminiClient.new(api_key)
-      @prompt_manager = AIAnalysisEngine::PromptManager.new(@config.get("prompt_templates", {})) # Pass prompt templates from config
+      @prompt_manager = AIAnalysisEngine::PromptManager.new(@config) # Pass the entire config object
       # Get chunk size from config, default to 7000 characters if not specified
       chunk_size = @config.get("chunk_size", SPLIT_THRESHOLD)
       @diff_splitter = AIAnalysisEngine::DiffSplitter.new(chunk_size: chunk_size) # Pass chunk size to DiffSplitter
@@ -412,8 +412,11 @@ module Omamori
         #     options: "--force" # Additional Brakeman options
         #   bundler_audit:
         #     options: "--quiet" # Additional Bundler-Audit options
-
-      YAML
+        
+                # Language setting for AI analysis details (optional, default: en)
+                # language: ja
+        
+              YAML
       # TODO: Specify output file path from options
       output_path = Omamori::Config::DEFAULT_CONFIG_PATH
       if File.exist?(output_path)

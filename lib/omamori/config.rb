@@ -27,6 +27,7 @@ module Omamori
       validate_report_settings
       validate_static_analyser_settings
       validate_ci_setup_settings # Add CI setup validation
+      validate_language # Add language validation
     end
 
     def validate_api_key
@@ -117,6 +118,13 @@ module Omamori
         if ci_setup.key?("gitlab_ci_path") && !ci_setup["gitlab_ci_path"].is_a?(String)
           puts "Warning: Config 'ci_setup.gitlab_ci_path' should be a string."
         end
+      end
+    end
+
+    def validate_language
+      language = @config["language"]
+      if language && !language.is_a?(String)
+        puts "Warning: Config 'language' should be a string."
       end
     end
 
