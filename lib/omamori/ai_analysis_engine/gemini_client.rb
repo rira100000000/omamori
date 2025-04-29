@@ -6,7 +6,7 @@ module Omamori
   module AIAnalysisEngine
     class GeminiClient
       def initialize(api_key)
-        @api_key = api_key
+        @api_key = api_key || ENV["GEMINI_API_KEY"]
         @client = nil # Initialize client later
       end
 
@@ -21,15 +21,27 @@ module Omamori
             response_schema: json_schema # Use response_schema for Structured Output
           )
 
-          # The response should be a StructuredOutput object if successful
-          if response.is_a?(Gemini::Response::StructuredOutput)
-            # Access the structured data
-            response.data
-          else
-            # Handle cases where Structured Output is not returned or an error occurs
-            puts "Warning: Structured Output not received or unexpected response format."
-            puts "Raw response: #{response.inspect}"
-            nil # Or raise an error, depending on desired behavior
+          # Debug: Inspect the response object
+          # puts "Debug: response object: #{response.inspect}"
+          # puts "Debug: response methods: #{response.methods.sort}"
+
+          # Extract and parse JSON from the response text
+          json_string = response.text.gsub(/\A```json\n|```\z/, '').strip
+          begin
+            parsed_response = JSON.parse(json_string)
+            # Validate the parsed output structure
+            if parsed_response.is_a?(Hash) && parsed_response.key?('security_risks')
+              # Return the parsed JSON data
+              parsed_response
+            else
+              puts "Warning: Unexpected AI analysis response structure."
+              puts "Raw response text: #{response.text}"
+              nil # Return nil if the structure is unexpected
+            end
+          rescue JSON::ParserError
+            puts "Warning: Failed to parse response text as JSON."
+            puts "Raw response text: #{response.text}"
+            nil # Or handle the error appropriately
           end
         rescue Faraday::Error => e
           puts "API Error: #{e.message}"

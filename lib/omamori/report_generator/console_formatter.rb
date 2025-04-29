@@ -22,7 +22,9 @@ module Omamori
           output += "--- AI Analysis Results ---\n".colorize(:bold)
           ai_risks.each do |risk|
             severity_color = SEVERITY_COLORS[risk["severity"]] || :white
-            output += "  - Type: #{risk["type"].colorize(severity_color)}\n"
+            # Use "Unknown Type" if risk["type"] is nil
+            risk_type = risk["type"] || "Unknown Type"
+            output += "  - Type: #{risk_type.colorize(severity_color)}\n"
             output += "    Severity: #{risk["severity"].colorize(severity_color)}\n"
             output += "    Location: #{risk["location"]}\n"
             output += "    Details: #{risk["details"]}\n"
