@@ -105,6 +105,19 @@ module Omamori
         end
         output += "\n"
 
+        # Add summary before scan complete
+        ai_risk_count = ai_risks.length
+        brakeman_warning_count = brakeman_result && brakeman_result["warnings"] ? brakeman_result["warnings"].length : 0
+        bundler_audit_vulnerability_count = bundler_audit_result && bundler_audit_result["scan"] && bundler_audit_result["scan"]["results"] ? bundler_audit_result["scan"]["results"].select { |result| result["type"] == "unpatched_gem" }.length : 0
+
+        summary_output = "--- Scan Summary ---\n".colorize(:bold)
+        summary_output += "AI Analysis: #{ai_risk_count} issues".colorize(ai_risk_count > 0 ? :red : :green) + "\n"
+        summary_output += "Brakeman: #{brakeman_warning_count} warnings".colorize(brakeman_warning_count > 0 ? :red : :green) + "\n"
+        summary_output += "Bundler-Audit: #{bundler_audit_vulnerability_count} vulnerabilities".colorize(bundler_audit_vulnerability_count > 0 ? :red : :green) + "\n"
+        summary_output += "\n"
+
+        output += summary_output
+
         output
       end
 
