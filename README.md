@@ -38,7 +38,7 @@ gem install omamori
 To generate an initial configuration file (`.omamorirc`), run:
 
 ```bash
-bundle exec omamori init
+omamori init
 ```
 
 Edit the generated `.omamorirc` file to configure your Gemini API key, preferred model, checks to perform, and other settings.
@@ -48,13 +48,13 @@ Edit the generated `.omamorirc` file to configure your Gemini API key, preferred
 Scan staged changes (default):
 
 ```bash
-bundle exec omamori scan
+omamori scan
 ```
 
 Scan the entire codebase:
 
 ```bash
-bundle exec omamori scan --all
+omamori scan --all
 ```
 
 Specify output format (console, html, json):
@@ -64,18 +64,26 @@ bundle exec omamori scan --format html
 bundle exec omamori scan --all --format json
 ```
 
+### AI Analysis Only
+
+To perform only AI analysis without running static analysis tools, use the `--ai` option:
+
+```bash
+omamori scan --ai
+```
+
 ### CI/CD Setup
 
 Generate a GitHub Actions workflow file (`.github/workflows/omamori_scan.yml`):
 
 ```bash
-bundle exec omamori ci-setup github_actions
+omamori ci-setup github_actions
 ```
 
 Generate a GitLab CI configuration file (`.gitlab-ci.yml`):
 
 ```bash
-bundle exec omamori ci-setup gitlab_ci
+omamori ci-setup gitlab_ci
 ```
 
 Remember to add your `GEMINI_API_KEY` as a secret variable in your CI/CD settings.
@@ -83,6 +91,8 @@ Remember to add your `GEMINI_API_KEY` as a secret variable in your CI/CD setting
 ## Configuration
 
 The `.omamorirc` file in the project root directory allows you to customize Omamori's behavior.
+
+Here's a detailed breakdown of the configuration options:
 
 ```yaml
 # .omamorirc
@@ -93,14 +103,14 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 api_key: YOUR_GEMINI_API_KEY # Replace with your actual API key
 
 # Gemini Model to use (optional, default: gemini-1.5-pro-latest)
-# model: gemini-1.5-flash-latest
+model: gemini-2.5-flash-preview-04-17
 
 # Security checks to enable (optional, default: all implemented checks)
 # checks:
-#   - xss
-#   - csrf
-#   - idor
-#   ...
+#   xss: true
+#   csrf: true
+#   idor: true
+#   ... # Add other checks as they become available
 
 # Custom prompt templates (optional)
 # prompt_templates:
@@ -119,35 +129,50 @@ api_key: YOUR_GEMINI_API_KEY # Replace with your actual API key
 #   bundler_audit:
 #     options: "--quiet" # Additional Bundler-Audit options
 
-# CI setup output paths (optional)
-# ci_setup:
-#   github_actions_path: .github/workflows/omamori_scan.yml
-#   gitlab_ci_path: .gitlab-ci.yml
+# Language setting for AI analysis details (optional, default: en)
+# language: ja
 ```
 
-## Development
-
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
-
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the tagged commit, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+*   `api_key`: Your API key for accessing the Gemini API. Can also be set via the `GEMINI_API_KEY` environment variable.
+*   `model`: The Gemini model to use for AI analysis. Defaults to `gemini-1.5-pro-latest`.
+*   `checks`: Configure which types of security checks to enable. By default, all implemented checks are enabled. You can selectively enable/disable checks here (e.g., `xss: true`, `csrf: false`).
+*   `prompt_templates`: Define custom prompt templates for AI analysis.
+*   `report`: Configure report output settings.
+    *   `output_path`: The output directory or prefix for HTML and JSON reports.
+    *   `html_template`: Path to a custom ERB template for HTML reports.
+*   `static_analysers`: Configure options for integrated static analysis tools.
+    *   `brakeman`: Additional command-line options for Brakeman.
+    *   `bundler_audit`: Additional command-line options for Bundler-Audit.
+*   `language`: Language setting for the details provided in AI analysis reports. Defaults to English (`en`).
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at [link to your repo]. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](http://contributor-covenant.org/version/2/0/) code of conduct.
+Bug reports and pull requests are welcome on GitHub. This project is intended to be a safe, welcoming space for collaboration. 
 
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
 
-## Code of Conduct
-
-Everyone interacting in the Omamori project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [Code of Conduct](http://contributor-covenant.org/version/2/0/).
-
 ## Demo Files
 
 The `demo` directory contains example files with known vulnerabilities that can be used to demonstrate Omamori's capabilities.
 
-- `demo/static_analysis_vulnerability.rb`: Contains vulnerabilities detectable by static analysis tools like Brakeman (e.g., SQL injection).
-- `demo/ai_analysis_vulnerability.rb`: Contains vulnerabilities that AI analysis can help detect (e.g., hardcoded secrets, insufficient input validation).
+To run Omamori on the demo files, you need to stage the changes in the `demo` directory. Since the `demo` directory might be ignored by git, follow these steps:
 
-You can use these files to see how Omamori identifies different types of security risks.
+1.  Ensure the `demo` directory is not ignored by git. If it is listed in your `.gitignore` file, remove or comment out the line.
+2.  Remove the `demo` directory from the git cache:
+    ```bash
+    git rm -r --cached demo
+    ```
+3.  Stage the `demo` directory again:
+    ```bash
+    git add demo
+    ```
+4.  Now you can run Omamori on the staged demo files:
+    ```bash
+    omamori scan
+    ```
+    Or to scan all files in the demo directory (after staging them):
+    ```bash
+    omamori scan --all
+    ```
