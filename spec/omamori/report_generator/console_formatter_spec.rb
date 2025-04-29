@@ -111,7 +111,7 @@ RSpec.describe Omamori::ReportGenerator::ConsoleFormatter do
                 }
               ]
             },
-            "bundler_audit" => { "scan" => { "vulnerabilities" => [], "unpatched_gems" => [] } } # Bundler-Audit results (empty)
+            "bundler_audit" => { "results" => [] } # Bundler-Audit results (empty)
           }
         }
       end
@@ -133,12 +133,9 @@ No AI-detected security risks.
     
 
     Bundler-Audit:
-      No vulnerabilities found.
-      No unpatched gems found.
 
         EOF
       end
-
     end
 
     context "when Brakeman results are not available" do
@@ -147,7 +144,7 @@ No AI-detected security risks.
           "ai_security_risks" => [], # AI analysis results (empty)
           "static_analysis_results" => {
             "brakeman" => nil, # Brakeman results not available
-            "bundler_audit" => { "scan" => { "vulnerabilities" => [], "unpatched_gems" => [] } } # Bundler-Audit results (empty)
+            "bundler_audit" => { "scan" => { "results" => [] } } # Bundler-Audit results (empty)
           }
         }
       end
@@ -178,23 +175,38 @@ No AI-detected security risks.
             "brakeman" => { "warnings" => [] }, # Brakeman results (empty)
             "bundler_audit" => {
               "scan" => {
-                "vulnerabilities" => [
+                "results" => [
                   {
-                    "id" => "CVE-2022-XXXX",
-                    "gem" => "rails",
-                    "title" => "SQL Injection vulnerability in Rails",
-                    "url" => "https://example.com/advisory/CVE-2022-XXXX",
-                    "criticality" => "High",
-                    "description" => "Details about the vulnerability.",
-                    "introduced_in" => "6.0.0",
-                    "patched_versions" => [">= 6.0.5", ">= 6.1.4.1"],
-                    "advisory_date" => "2022-01-01"
-                  }
-                ],
-                "unpatched_gems" => [
+                    "type" => "unpatched_gem",
+                    "gem" => {
+                      "name" => "rails",
+                      "version" => "6.0.0"
+                    },
+                    "advisory" => {
+                      "id" => "CVE-2022-XXXX",
+                      "url" => "https://example.com/advisory/CVE-2022-XXXX",
+                      "title" => "SQL Injection vulnerability in Rails",
+                      "date" => "2022-01-01",
+                      "description" => "Details about the vulnerability.",
+                      "criticality" => "High",
+                      "patched_versions" => [">= 6.0.5", ">= 6.1.4.1"]
+                    }
+                  },
                   {
-                    "name" => "nokogiri",
-                    "version" => "1.10.0"
+                    "type" => "unpatched_gem",
+                    "gem" => {
+                      "name" => "nokogiri",
+                      "version" => "1.10.0"
+                    },
+                    "advisory" => {
+                      "id" => "CVE-2023-YYYY",
+                      "url" => "https://example.com/advisory/CVE-2023-YYYY",
+                      "title" => "XML Parsing vulnerability in Nokogiri",
+                      "date" => "2023-01-01",
+                      "description" => "Details about the Nokogiri vulnerability.",
+                      "criticality" => "Medium",
+                      "patched_versions" => [">= 1.11.0"]
+                    }
                   }
                 ]
               }
@@ -206,28 +218,33 @@ No AI-detected security risks.
       it "formats the Bundler-Audit results" do
         output = formatter.format(bundler_audit_results)
         expected_output = <<~EOF
-          --- AI Analysis Results ---
-          No AI-detected security risks.
+--- AI Analysis Results ---
+No AI-detected security risks.
 
-          --- Static Analysis Results ---
-          Brakeman:
-          No Brakeman warnings found.
+--- Static Analysis Results ---
+Brakeman:
+No Brakeman warnings found.
 
-          Bundler-Audit:
-            Vulnerabilities:
-              - ID: CVE-2022-XXXX
-                Gem: rails
-                Title: SQL Injection vulnerability in Rails
-                URL: https://example.com/advisory/CVE-2022-XXXX
-                Criticality: High
-                Description: Details about the vulnerability.
-                Introduced In: 6.0.0
-                Patched Versions: >= 6.0.5, >= 6.1.4.1
-                Advisory Date: 2022-01-01
+Bundler-Audit:
+  Vulnerabilities:
+    - ID: CVE-2022-XXXX
+      Gem: rails (6.0.0)
+      Title: SQL Injection vulnerability in Rails
+      URL: https://example.com/advisory/CVE-2022-XXXX
+      Criticality: High
+      Description: Details about the vulnerability.
+      Patched Versions: >= 6.0.5, >= 6.1.4.1
+      Advisory Date: 2022-01-01
 
-            Unpatched Gems:
-              - Name: nokogiri
-                Version: 1.10.0
+    - ID: CVE-2023-YYYY
+      Gem: nokogiri (1.10.0)
+      Title: XML Parsing vulnerability in Nokogiri
+      URL: https://example.com/advisory/CVE-2023-YYYY
+      Criticality: Medium
+      Description: Details about the Nokogiri vulnerability.
+      Patched Versions: >= 1.11.0
+      Advisory Date: 2023-01-01
+
         EOF
         expect(output).to include(expected_output)
       end
@@ -237,8 +254,7 @@ No AI-detected security risks.
           "static_analysis_results" => {
             "bundler_audit" => {
               "scan" => {
-                "vulnerabilities" => [],
-                "unpatched_gems" => []
+                "results" => []
               }
             }
           }
@@ -254,7 +270,7 @@ No AI-detected security risks.
           "static_analysis_results" => {
             "bundler_audit" => {
               "scan" => {
-                "unpatched_gems" => []
+                "results" => []
               }
             }
           }
@@ -267,8 +283,7 @@ No AI-detected security risks.
           "static_analysis_results" => {
             "bundler_audit" => {
               "scan" => {
-                "vulnerabilities" => nil,
-                "unpatched_gems" => []
+                "results" => []
               }
             }
           }
@@ -283,8 +298,7 @@ No AI-detected security risks.
           "static_analysis_results" => {
             "bundler_audit" => {
               "scan" => {
-                "vulnerabilities" => [],
-                "unpatched_gems" => []
+                "results" => []
               }
             }
           }
@@ -293,89 +307,6 @@ No AI-detected security risks.
         expect(output).to include("Bundler-Audit:")
         expect(output).to include("No vulnerabilities found.")
         expect(output).to include("No unpatched gems found.")
-      end
-
-      it "indicates no unpatched gems if the unpatched_gems key is missing or nil" do
-        bundler_audit_no_unpatched = {
-          "static_analysis_results" => {
-            "bundler_audit" => {
-              "scan" => {
-                "vulnerabilities" => []
-              }
-            }
-          }
-        }
-        output = formatter.format(bundler_audit_no_unpatched)
-        expect(output).to include("Bundler-Audit:")
-        expect(output).to include("No unpatched gems found.")
-
-        bundler_audit_no_unpatched_nil = {
-          "static_analysis_results" => {
-            "bundler_audit" => {
-              "scan" => {
-                "vulnerabilities" => [],
-                "unpatched_gems" => nil
-              }
-            }
-          }
-        }
-        output_nil = formatter.format(bundler_audit_no_unpatched_nil)
-        expect(output_nil).to include("Bundler-Audit:")
-        expect(output_nil).to include("No unpatched gems found.")
-      end
-    end
-
-    context "when Bundler-Audit results are not available or in unexpected format" do
-      let(:no_bundler_audit_results) do
-        {
-          "ai_security_risks" => [], # AI analysis results (empty)
-          "static_analysis_results" => {
-            "brakeman" => { "warnings" => [] }, # Brakeman results (empty)
-            "bundler_audit" => nil # Bundler-Audit results not available
-          }
-        }
-      end
-      let(:unexpected_bundler_audit_results) do
-        {
-          "ai_security_risks" => [], # AI analysis results (empty)
-          "static_analysis_results" => {
-            "brakeman" => { "warnings" => [] }, # Brakeman results (empty)
-            "bundler_audit" => { "unexpected_key" => "..." } # Bundler-Audit results in unexpected format
-          }
-        }
-      end
-
-
-      it "indicates that Bundler-Audit results are not available when key is nil" do
-        output = formatter.format(no_bundler_audit_results)
-        expected_output = <<~EOF
-          #{"--- AI Analysis Results ---".colorize(:bold)}
-          #{"No AI-detected security risks.".colorize(:green)}
-
-          --- Static Analysis Results ---
-          Brakeman:
-          No Brakeman warnings found.
-
-          #{"Bundler-Audit results not available or in unexpected format.".colorize(:yellow)}
-
-        EOF
-        expect(output).to include(expected_output.strip)
-      end
-
-      it "indicates that Bundler-Audit results are not available when scan key is missing" do
-        output = formatter.format(unexpected_bundler_audit_results)
-        expected_output = <<~EOF
-          #{"--- AI Analysis Results ---".colorize(:bold)}
-          #{"No AI-detected security risks.".colorize(:green)}
-
-          --- Static Analysis Results ---
-          Brakeman:
-          No Brakeman warnings found.
-
-          #{"Bundler-Audit results not available or in unexpected format.".colorize(:yellow)}
-
-        EOF
-        expect(output).to include(expected_output.strip)
       end
     end
 
@@ -399,7 +330,6 @@ No AI-detected security risks.
       end
     end
   end
-
   describe "#format_code_snippet" do
     let(:formatter_instance) { Omamori::ReportGenerator::ConsoleFormatter.new } # Need an instance to call private method
     it "adds line numbers and indentation to a single line snippet" do

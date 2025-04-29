@@ -4,28 +4,17 @@ require 'spec_helper'
 require 'omamori/ai_analysis_engine/gemini_client'
 require 'gemini' # Use require 'gemini' to load the entire gem
 
-module Gemini
-  class Response
-    class StructuredOutput
-      # Dummy class for testing purposes
-      def data
-        # Dummy method to satisfy instance_double
-      end
-    end
-  end
-end
-
 RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
   let(:api_key) { "test_api_key" }
   let(:model_name) { "gemini-1.5-pro-latest" }
   let(:client_instance_double) { instance_double(Gemini::Client) }
-  # Use instance_double with the dummy class
-  let(:structured_output_double) { instance_double(Gemini::Response::StructuredOutput) }
+  # Use instance_double with Gemini::Response
+  let(:response_double) { instance_double(Gemini::Response) }
 
   before do
-    # Gemini::Client.newの呼び出しをモック
+    # Mock the call to Gemini::Client.new
     allow(Gemini::Client).to receive(:new).and_return(client_instance_double)
-    # Gemini.configureの呼び出しを許可 (テスト内で検証)
+    # Allow the call to Gemini.configure (will be verified in a separate test)
     allow(Gemini).to receive(:configure).and_call_original
   end
 
@@ -59,23 +48,23 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
   describe "#analyze" do
     let(:prompt) { "Analyze this code for security risks." }
     let(:json_schema) { { type: "object", properties: { security_risks: { type: "array" } } } }
-    let(:api_response_data) { { "security_risks" => [{ "risk" => "XSS", "severity" => "Medium" }] } }
+    let(:api_response_data) { { "security_risks" => [{ "type" => "XSS", "severity" => "Medium" }] } }
+    # Simulate the JSON response format from the API
+    let(:api_response_text) { "```json\n#{api_response_data.to_json}```" }
 
     before do
-      # analyzeメソッド内で呼ばれるclientメソッドをスタブし、モックしたclient_instance_doubleを返すように設定
+      # Stub the call to the private client method to return the mocked client instance
       allow_any_instance_of(Omamori::AIAnalysisEngine::GeminiClient).to receive(:client).and_return(client_instance_double)
     end
 
-    context "when the API call is successful and returns StructuredOutput" do
-      it "calls generate_content with correct arguments and returns the structured data" do
+    context "when the API call is successful and returns valid structured output" do
+      it "calls generate_content with correct arguments and returns the parsed data" do
         allow(client_instance_double).to receive(:generate_content)
           .with(prompt, model: model_name, response_schema: json_schema)
-          .and_return(structured_output_double)
+          .and_return(response_double)
 
-        # Use anything for is_a? argument to avoid NameError with RSpec's `with` matcher
-        allow(structured_output_double).to receive(:is_a?).with(anything).and_return(true)
-        # Define data method on the dummy class or the double
-        allow(structured_output_double).to receive(:data).and_return(api_response_data)
+        # Mock the response_double to return the simulated JSON text
+        allow(response_double).to receive(:text).and_return(api_response_text)
 
         client = Omamori::AIAnalysisEngine::GeminiClient.new(api_key)
         # Explicitly set the @client instance variable for the test
@@ -86,17 +75,14 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
       end
     end
 
-    context "when the API call returns non-StructuredOutput" do
+    context "when the API call is successful but returns invalid JSON" do
       it "returns nil and prints a warning" do
-        # 新しいモックオブジェクトを作成
-        non_structured_response_double = instance_double(Object) # ObjectでもStringでも良いが、StructuredOutputではないもの
-
         allow(client_instance_double).to receive(:generate_content)
-          .and_return(non_structured_response_double) # Simulate unexpected response
+          .and_return(response_double)
 
-        # 新しいモックオブジェクトに対してis_a?をスタブ
-        # Use anything for is_a? argument to avoid NameError with RSpec's `with` matcher
-        allow(non_structured_response_double).to receive(:is_a?).with(anything).and_return(false)
+        # Simulate invalid JSON response text
+        invalid_json_text = "This is not JSON"
+        allow(response_double).to receive(:text).and_return(invalid_json_text)
 
         client = Omamori::AIAnalysisEngine::GeminiClient.new(api_key)
         # Explicitly set the @client instance variable for the test
@@ -104,7 +90,7 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
         expect {
           result = client.analyze(prompt, json_schema, model: model_name)
           expect(result).to be_nil
-        }.to output(/Warning: Structured Output not received or unexpected response format.\nRaw response: #{Regexp.escape(non_structured_response_double.inspect)}/).to_stdout # Raw responseの出力も検証に含める
+        }.to output(/Warning: Failed to parse response text as JSON.\nRaw response text: #{Regexp.escape(invalid_json_text)}/).to_stdout
       end
     end
 

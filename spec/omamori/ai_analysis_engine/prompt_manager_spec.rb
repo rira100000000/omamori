@@ -45,50 +45,51 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
     it "builds the prompt using the default template and provided data" do
       manager = Omamori::AIAnalysisEngine::PromptManager.new
       expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
-      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content }
-
-      prompt = manager.build_prompt(code_content, risks_to_check)
-      expect(prompt).to eq(expected_prompt)
-    end
-
-    it "builds the prompt using a custom template if specified" do
-      custom_template = "Custom template for %{risk_list}:\n%{code_content}"
-      custom_config = { "prompt_templates" => { "custom_scan" => custom_template } }
-      manager = Omamori::AIAnalysisEngine::PromptManager.new(custom_config)
-
-      expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
-      expected_prompt = custom_template % { risk_list: expected_risk_list, code_content: code_content }
-
-      prompt = manager.build_prompt(code_content, risks_to_check, template_key: "custom_scan")
-      expect(prompt).to eq(expected_prompt)
-    end
-
-    it "uses the default template if the specified template_key is not found" do
-      manager = Omamori::AIAnalysisEngine::PromptManager.new
-      expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
-      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content }
-
-      prompt = manager.build_prompt(code_content, risks_to_check, template_key: :non_existent_template)
-      expect(prompt).to eq(expected_prompt)
-    end
-
-    it "handles an empty risks_to_check list" do
-      manager = Omamori::AIAnalysisEngine::PromptManager.new
-      expected_risk_list = ""
-      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content }
-
-      prompt = manager.build_prompt(code_content, [])
-      expect(prompt).to eq(expected_prompt)
-    end
-
-    it "ignores risk keys not present in RISK_PROMPTS" do
-      manager = Omamori::AIAnalysisEngine::PromptManager.new
-      risks_with_invalid = [:xss, :invalid_risk, :csrf]
-      expected_risk_list = "XSS（クロスサイトスクリプティング）, CSRF（クロスサイトリクエストフォージェリ）"
-      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content }
-
-      prompt = manager.build_prompt(code_content, risks_with_invalid)
-      expect(prompt).to eq(expected_prompt)
-    end
+      expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
+ 
+       prompt = manager.build_prompt(code_content, risks_to_check, {})
+       expect(prompt).to eq(expected_prompt)
+     end
+ 
+     it "builds the prompt using a custom template if specified" do
+       custom_template = "Custom template for %{risk_list}:\n%{code_content}"
+       custom_config = { "prompt_templates" => { "custom_scan" => custom_template } }
+       manager = Omamori::AIAnalysisEngine::PromptManager.new(custom_config)
+ 
+       expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
+       # Note: Custom template does not have %{json_schema}, so it's not included in the expected prompt
+       expected_prompt = custom_template % { risk_list: expected_risk_list, code_content: code_content }
+ 
+       prompt = manager.build_prompt(code_content, risks_to_check, {}, template_key: "custom_scan")
+       expect(prompt).to eq(expected_prompt)
+     end
+ 
+     it "uses the default template if the specified template_key is not found" do
+       manager = Omamori::AIAnalysisEngine::PromptManager.new
+       expected_risk_list = "XSS（クロスサイトスクリプティング）, コード評価（evalなど）"
+       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
+ 
+       prompt = manager.build_prompt(code_content, risks_to_check, {}, template_key: :non_existent_template)
+       expect(prompt).to eq(expected_prompt)
+     end
+ 
+     it "handles an empty risks_to_check list" do
+       manager = Omamori::AIAnalysisEngine::PromptManager.new
+       expected_risk_list = ""
+       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
+ 
+       prompt = manager.build_prompt(code_content, [], {})
+       expect(prompt).to eq(expected_prompt)
+     end
+ 
+     it "ignores risk keys not present in RISK_PROMPTS" do
+       manager = Omamori::AIAnalysisEngine::PromptManager.new
+       risks_with_invalid = [:xss, :invalid_risk, :csrf]
+       expected_risk_list = "XSS（クロスサイトスクリプティング）, CSRF（クロスサイトリクエストフォージェリ）"
+       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json }
+ 
+       prompt = manager.build_prompt(code_content, risks_with_invalid, {})
+       expect(prompt).to eq(expected_prompt)
+     end
   end
 end

@@ -158,11 +158,19 @@ module Omamori
 
     # Combine AI analysis results and static analyser results
     def combine_results(ai_result, brakeman_result, bundler_audit_result)
+      # Transform bundler_audit_result to match the expected structure in tests/formatters
+      formatted_bundler_audit_result = if bundler_audit_result && bundler_audit_result["results"]
+                                         { "scan" => { "results" => bundler_audit_result["results"] } }
+                                       else
+                                         # Return a structure that formatters can handle gracefully
+                                         { "scan" => { "results" => [] } } # Or nil, depending on desired behavior when no results
+                                       end
+
       combined = {
         "ai_security_risks" => ai_result && ai_result["security_risks"] ? ai_result["security_risks"] : [],
         "static_analysis_results" => {
           "brakeman" => brakeman_result,
-          "bundler_audit" => bundler_audit_result
+          "bundler_audit" => formatted_bundler_audit_result # Use the transformed result
         }
       }
       combined

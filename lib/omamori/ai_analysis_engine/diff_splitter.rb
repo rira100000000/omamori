@@ -36,7 +36,7 @@ module Omamori
 
         chunks.each_with_index do |chunk, index|
           puts "Processing chunk #{index + 1}/#{chunks.size}..."
-          prompt = prompt_manager.build_prompt(chunk, risks_to_check)
+          prompt = prompt_manager.build_prompt(chunk, risks_to_check, json_schema)
           result = gemini_client.analyze(prompt, json_schema, model: model)
           all_results << result
           # TODO: Handle potential rate limits or errors between chunks

@@ -14,7 +14,7 @@ module Omamori
         # Example: bundle audit --format json
         # Include options passed during initialization
         # Build options string from the options hash
-        options_string = @options.map { |key, value| value == true ? key.to_s : "#{key} #{value}" }.join(" ")
+        options_string = @options.map { |key, value| "--#{key.to_s.gsub('_', '-')}" + (value == true ? "" : " #{value}") }.join(" ")
         bundler_audit_command = "bundle audit --format json#{options_string.empty? ? '' : " #{options_string}"}"
 
         begin

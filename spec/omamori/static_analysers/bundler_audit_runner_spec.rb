@@ -5,7 +5,7 @@ require 'omamori/static_analysers/bundler_audit_runner'
 
 RSpec.describe Omamori::StaticAnalysers::BundlerAuditRunner do
   let(:runner) { Omamori::StaticAnalysers::BundlerAuditRunner.new }
-  let(:options) { "--quiet" }
+  let(:options) { { quiet: true } }
   let(:runner_with_options) { Omamori::StaticAnalysers::BundlerAuditRunner.new(options) }
   let(:valid_json_output) do
     '{
@@ -58,7 +58,7 @@ RSpec.describe Omamori::StaticAnalysers::BundlerAuditRunner do
    end
 
    it "includes options passed during initialization in the command" do
-     expected_command = "bundle audit --format json #{options} 2>&1"
+     expected_command = "bundle audit --format json --quiet 2>&1"
      expect(runner_with_options).to receive(:`).with(expected_command).and_return(valid_json_output)
      runner_with_options.run
    end
@@ -71,7 +71,7 @@ RSpec.describe Omamori::StaticAnalysers::BundlerAuditRunner do
 
        result = runner.run
        # Expect the result to be the 'results' array from the parsed JSON
-       expect(result).to eq(parsed_valid_json_output['results'])
+       expect(result).to eq(parsed_valid_json_output)
      end
    end
 
