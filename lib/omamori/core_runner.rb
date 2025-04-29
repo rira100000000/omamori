@@ -117,7 +117,7 @@ module Omamori
             puts "Diff content exceeds threshold, splitting..."
             analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
           else
-            prompt = @prompt_manager.build_prompt(diff_content, get_risks_to_check)
+            prompt = @prompt_manager.build_prompt(diff_content, get_risks_to_check, JSON_SCHEMA)
             analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
           end
         when :all
@@ -131,7 +131,7 @@ module Omamori
             puts "Full code content exceeds threshold, splitting..."
             analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
           else
-            prompt = @prompt_manager.build_prompt(full_code_content, get_risks_to_check)
+            prompt = @prompt_manager.build_prompt(full_code_content, get_risks_to_check, JSON_SCHEMA)
             analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
           end
         end
