@@ -60,7 +60,7 @@ module Omamori
     ].freeze
 
     # TODO: Determine threshold for splitting based on token limits
-    SPLIT_THRESHOLD = 7000 # Characters as a proxy for tokens
+    SPLIT_THRESHOLD = 2000 # Characters as a proxy for tokens
 
     def initialize(args)
       @args = args

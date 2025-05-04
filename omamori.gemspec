@@ -31,11 +31,13 @@ Gem::Specification.new do |spec|
   # Specify your gem's dependencies in omamori.gemspec
   spec.add_dependency "colorize", "~> 0.8" # Add dependency for colorize
   spec.add_dependency "dotenv", "~> 2.0" # Add dependency for dotenv
-
+  spec.add_dependency "ruby-gemini-api", "~> 0.1.1" # Add dependency for Gemini API
+  gem "brakeman", "~> 7.0"
+  gem "bundler-audit", "~> 0.9.2"
+  
   # Development dependencies
   spec.add_development_dependency "bundler", "~> 2.0"
   spec.add_development_dependency "rake", "~> 13.0"
   spec.add_development_dependency "rspec", "~> 3.0"
   spec.add_development_dependency "rubocop", "~> 1.0"
-  spec.add_development_dependency "ruby-gemini-api", "~> 0.1.0" # Add dependency for Gemini API
 end

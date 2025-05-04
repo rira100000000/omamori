@@ -18,7 +18,8 @@ module Omamori
           response = @client.generate_content(
             prompt,
             model: model,
-            response_schema: json_schema # Use response_schema for Structured Output
+            response_schema: json_schema, # Use response_schema for Structured Output
+            temperature: 0.0
           )
 
           # Debug: Inspect the response object
