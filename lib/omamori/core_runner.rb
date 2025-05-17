@@ -495,7 +495,42 @@ module Omamori
       puts "GitLab CI workflow generated: #{output_path}"
     end
 
-    def generate_config_file
+    # Default content for .omamoriignore file
+    DEFAULT_OMAMORIIGNORE_CONTENT = <<~IGNORE
+      # Omamori ignore file
+      # Add files and directories to ignore during Omamori scans.
+      # Lines starting with # are comments.
+
+      # Log files
+      log/
+      *.log
+
+      # Temporary files
+      tmp/
+      *.tmp
+      *.swp
+      *.swo
+
+      # OS-specific files
+      .DS_Store
+      Thumbs.db
+
+      # Vendor directory (often contains third-party code)
+      vendor/bundle/  # 一般的なRailsプロジェクトではスキャン対象外とすることが多い
+
+      # Coverage reports
+      coverage/
+
+      # Node.js dependencies
+      node_modules/
+
+      # Build artifacts
+      pkg/
+    IGNORE
+
+    # Generate initial config file (.omamorirc) and .omamoriignore
+    def generate_initial_files
+      # Generate .omamorirc
       config_content = <<~YAML
         # .omamorirc
         # Configuration file for omamori gem
@@ -535,14 +570,23 @@ module Omamori
         # language: ja
         
               YAML
-      # TODO: Specify output file path from options
-      output_path = Omamori::Config::DEFAULT_CONFIG_PATH
-      if File.exist?(output_path)
-        puts "Config file already exists at #{output_path}. Aborting init."
+      # Generate .omamorirc
+      config_output_path = Omamori::Config::DEFAULT_CONFIG_PATH
+      if File.exist?(config_output_path)
+        puts "Config file already exists at #{config_output_path}. Aborting .omamorirc generation."
       else
-        File.write(output_path, config_content)
-        puts "Config file generated: #{output_path}"
+        File.write(config_output_path, config_content)
+        puts "Config file generated: #{config_output_path}"
         puts "Please replace 'YOUR_GEMINI_API_KEY' with your actual API key."
+      end
+
+      # Generate .omamoriignore
+      ignore_output_path = Omamori::Config::DEFAULT_IGNORE_PATH
+      if File.exist?(ignore_output_path)
+        puts ".omamoriignore file already exists at #{ignore_output_path}. Aborting .omamoriignore generation."
+      else
+        File.write(ignore_output_path, DEFAULT_OMAMORIIGNORE_CONTENT)
+        puts ".omamoriignore file generated: #{ignore_output_path}"
       end
     end
   end
