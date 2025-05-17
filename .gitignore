@@ -12,6 +12,7 @@
 /.cline
 .clinerules
 .omamorirc
+.omamoriignore
 .rspec_status
 omamori_report.html
 omamori_report.json

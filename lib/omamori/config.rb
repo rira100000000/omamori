@@ -7,6 +7,8 @@ module Omamori
     DEFAULT_CONFIG_PATH = ".omamorirc"
     DEFAULT_IGNORE_PATH = ".omamoriignore"
 
+    attr_reader :ignore_patterns
+
     def initialize(config_path = DEFAULT_CONFIG_PATH)
       @config_path = config_path
       @config = load_config
@@ -158,11 +160,6 @@ module Omamori
       else
         {} # Return empty hash if config file does not exist
       end
-    end
-
-    # Public method to access ignore patterns
-    def ignore_patterns
-      @ignore_patterns
     end
   end
 end
