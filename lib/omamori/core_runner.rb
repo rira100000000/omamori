@@ -141,38 +141,38 @@ module Omamori
               end
             end
           end
+        end
 
-        when :diff
-          # Scan staged differences (existing logic)
-          diff_content = get_staged_diff
-          if diff_content.empty?
-            puts "No staged changes to scan."
-            return
-          end
-          puts "Scanning staged differences with AI..."
-          if diff_content.length > SPLIT_THRESHOLD # TODO: Use token count
-            puts "Diff content exceeds threshold, splitting..."
-            analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
-          else
-            prompt = @prompt_manager.build_prompt(diff_content, get_risks_to_check, JSON_SCHEMA)
-            analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
-          end
+      when :diff
+        # Scan staged differences (existing logic)
+        diff_content = get_staged_diff
+        if diff_content.empty?
+          puts "No staged changes to scan."
+          return
+        end
+        puts "Scanning staged differences with AI..."
+        if diff_content.length > SPLIT_THRESHOLD # TODO: Use token count
+          puts "Diff content exceeds threshold, splitting..."
+          analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
+        else
+          prompt = @prompt_manager.build_prompt(diff_content, get_risks_to_check, JSON_SCHEMA)
+          analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
+        end
 
-        when :all
-          # Scan entire codebase (existing logic using refactored get_full_codebase)
-          full_code_content = get_full_codebase
-          if full_code_content.strip.empty?
-            puts "No code found to scan."
-            return
-          end
-          puts "Scanning entire codebase with AI..."
-          if full_code_content.length > SPLIT_THRESHOLD # TODO: Use token count
-            puts "Full code content exceeds threshold, splitting..."
-            analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
-          else
-            prompt = @prompt_manager.build_prompt(full_code_content, get_risks_to_check, JSON_SCHEMA)
-            analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
-          end
+      when :all
+        # Scan entire codebase (existing logic using refactored get_full_codebase)
+        full_code_content = get_full_codebase
+        if full_code_content.strip.empty?
+          puts "No code found to scan."
+          return
+        end
+        puts "Scanning entire codebase with AI..."
+        if full_code_content.length > SPLIT_THRESHOLD # TODO: Use token count
+          puts "Full code content exceeds threshold, splitting..."
+          analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, get_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
+        else
+          prompt = @prompt_manager.build_prompt(full_code_content, get_risks_to_check, JSON_SCHEMA)
+          analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
         end
 
         # Combine results and display report
