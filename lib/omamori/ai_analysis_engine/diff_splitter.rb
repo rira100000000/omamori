@@ -15,7 +15,7 @@ module Omamori
 
       def split(content)
         chunks = []
-        current_chunk = ""
+        current_chunk = ''
         content.each_line do |line|
           if (current_chunk.length + line.length) > @chunk_size
             chunks << current_chunk unless current_chunk.empty?
@@ -28,7 +28,8 @@ module Omamori
         chunks
       end
 
-      def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check, model: "gemini-1.5-pro-latest")
+      def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check,
+                            model: 'gemini-1.5-pro-latest')
         all_results = []
         chunks = split(content)
 
@@ -53,9 +54,9 @@ module Omamori
         # requires careful consideration of overlapping findings, context, etc.
         # For now, just flatten the list of security risks.
         combined_risks = results.flat_map do |result|
-          result && result["security_risks"] ? result["security_risks"] : []
+          result && result['security_risks'] ? result['security_risks'] : []
         end
-        { "security_risks" => combined_risks }
+        { 'security_risks' => combined_risks }
       end
     end
   end

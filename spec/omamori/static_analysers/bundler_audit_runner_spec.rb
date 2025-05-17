@@ -45,68 +45,68 @@ RSpec.describe Omamori::StaticAnalysers::BundlerAuditRunner do
 
   # Mock the backtick command execution
   before do
-    allow_any_instance_of(Omamori::StaticAnalysers::BundlerAuditRunner).to receive(:`).and_return("") # Default mock
+    allow_any_instance_of(Omamori::StaticAnalysers::BundlerAuditRunner).to receive(:`).and_return('') # Default mock
   end
 
- describe "#run" do
-   let(:parsed_valid_json_output) { JSON.parse(valid_json_output) }
+  describe '#run' do
+    let(:parsed_valid_json_output) { JSON.parse(valid_json_output) }
 
-   it "constructs the correct bundler-audit command" do
-     expected_command = "bundle audit --format json 2>&1"
-     expect(runner).to receive(:`).with(expected_command).and_return(valid_json_output)
-     runner.run
-   end
+    it 'constructs the correct bundler-audit command' do
+      expected_command = 'bundle audit --format json 2>&1'
+      expect(runner).to receive(:`).with(expected_command).and_return(valid_json_output)
+      runner.run
+    end
 
-   it "includes options passed during initialization in the command" do
-     expected_command = "bundle audit --format json --quiet 2>&1"
-     expect(runner_with_options).to receive(:`).with(expected_command).and_return(valid_json_output)
-     runner_with_options.run
-   end
+    it 'includes options passed during initialization in the command' do
+      expected_command = 'bundle audit --format json --quiet 2>&1'
+      expect(runner_with_options).to receive(:`).with(expected_command).and_return(valid_json_output)
+      runner_with_options.run
+    end
 
-   context "when bundler-audit command executes successfully with valid JSON output" do
-     it "parses the JSON output and returns the result" do
-       expect(runner).to receive(:`).and_return(valid_json_output)
-       # Expect JSON.parse to be called once within the run method and return the parsed output
-       expect(JSON).to receive(:parse).once.with(valid_json_output).and_return(parsed_valid_json_output)
+    context 'when bundler-audit command executes successfully with valid JSON output' do
+      it 'parses the JSON output and returns the result' do
+        expect(runner).to receive(:`).and_return(valid_json_output)
+        # Expect JSON.parse to be called once within the run method and return the parsed output
+        expect(JSON).to receive(:parse).once.with(valid_json_output).and_return(parsed_valid_json_output)
 
-       result = runner.run
-       # Expect the result to be the 'results' array from the parsed JSON
-       expect(result).to eq(parsed_valid_json_output)
-     end
-   end
+        result = runner.run
+        # Expect the result to be the 'results' array from the parsed JSON
+        expect(result).to eq(parsed_valid_json_output)
+      end
+    end
 
-   context "when bundle command is not found" do
-     it "prints an error message and returns nil" do
-       expect(runner).to receive(:`).and_raise(Errno::ENOENT)
-       expect_any_instance_of(Object).to receive(:puts).with("Error: bundle command not found. Is Bundler installed?")
+    context 'when bundle command is not found' do
+      it 'prints an error message and returns nil' do
+        expect(runner).to receive(:`).and_raise(Errno::ENOENT)
+        expect_any_instance_of(Object).to receive(:puts).with('Error: bundle command not found. Is Bundler installed?')
 
-       result = runner.run
-       expect(result).to be_nil
-     end
-   end
+        result = runner.run
+        expect(result).to be_nil
+      end
+    end
 
-   context "when bundler-audit output is not valid JSON" do
-     it "prints an error message with raw output and returns nil" do
-       expect(runner).to receive(:`).and_return(invalid_json_output)
-       # Expect JSON.parse to be called and raise an error
-       expect(JSON).to receive(:parse).with(invalid_json_output).and_raise(JSON::ParserError)
-       expect_any_instance_of(Object).to receive(:puts).with("Error: Failed to parse Bundler-Audit JSON output.")
-       expect_any_instance_of(Object).to receive(:puts).with("Raw output:\n#{invalid_json_output}")
+    context 'when bundler-audit output is not valid JSON' do
+      it 'prints an error message with raw output and returns nil' do
+        expect(runner).to receive(:`).and_return(invalid_json_output)
+        # Expect JSON.parse to be called and raise an error
+        expect(JSON).to receive(:parse).with(invalid_json_output).and_raise(JSON::ParserError)
+        expect_any_instance_of(Object).to receive(:puts).with('Error: Failed to parse Bundler-Audit JSON output.')
+        expect_any_instance_of(Object).to receive(:puts).with("Raw output:\n#{invalid_json_output}")
 
-       result = runner.run
-       expect(result).to be_nil
-     end
-   end
+        result = runner.run
+        expect(result).to be_nil
+      end
+    end
 
-   context "when another error occurs during execution" do
-     it "prints a generic error message and returns nil" do
-       error_message = "Some unexpected error during audit"
-       expect(runner).to receive(:`).and_raise(StandardError, error_message)
-       expect_any_instance_of(Object).to receive(:puts).with("An error occurred during Bundler-Audit execution: #{error_message}")
+    context 'when another error occurs during execution' do
+      it 'prints a generic error message and returns nil' do
+        error_message = 'Some unexpected error during audit'
+        expect(runner).to receive(:`).and_raise(StandardError, error_message)
+        expect_any_instance_of(Object).to receive(:puts).with("An error occurred during Bundler-Audit execution: #{error_message}")
 
-       result = runner.run
-       expect(result).to be_nil
-     end
-   end
- end
+        result = runner.run
+        expect(result).to be_nil
+      end
+    end
+  end
 end
