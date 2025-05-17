@@ -2,7 +2,7 @@
 
 # frozen_string_literal: true
 
-require "omamori"
+require 'omamori'
 
 # Main entry point for the omamori CLI
 module Omamori

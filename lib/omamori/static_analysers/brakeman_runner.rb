@@ -8,7 +8,7 @@ module Omamori
       end
 
       def run
-        puts "Running Brakeman..."
+        puts 'Running Brakeman...'
         # Determine Brakeman command based on options
         # Use --force to run scan even if it's not a Rails application
         # Use -f json for JSON output
@@ -18,11 +18,11 @@ module Omamori
           if value.is_a?(TrueClass)
             key.to_s
           elsif value.is_a?(FalseClass)
-            "" # Don't include false flags
+            '' # Don't include false flags
           else
             "#{key} #{value}"
           end
-        end.join(" ").strip
+        end.join(' ').strip
 
         brakeman_command = "brakeman -f json . --force #{options_string}".strip # strip again in case options_string is empty
 
@@ -35,13 +35,13 @@ module Omamori
           # the test setup might be causing it to be called multiple times or the mock is misconfigured.
           JSON.parse(brakeman_output)
         rescue Errno::ENOENT
-          puts "Error: Brakeman command not found. Is Brakeman installed?"
+          puts 'Error: Brakeman command not found. Is Brakeman installed?'
           nil
         rescue JSON::ParserError
-          puts "Error: Failed to parse Brakeman JSON output."
+          puts 'Error: Failed to parse Brakeman JSON output.'
           puts "Raw output:\n#{brakeman_output}"
           nil
-        rescue => e
+        rescue StandardError => e
           puts "An error occurred during Brakeman execution: #{e.message}"
           nil
         end
