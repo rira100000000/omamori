@@ -159,7 +159,7 @@ model: gemini-2.5-flash-preview-04-17
 
 ## .omamoriignore File
 
-The `.omamoriignore` file allows you to exclude specific files and directories from the scan target. Its behavior is similar to a `.gitignore` file, but with the following considerations:
+The `.omamoriignore` file allows you to exclude specific files and directories from the scan target. However, if the `--force_scan_ignored` option is used, the settings in this file will be ignored. Its behavior is similar to a `.gitignore` file, but with the following considerations:
 
 *   **Effective Modes:** It is only effective in `--all` mode or when scanning specified files/directories.
 *   **Ineffective Mode:** In `diff` mode (i.e., `omamori scan` without arguments), the `.omamoriignore` file is ignored. This is because `diff` mode only targets changes retrieved by `git diff`.
