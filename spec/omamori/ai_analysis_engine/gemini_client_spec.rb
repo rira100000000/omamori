@@ -6,7 +6,7 @@ require 'gemini' # Use require 'gemini' to load the entire gem
 
 RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
   let(:api_key) { "test_api_key" }
-  let(:model_name) { "gemini-1.5-pro-latest" }
+  let(:model_name) { "gemini-2.5-flash-preview-04-17" }
   let(:client_instance_double) { instance_double(Gemini::Client) }
   # Use instance_double with Gemini::Response
   let(:response_double) { instance_double(Gemini::Response) }

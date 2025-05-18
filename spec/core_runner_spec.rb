@@ -19,7 +19,7 @@ RSpec.describe Omamori::CoreRunner do
     # Mock Config and its methods
     allow(Omamori::Config).to receive(:new).and_return(config_double)
     allow(config_double).to receive(:get).with("api_key", any_args).and_return("dummy_api_key")
-    allow(config_double).to receive(:get).with("model", any_args).and_return("gemini-1.5-pro-latest")
+    allow(config_double).to receive(:get).with("model", any_args).and_return("gemini-2.5-flash-preview-04-17")
     allow(config_double).to receive(:get).with("prompt_templates", any_args).and_return({})
     allow(config_double).to receive(:get).with("chunk_size", any_args).and_return(7000)
     allow(config_double).to receive(:get).with("report", any_args).and_return({})

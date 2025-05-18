@@ -96,7 +96,7 @@ Here's a detailed breakdown of the configuration options:
 # You can also set this via the GEMINI_API_KEY environment variable
 api_key: YOUR_GEMINI_API_KEY # Replace with your actual API key
 
-# Gemini Model to use (optional, default: gemini-1.5-pro-latest)
+# Gemini Model to use (optional, default: gemini-2.5-flash-preview-04-17)
 model: gemini-2.5-flash-preview-04-17
 
 # Security checks to enable (optional, default: all implemented checks)
@@ -128,7 +128,7 @@ model: gemini-2.5-flash-preview-04-17
 ```
 
 *   `api_key`: Your API key for accessing the Gemini API. Can also be set via the `GEMINI_API_KEY` environment variable.
-*   `model`: The Gemini model to use for AI analysis. Defaults to `gemini-1.5-pro-latest`.
+*   `model`: The Gemini model to use for AI analysis. Defaults to `gemini-2.5-flash-preview-04-17`.
 *   `checks`: Configure which types of security checks to enable. By default, all implemented checks are enabled. You can selectively enable/disable checks here (e.g., `xss: true`, `csrf: false`).
 *   `prompt_templates`: Define custom prompt templates for AI analysis.
 *   `report`: Configure report output settings.

@@ -73,7 +73,7 @@ module Omamori
 
       # Initialize components with configuration
       api_key = @config.get("api_key", ENV["GEMINI_API_KEY"])
-      gemini_model = @config.get("model", "gemini-1.5-pro-latest")
+      gemini_model = @config.get("model", "gemini-2.5-flash-preview-04-17")
       @gemini_client = AIAnalysisEngine::GeminiClient.new(api_key)
       @prompt_manager = AIAnalysisEngine::PromptManager.new(@config)
 
@@ -135,10 +135,10 @@ module Omamori
                   # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
                   if file_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
                      puts "File content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-                     file_ai_result = @diff_splitter.process_in_chunks(file_content, @gemini_client, JSON_SCHEMA, @prompt_manager, current_risks_to_check, file_path: file_path, model: @config.get("model", "gemini-1.5-pro-latest"))
+                     file_ai_result = @diff_splitter.process_in_chunks(file_content, @gemini_client, JSON_SCHEMA, @prompt_manager, current_risks_to_check, file_path: file_path, model: @config.get("model", "gemini-2.5-flash-preview-04-17"))
                   else
                      prompt = @prompt_manager.build_prompt(file_content, current_risks_to_check, JSON_SCHEMA, file_path: file_path)
-                     file_ai_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
+                     file_ai_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-2.5-flash-preview-04-17"))
                   end
                   # Merge results
                   if file_ai_result && file_ai_result["security_risks"]
@@ -161,10 +161,10 @@ module Omamori
             # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
             if diff_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
               puts "Diff content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-              ai_analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, current_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
+              ai_analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA, @prompt_manager, current_risks_to_check, model: @config.get("model", "gemini-2.5-flash-preview-04-17"))
             else
               prompt = @prompt_manager.build_prompt(diff_content, current_risks_to_check, JSON_SCHEMA)
-              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
+              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-2.5-flash-preview-04-17"))
             end
           end
         when :all
@@ -178,10 +178,10 @@ module Omamori
             # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
             if full_code_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
               puts "Full code content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-              ai_analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, current_risks_to_check, model: @config.get("model", "gemini-1.5-pro-latest"))
+              ai_analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA, @prompt_manager, current_risks_to_check, model: @config.get("model", "gemini-2.5-flash-preview-04-17"))
             else
               prompt = @prompt_manager.build_prompt(full_code_content, current_risks_to_check, JSON_SCHEMA)
-              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-1.5-pro-latest"))
+              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA, model: @config.get("model", "gemini-2.5-flash-preview-04-17"))
             end
           end
         else
@@ -589,9 +589,9 @@ module Omamori
         # Example: api_key: "YOUR_GEMINI_API_KEY_HERE"
         api_key: YOUR_GEMINI_API_KEY
 
-        # Gemini Model to use (optional, default: gemini-1.5-pro-latest)
-        # Example: model: "gemini-1.5-flash-latest"
-        # model: "gemini-1.5-pro-latest"
+        # Gemini Model to use (optional, default: g emini-2.5-flash-preview-04-17)
+        # Example: model: "gemini-2.5-pro-preview-05-06"
+        # model: "gemini-2.5-flash-preview-04-17"
 
         # Security checks to enable (optional, default: all implemented checks).
         # Provide a list of symbols. Example:

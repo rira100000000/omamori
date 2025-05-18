@@ -25,7 +25,7 @@ module Omamori
       end
 
       # Updated to accept file_path keyword argument
-      def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check, model: "gemini-1.5-pro-latest", file_path: nil)
+      def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check, model: "gemini-2.5-flash-preview-04-17", file_path: nil)
         all_results = []
         chunks = split(content)
 

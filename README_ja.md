@@ -94,7 +94,7 @@ omamori scan --ai
 # 環境変数GEMINI_API_KEYで設定することも可能
 api_key: YOUR_GEMINI_API_KEY # 実際のAPIキーに置き換えてください
 
-# 使用するGeminiモデル（任意、デフォルト: gemini-1.5-pro-latest）
+# 使用するGeminiモデル（任意、デフォルト: gemini-2.5-flash-preview-04-17）
 model: gemini-2.5-flash-preview-04-17
 
 # 有効化するセキュリティチェック（任意、デフォルトは全チェック）
@@ -126,7 +126,7 @@ model: gemini-2.5-flash-preview-04-17
 ```
 
 - `api_key`: Gemini APIへのアクセスキー。環境変数`GEMINI_API_KEY`でも設定可能。
-- `model`: AI解析に使用するGeminiモデル。デフォルトは`gemini-1.5-pro-latest`。
+- `model`: AI解析に使用するGeminiモデル。デフォルトは`gemini-2.5-flash-preview-04-17`。
 - `checks`: 実行するセキュリティチェックの設定。特定のチェックを有効/無効にできます（例：`xss: true`, `csrf: false`）。
 - `prompt_templates`: AI解析用のカスタムプロンプトテンプレートを設定。
 - `report`: レポート出力に関する設定。
