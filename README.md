@@ -15,11 +15,12 @@ Running the analysis multiple times may help reduce false negatives.
 
 ## Features
 
-- Scan staged changes (`git diff --staged`) or the entire codebase for security risks.
+- Scan staged changes (`git diff --staged`), the entire codebase, or specified files and directories for security risks.
 - Integrates with static analysis tools like Brakeman and Bundler-Audit.
 - Utilizes the Gemini API for advanced code analysis to detect vulnerabilities.
 - Supports multiple report formats (console, HTML, JSON).
 - Configurable via a `.omamorirc` file.
+- Exclusion of files and directories via a `.omamoriignore` file (except in `diff` mode).
 
 ## Installation
 
@@ -51,7 +52,7 @@ To generate an initial configuration file (`.omamorirc`), run:
 omamori init
 ```
 
-Edit the generated `.omamorirc` file to configure your Gemini API key, preferred model, checks to perform, and other settings.
+Edit the generated `.omamorirc` and `.omamoriignore` files to configure your Gemini API key, preferred model, checks to perform, and files/directories to exclude from scanning, and other settings.
 
 ### Scanning
 
@@ -66,6 +67,7 @@ Scan the entire codebase:
 ```bash
 omamori scan --all
 ```
+This mode respects the `.omamoriignore` file.
 
 Specify output format (console, html, json):
 
@@ -73,6 +75,22 @@ Specify output format (console, html, json):
 bundle exec omamori scan --format html
 bundle exec omamori scan --all --format json
 ```
+
+### Scan Specific Files/Directories
+
+You can specify particular files or directories to scan:
+
+```bash
+omamori scan <file_path1> <file_path2> ... <directory_path1> ...
+```
+
+Example:
+
+```bash
+omamori scan app/controllers/users_controller.rb app/models/user.rb config/routes.rb lib/
+```
+
+This mode respects the `.omamoriignore` file.
 
 ### AI Analysis Only
 
@@ -138,6 +156,16 @@ model: gemini-2.5-flash-preview-04-17
     *   `brakeman`: Additional command-line options for Brakeman.
     *   `bundler_audit`: Additional command-line options for Bundler-Audit.
 *   `language`: Language setting for the details provided in AI analysis reports. Defaults to English (`en`).
+
+## .omamoriignore File
+
+The `.omamoriignore` file allows you to exclude specific files and directories from the scan target. Its behavior is similar to a `.gitignore` file, but with the following considerations:
+
+*   **Effective Modes:** It is only effective in `--all` mode or when scanning specified files/directories.
+*   **Ineffective Mode:** In `diff` mode (i.e., `omamori scan` without arguments), the `.omamoriignore` file is ignored. This is because `diff` mode only targets changes retrieved by `git diff`.
+*   **Format:** Each line specifies one pattern. Lines starting with `#` are treated as comments. It is recommended to append a `/` to directory patterns (e.g., `vendor/`). Patterns are evaluated using simple prefix matching (e.g., `config/initializers` matches `config/initializers/devise.rb`). Wildcards (`*`) are not currently supported.
+
+When you run the `omamori init` command, a `.omamoriignore` file pre-filled with patterns for common files and directories to ignore in a Rails project will be generated. You can edit this file as needed.
 
 ## Demo Files
 

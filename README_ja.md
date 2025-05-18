@@ -13,11 +13,12 @@ AI解析は静的解析で診断できない脆弱性を発見することがで
 
 ## 特徴
 
-- ステージされた変更（`git diff --staged`）またはコードベース全体をスキャンしてセキュリティリスクを検出
+- ステージされた変更（`git diff --staged`）、コードベース全体、または指定されたファイルやディレクトリをスキャンしてセキュリティリスクを検出
 - BrakemanやBundler-Auditなどの静的解析ツールと連携
 - Gemini APIを活用し、AIによる高度なコード脆弱性検出
 - 複数のレポート形式に対応（コンソール、HTML、JSON）
 - `.omamorirc`ファイルによる柔軟な設定が可能
+- `.omamoriignore`ファイルによるスキャン対象からの除外機能（`diff`モードを除く）
 
 ## インストール
 
@@ -49,7 +50,7 @@ gem install omamori
 omamori init
 ```
 
-生成された`.omamorirc`ファイルを編集して、Gemini APIキー、使用するモデル、実行するチェック項目などを設定します。
+生成された`.omamorirc`ファイルと`.omamoriignore`ファイルを編集して、Gemini APIキー、使用するモデル、実行するチェック項目、スキャン対象から除外するファイル/ディレクトリなどを設定します。
 
 ### スキャン
 
@@ -64,6 +65,7 @@ omamori scan
 ```bash
 omamori scan --all
 ```
+このモードでは`.omamoriignore`ファイルが有効になります。
 
 出力形式を指定（コンソール、HTML、JSON）：
 
@@ -71,6 +73,22 @@ omamori scan --all
 bundle exec omamori scan --format html
 bundle exec omamori scan --all --format json
 ```
+
+### ファイル/ディレクトリ指定スキャン
+
+特定のファイルやディレクトリを指定してスキャンを実行します。
+
+```bash
+omamori scan <ファイルパス1> <ファイルパス2> ... <ディレクトリパス1> ...
+```
+
+例:
+
+```bash
+omamori scan app/controllers/users_controller.rb app/models/user.rb config/routes.rb lib/
+```
+
+このモードでは`.omamoriignore`ファイルが有効になります。
 
 ### AI解析のみ実施
 
@@ -134,6 +152,16 @@ model: gemini-2.5-flash-preview-04-17
   - `html_template`: カスタムHTMLテンプレート（ERB形式）のパス。
 - `static_analysers`: 静的解析ツール（Brakeman、Bundler-Auditなど）の追加オプション設定。
 - `language`: AI解析結果の詳細説明文の言語設定。デフォルトは英語（`en`）。
+
+## .omamoriignore ファイル
+
+`.omamoriignore`ファイルを使用すると、特定のファイルやディレクトリをスキャン対象から除外できます。これは`.gitignore`ファイルと似たような働きをしますが、以下の点に注意してください。
+
+*   **有効なモード:** `--all` モード、またはファイル/ディレクトリを指定してスキャンする場合にのみ有効です。
+*   **無効なモード:** `diff` モード（引数なしの `omamori scan`）では、`.omamoriignore` ファイルは無視されます。これは、`git diff` で取得された変更点のみを対象とするためです。
+*   **書式:** 1行に1つのパターンを記述します。`#` で始まる行はコメントとして扱われます。ディレクトリを指定する場合は、末尾に `/` を付けることを推奨します (例: `vendor/`)。単純な前方一致で評価されます。 (例: `config/initializers` は `config/initializers/devise.rb` にマッチします)ワイルドカード (`*`) は現時点ではサポートされていません。
+
+`omamori init` コマンドを実行すると、一般的なRailsプロジェクトで無視すべきファイルやディレクトリのパターンが記述された`.omamoriignore`ファイルが生成されます。必要に応じてこのファイルを編集してください。
 
 ## デモファイル
 
