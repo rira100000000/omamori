@@ -5,10 +5,14 @@ require 'yaml'
 module Omamori
   class Config
     DEFAULT_CONFIG_PATH = ".omamorirc"
+    DEFAULT_IGNORE_PATH = ".omamoriignore"
+
+    attr_reader :ignore_patterns
 
     def initialize(config_path = DEFAULT_CONFIG_PATH)
       @config_path = config_path
       @config = load_config
+      @ignore_patterns = load_ignore_patterns # Load ignore patterns
       validate_config # Add validation after loading
     end
 
@@ -125,6 +129,23 @@ module Omamori
       language = @config["language"]
       if language && !language.is_a?(String)
         puts "Warning: Config 'language' should be a string."
+      end
+    end
+
+    # Load .omamoriignore file and return an array of ignore patterns
+    def load_ignore_patterns
+      ignore_path = DEFAULT_IGNORE_PATH
+      if File.exist?(ignore_path)
+        begin
+          File.readlines(ignore_path, chomp: true).reject do |line|
+            line.strip.empty? || line.strip.start_with?('#')
+          end
+        rescue => e
+          puts "Warning: Error reading .omamoriignore file #{ignore_path}: #{e.message}"
+          [] # Return empty array if reading fails
+        end
+      else
+        [] # Return empty array if file does not exist
       end
     end
 

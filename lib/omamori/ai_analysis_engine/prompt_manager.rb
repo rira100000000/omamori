@@ -1,5 +1,3 @@
-# frozen_string_literal: true
-
 module Omamori
   module AIAnalysisEngine
     class PromptManager
@@ -11,6 +9,7 @@ module Omamori
       %{json_schema}
       If no risks are found, output an empty list for the "security_risks" array.
       Please provide your response in %{language}.
+      #{"File context (if available): %{file_path}" if ENV['OMAMORI_DEBUG_PROMPT']}
 
       【Code to Analyze】:
       %{code_content}
@@ -48,9 +47,9 @@ dangerous_eval_prompt = <<~PROMPT
   Search for methods enabling dynamic code execution in Ruby code (e.g., eval, instance_eval, class_eval, send, public_send, system, exec, backticks `).
   Check if arguments passed to these methods originate from or are directly influenced by external untrusted input (e.g., HTTP request parameters params, data from files, network responses). Look for patterns similar to the vulnerable Ruby examples shown above.
   Verify if user input is rigorously sanitized or validated specifically to prevent code injection vectors before being used in these methods. Standard escaping for HTML (like XSS prevention) is not sufficient here. Check if execution is restricted only to a predefined, absolutely safe allowlist of commands or methods if dynamic execution cannot be avoided.
-  Assess if safer alternatives exist that can achieve the same functionality without dynamic code execution. Examples include using Hash lookups for dispatching actions, case statements based on input values, leveraging safe templating engines, or using specific library functions designed for the task instead of generic execution methods. 
+  Assess if safer alternatives exist that can achieve the same functionality without dynamic code execution. Examples include using Hash lookups for dispatching actions, case statements based on input values, leveraging safe templating engines, or using specific library functions designed for the task instead of generic execution methods.
   PROMPT
-    
+
       RISK_PROMPTS = {
         xss: "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim's browser. Detection steps: 1) Identify where user input is output to HTML/JS context. 2) Check if proper encoding/escaping is applied (e.g., html_safe, raw, sanitize, escape_javascript). 3) Look for unsafe methods that bypass default Rails escaping (html_safe, raw, <%==). 4) Examine JavaScript that incorporates user input via template interpolation. 5) Check for improper content-type headers that might enable XSS. 6) Verify if user input is passed to eval(), setTimeout(), document.write() or DOM manipulation functions. 7) Look for attribute injection possibilities where user input sets HTML attributes.",
         csrf: "Cross-Site Request Forgery (CSRF): An attack that forces an authenticated user to perform unwanted actions via forged requests. Detection steps: 1) Check if CSRF protection is disabled globally or for specific controllers/actions (skip_before_action :verify_authenticity_token). 2) Look for APIs or endpoints that handle state-changing operations (POST, PUT, DELETE methods). 3) Verify if authenticity tokens are properly validated for forms and AJAX requests. 4) Check if the application relies solely on cookies for authentication without additional CSRF protection. 5) Look for custom CSRF protection implementations that might be incomplete. 6) Verify if SameSite cookie attributes are properly set. 7) Check if the application validates the Origin or Referer header for cross-origin requests.",
@@ -88,7 +87,7 @@ dangerous_eval_prompt = <<~PROMPT
         audit_log_missing: "Missing Audit Logging: Lack of logging for critical actions or authorization checks prevents accountability. Detection steps: 1) Identify code performing critical actions (login, permission change, sensitive data access/modification, config change). 2) Verify these actions generate logs including who (user), when (timestamp), what (action/resource), result (success/fail), and where (IP address). 3) Check if authentication successes/failures and authorization failures are logged. 4) Assess if logs are stored securely and retained appropriately. 5) Ensure log format is consistent and useful for monitoring.",
         time_based_side_channel: "Time-Based Side Channel: Execution time differences can leak secrets (e.g., timing attacks in string comparison). Detection steps: 1) Locate code comparing secret values (passwords, tokens, API keys). 2) Check if standard comparison operators (`==`) are used for secrets. 3) Verify use of constant-time comparison functions (e.g., `ActiveSupport::SecurityUtils.secure_compare`, `Rack::Utils.secure_compare`). 4) Analyze cryptographic operations for potential timing leaks (may depend on library implementation). 5) Consider if database query times varying based on input could leak information."
       }.freeze
-      
+
 
       def initialize(config = {})
         # Load custom templates and language from config, merge with default
@@ -98,12 +97,30 @@ dangerous_eval_prompt = <<~PROMPT
         @language = config.get("language", "en") # Get language from config, default to 'en'
       end
 
-      def build_prompt(code_content, risks_to_check, json_schema, template_key: :default)
-        # Use the template from @prompt_templates, defaulting to :default if template_key is not found
+      # Updated to accept file_path keyword argument
+      def build_prompt(code_content, risks_to_check, json_schema, template_key: :default, file_path: nil)
         template = @prompt_templates.fetch(template_key, @prompt_templates[:default])
         risk_list = risks_to_check.map { |risk_key| @risk_prompts[risk_key] }.compact.join(", ")
 
-        template % { risk_list: risk_list, code_content: code_content, json_schema: json_schema.to_json, language: @language}
+        prompt_variables = {
+          risk_list: risk_list,
+          code_content: code_content,
+          json_schema: json_schema.to_json,
+          language: @language
+        }
+        # Add file_path to variables if provided and template expects it
+        # Ensure your template string (DEFAULT_PROMPT_TEMPLATE or custom ones)
+        # actually uses %{file_path} if you want to include it.
+        prompt_variables[:file_path] = file_path if file_path && template.include?("%{file_path}")
+
+        # Handle cases where a key in prompt_variables might not be in the template string
+        # by selecting only keys present in the template.
+        final_variables = {}
+        template.scan(/%\{(\w+)\}/).flatten.uniq.each do |key_in_template|
+          final_variables[key_in_template.to_sym] = prompt_variables[key_in_template.to_sym]
+        end
+        
+        template % final_variables
       end
     end
   end

@@ -10,12 +10,12 @@ module Omamori
         @client = nil # Initialize client later
       end
 
-      def analyze(prompt, json_schema, model: "gemini-1.5-pro-latest")
+      def analyze(prompt, json_schema, model: "gemini-2.5-flash-preview-04-17")
         # Ensure the client is initialized
         client
 
         begin
-          response = @client.generate_content(
+          response = client.generate_content(
             prompt,
             model: model,
             response_schema: json_schema, # Use response_schema for Structured Output

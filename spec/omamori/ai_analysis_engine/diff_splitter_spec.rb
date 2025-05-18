@@ -78,19 +78,20 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
     let(:chunk3_result) { { "security_risks" => [{ "risk" => "SSRF", "severity" => "Low" }] } }
 
     before do
-      allow(prompt_manager_double).to receive(:build_prompt).with(chunk1, risks_to_check, json_schema).and_return(chunk1_prompt)
-      allow(prompt_manager_double).to receive(:build_prompt).with(chunk2, risks_to_check, json_schema).and_return(chunk2_prompt)
-      allow(prompt_manager_double).to receive(:build_prompt).with(chunk3, risks_to_check, json_schema).and_return(chunk3_prompt)
+      allow(prompt_manager_double).to receive(:build_prompt).with(chunk1, risks_to_check, json_schema, file_path: anything).and_return(chunk1_prompt)
+      allow(prompt_manager_double).to receive(:build_prompt).with(chunk2, risks_to_check, json_schema, file_path: anything).and_return(chunk2_prompt)
+      allow(prompt_manager_double).to receive(:build_prompt).with(chunk3, risks_to_check, json_schema, file_path: anything).and_return(chunk3_prompt)
 
-      allow(gemini_client_double).to receive(:analyze).with(chunk1_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk1_result)
-      allow(gemini_client_double).to receive(:analyze).with(chunk2_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk2_result)
-      allow(gemini_client_double).to receive(:analyze).with(chunk3_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk3_result)
 
       # Allow puts for output
       allow_any_instance_of(Object).to receive(:puts)
     end
 
     it "splits the content, processes each chunk, and combines results" do
+      allow(gemini_client_double).to receive(:analyze).with(chunk1_prompt, json_schema, model: "gemini-2.5-flash-preview-04-17").and_return(chunk1_result)
+      allow(gemini_client_double).to receive(:analyze).with(chunk2_prompt, json_schema, model: "gemini-2.5-flash-preview-04-17").and_return(chunk2_result)
+      allow(gemini_client_double).to receive(:analyze).with(chunk3_prompt, json_schema, model: "gemini-2.5-flash-preview-04-17").and_return(chunk3_result)
+
       expect(splitter).to receive(:split).with(content).and_call_original
       expect(prompt_manager_double).to receive(:build_prompt).exactly(3).times
       expect(gemini_client_double).to receive(:analyze).exactly(3).times
@@ -107,8 +108,8 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
       short_prompt = "prompt for short content"
       short_result = { "security_risks" => [{ "risk" => "IDOR", "severity" => "Low" }] }
 
-      allow(prompt_manager_double).to receive(:build_prompt).with(short_content, risks_to_check, json_schema).and_return(short_prompt)
-      allow(gemini_client_double).to receive(:analyze).with(short_prompt, json_schema, model: "gemini-1.5-pro-latest").and_return(short_result)
+      allow(prompt_manager_double).to receive(:build_prompt).with(short_content, risks_to_check, json_schema, file_path: anything).and_return(short_prompt)
+      allow(gemini_client_double).to receive(:analyze).with(short_prompt, json_schema, model: "gemini-2.5-flash-preview-04-17").and_return(short_result)
 
       expect(splitter).to receive(:split).with(short_content).and_call_original
       expect(prompt_manager_double).to receive(:build_prompt).once
@@ -130,8 +131,8 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
     end
 
     it "handles nil results from analyze" do
-      allow(prompt_manager_double).to receive(:build_prompt).with(anything, anything, json_schema).and_return("dummy prompt")
-      allow(gemini_client_double).to receive(:analyze).with(anything, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk1_result, nil, chunk2_result) # Simulate one nil result
+      allow(prompt_manager_double).to receive(:build_prompt).with(anything, anything, json_schema, file_path: anything).and_return("dummy prompt")
+      allow(gemini_client_double).to receive(:analyze).with(anything, json_schema, model: "gemini-2.5-flash-preview-04-17").and_return(chunk1_result, nil, chunk2_result) # Simulate one nil result
 
       expect(splitter).to receive(:combine_results).with([chunk1_result, nil, chunk2_result]).and_call_original
 
@@ -143,8 +144,8 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
     it "handles results without 'security_risks' key" do
       result_without_risks = { "other_data" => "..." }
-      allow(prompt_manager_double).to receive(:build_prompt).with(anything, anything, json_schema).and_return("dummy prompt")
-      allow(gemini_client_double).to receive(:analyze).with(anything, json_schema, model: "gemini-1.5-pro-latest").and_return(chunk1_result, result_without_risks, chunk2_result) # Simulate one result without risks
+      allow(prompt_manager_double).to receive(:build_prompt).with(anything, anything, json_schema, file_path: anything).and_return("dummy prompt")
+      allow(gemini_client_double).to receive(:analyze).with(anything, json_schema, model: "gemini-2.5-flash-preview-04-17").and_return(chunk1_result, result_without_risks, chunk2_result) # Simulate one result without risks
 
       expect(splitter).to receive(:combine_results).with([chunk1_result, result_without_risks, chunk2_result]).and_call_original
 
