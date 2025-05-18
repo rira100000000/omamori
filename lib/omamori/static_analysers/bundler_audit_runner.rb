@@ -14,7 +14,9 @@ module Omamori
         # Example: bundle audit --format json
         # Include options passed during initialization
         # Build options string from the options hash
-        options_string = @options.map { |key, value| "--#{key.to_s.gsub('_', '-')}" + (value == true ? "" : " #{value}") }.join(" ")
+        options_string = @options.map do |key, value|
+          "--#{key.to_s.gsub('_', '-')}" + (value == true ? '' : " #{value}")
+        end.join(' ')
         bundler_audit_command = "bundle audit --format json#{options_string.empty? ? '' : " #{options_string}"}"
 
         begin
@@ -32,18 +34,18 @@ module Omamori
             # Return the entire parsed output hash
             parsed_output
           else
-            puts "Error: Unexpected Bundler-Audit JSON output structure."
+            puts 'Error: Unexpected Bundler-Audit JSON output structure.'
             puts "Raw output:\n#{bundler_audit_output}"
             nil # Return nil if the structure is unexpected
           end
         rescue Errno::ENOENT
-          puts "Error: bundle command not found. Is Bundler installed?"
+          puts 'Error: bundle command not found. Is Bundler installed?'
           nil
         rescue JSON::ParserError
-          puts "Error: Failed to parse Bundler-Audit JSON output."
+          puts 'Error: Failed to parse Bundler-Audit JSON output.'
           puts "Raw output:\n#{bundler_audit_output}"
           nil
-        rescue => e
+        rescue StandardError => e
           puts "An error occurred during Bundler-Audit execution: #{e.message}"
           nil
         end

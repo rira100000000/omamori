@@ -11,7 +11,7 @@ module Omamori
 
       def split(content)
         chunks = []
-        current_chunk = ""
+        current_chunk = ''
         content.each_line do |line|
           if (current_chunk.length + line.length) > @chunk_size && !current_chunk.empty?
             chunks << current_chunk
@@ -25,7 +25,8 @@ module Omamori
       end
 
       # Updated to accept file_path keyword argument
-      def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check, model: "gemini-2.5-flash-preview-04-17", file_path: nil)
+      def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check,
+                            model: 'gemini-2.5-flash-preview-04-17', file_path: nil)
         all_results = []
         chunks = split(content)
 
@@ -48,9 +49,9 @@ module Omamori
 
       def combine_results(results)
         combined_risks = results.flat_map do |result|
-          result && result["security_risks"] ? result["security_risks"] : []
+          result && result['security_risks'] ? result['security_risks'] : []
         end
-        { "security_risks" => combined_risks }
+        { 'security_risks' => combined_risks }
       end
     end
   end

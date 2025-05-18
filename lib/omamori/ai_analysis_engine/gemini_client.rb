@@ -6,11 +6,11 @@ module Omamori
   module AIAnalysisEngine
     class GeminiClient
       def initialize(api_key)
-        @api_key = api_key || ENV["GEMINI_API_KEY"]
+        @api_key = api_key || ENV['GEMINI_API_KEY']
         @client = nil # Initialize client later
       end
 
-      def analyze(prompt, json_schema, model: "gemini-2.5-flash-preview-04-17")
+      def analyze(prompt, json_schema, model: 'gemini-2.5-flash-preview-04-17')
         # Ensure the client is initialized
         client
 
@@ -35,12 +35,12 @@ module Omamori
               # Return the parsed JSON data
               parsed_response
             else
-              puts "Warning: Unexpected AI analysis response structure."
+              puts 'Warning: Unexpected AI analysis response structure.'
               puts "Raw response text: #{response.text}"
               nil # Return nil if the structure is unexpected
             end
           rescue JSON::ParserError
-            puts "Warning: Failed to parse response text as JSON."
+            puts 'Warning: Failed to parse response text as JSON.'
             puts "Raw response text: #{response.text}"
             nil # Or handle the error appropriately
           end
@@ -48,7 +48,7 @@ module Omamori
           puts "API Error: #{e.message}"
           puts "Response body: #{e.response[:body]}" if e.response
           nil # Handle API errors
-        rescue => e
+        rescue StandardError => e
           puts "An unexpected error occurred during API call: #{e.message}"
           nil # Handle other errors
         end
