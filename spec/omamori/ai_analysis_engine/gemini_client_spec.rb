@@ -60,7 +60,7 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
     context "when the API call is successful and returns valid structured output" do
       it "calls generate_content with correct arguments and returns the parsed data" do
         allow(client_instance_double).to receive(:generate_content)
-          .with(prompt, model: model_name, response_schema: json_schema)
+          .with(prompt, model: model_name, response_schema: json_schema, temperature: 0.0)
           .and_return(response_double)
 
         # Mock the response_double to return the simulated JSON text
@@ -68,7 +68,6 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
 
         client = Omamori::AIAnalysisEngine::GeminiClient.new(api_key)
         # Explicitly set the @client instance variable for the test
-        client.instance_variable_set(:@client, client_instance_double)
         result = client.analyze(prompt, json_schema, model: model_name)
 
         expect(result).to eq(api_response_data)
@@ -85,8 +84,6 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
         allow(response_double).to receive(:text).and_return(invalid_json_text)
 
         client = Omamori::AIAnalysisEngine::GeminiClient.new(api_key)
-        # Explicitly set the @client instance variable for the test
-        client.instance_variable_set(:@client, client_instance_double)
         expect {
           result = client.analyze(prompt, json_schema, model: model_name)
           expect(result).to be_nil
@@ -105,8 +102,6 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
         allow(client_instance_double).to receive(:generate_content).and_raise(api_error)
 
         client = Omamori::AIAnalysisEngine::GeminiClient.new(api_key)
-        # Explicitly set the @client instance variable for the test
-        client.instance_variable_set(:@client, client_instance_double)
         expect {
           result = client.analyze(prompt, json_schema, model: model_name)
           expect(result).to be_nil
@@ -120,8 +115,6 @@ RSpec.describe Omamori::AIAnalysisEngine::GeminiClient do
         allow(client_instance_double).to receive(:generate_content).and_raise(unexpected_error)
 
         client = Omamori::AIAnalysisEngine::GeminiClient.new(api_key)
-        # Explicitly set the @client instance variable for the test
-        client.instance_variable_set(:@client, client_instance_double)
         expect {
           result = client.analyze(prompt, json_schema, model: model_name)
           expect(result).to be_nil

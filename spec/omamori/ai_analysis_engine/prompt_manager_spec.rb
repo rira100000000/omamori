@@ -68,7 +68,7 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
     it "builds the prompt using the default template and provided data" do
       # Pass a stub Config instance with empty config
       manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
-      expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., コード評価（evalなど）"
+      expected_risk_list = "#{Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:xss]}, #{Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:eval_injection]}"
       # Note: The default template now includes %{language}
       expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
  
@@ -82,7 +82,7 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
        # Pass a stub Config instance with custom config
        manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new(custom_config_hash))
  
-       expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., コード評価（evalなど）"
+       expected_risk_list = "#{Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:xss]}, #{Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:eval_injection]}"
        # Note: Custom template does not have %{json_schema} or %{language}, so they are not included in the expected prompt
        expected_prompt = custom_template % { risk_list: expected_risk_list, code_content: code_content }
  
@@ -93,7 +93,7 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
      it "uses the default template if the specified template_key is not found" do
        # Pass a stub Config instance with empty config
        manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
-       expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., コード評価（evalなど）"
+       expected_risk_list = "#{Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:xss]}, #{Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:eval_injection]}"
        # Note: The default template now includes %{language}
        expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
 
@@ -116,7 +116,7 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
        # Pass a stub Config instance with empty config
        manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
        risks_with_invalid = [:xss, :invalid_risk, :csrf]
-       expected_risk_list = "Cross-Site Scripting (XSS): A vulnerability where user input is not properly escaped and is embedded into HTML or JavaScript, leading to arbitrary script execution in the victim’s browser. Look for unsanitized input and missing output encoding., Cross-Site Request Forgery (CSRF): An attack that forces an authenticated user to perform unwanted actions via forged requests. Detect missing CSRF tokens or absence of referer/origin validation."
+       expected_risk_list = "#{risk_prompts[:xss]}, #{risk_prompts[:csrf]}"
        # Note: The default template now includes %{language}
        expected_prompt = default_template % { risk_list: expected_risk_list, code_content: code_content, json_schema: {}.to_json, language: "en" }
 

@@ -15,7 +15,7 @@ module Omamori
         client
 
         begin
-          response = @client.generate_content(
+          response = client.generate_content(
             prompt,
             model: model,
             response_schema: json_schema, # Use response_schema for Structured Output
