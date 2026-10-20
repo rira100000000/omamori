@@ -14,9 +14,22 @@ RSpec.describe Omamori::AIAnalysisEngine::JudgeClient do
       questions: { xss: { type: :probability, instructions: 'xss?' },
                    csrf: { type: :probability, instructions: 'csrf?' } },
       model: 'jev-1.13.0', provider: :typesafe, assume_model_exists: true
-    ).and_return(double('judgment', answers: answers))
+    ).and_return(double('judgment', answers: answers, tokens: double('tokens', input: 120)))
 
     expect(client.classify('diff', xss: 'xss?', csrf: 'csrf?')).to eq(xss: 0.8, csrf: nil)
+    expect(client.input_tokens).to eq(120)
+  end
+
+  it 'splits the questions into batches when the provider limits them' do
+    client = described_class.new(context, provider: :openai, model: 'gpt-6-luna', max_questions: 2)
+    questions = { a: 'a?', b: 'b?', c: 'c?' }
+    expect(context).to receive(:judge).twice do |_state, questions:, **|
+      answers = questions.keys.to_h { |name| [name, double('answer', probability: 0.5)] }
+      double('judgment', answers: answers, tokens: double('tokens', input: 10))
+    end
+
+    expect(client.classify('diff', questions)).to eq(a: 0.5, b: 0.5, c: 0.5)
+    expect(client.input_tokens).to eq(20)
   end
 end
 

@@ -10,7 +10,14 @@ bundle exec ruby evals/run.rb --classifier openai --runs 3              # classi
 bundle exec ruby evals/run.rb --classifier none                         # baseline: Gemini checks all risks in one prompt
 bundle exec ruby evals/run.rb --classifier none --reporter claude_code --reporter-model sonnet   # same baseline with claude -p
 bundle exec ruby evals/run.rb --risk xss                                # only cases for one risk
+bundle exec ruby evals/run.rb --risk xss --no-sub-checks                # overall questions only, without sub-checks
+bundle exec ruby evals/run.rb --risk xss --pipeline --threshold 0.5     # also run the reporter on flagged checks
+bundle exec ruby evals/run.rb --case safe-url-attribute --pipeline      # one case, to trace what happens
 ```
+
+By default only the classifier is scored: a case's answer is the classifier's probability, and the table shows recall and specificity at each threshold. With `--pipeline`, every labeled check the classifier flags at `--threshold` is also sent to the reporter, as `omamori scan` does, and the case's answer becomes the reporter's verdict. This is the accuracy a user actually sees. When the reporter cannot answer (for example Gemini refusing the content), the check stays flagged; those are counted separately as "unanswered".
+
+Results also keep every question's probability for the labeled risks (`questions` in the JSON), so you can see which sub-checks fire on which cases.
 
 For each case, the runner creates a throwaway git repository, commits the `before` files, writes the `after` files, and takes `git diff`. The diff then goes through the same path as `omamori scan`: split per file, every risk asked for each file. A case's probability for a risk is the highest probability among its files.
 

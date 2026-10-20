@@ -1,0 +1,28 @@
+id: xss-vulnerable-attribute-injection-user-chip
+description: Helper builds a user chip span whose text is escaped but whose single-quoted title attribute interpolates the display name unescaped
+expected:
+  xss: true
+files:
+  - path: app/helpers/users_helper.rb
+    before: |
+      module UsersHelper
+        def user_chip(user)
+          content_tag(:span, user.display_name, class: "user-chip")
+        end
+
+        def member_since(user)
+          "Member since #{user.created_at.strftime('%B %Y')}"
+        end
+      end
+    after: |
+      module UsersHelper
+        def user_chip(user)
+          label = h(user.display_name)
+          status = user.online? ? "online" : "offline"
+          "<span class='user-chip user-chip--#{status}' title='#{user.display_name} (#{status})'>#{label}</span>".html_safe
+        end
+
+        def member_since(user)
+          "Member since #{user.created_at.strftime('%B %Y')}"
+        end
+      end

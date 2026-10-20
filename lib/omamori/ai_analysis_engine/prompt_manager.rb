@@ -1,3 +1,5 @@
+require 'yaml'
+
 module Omamori
   module AIAnalysisEngine
     class PromptManager
@@ -101,10 +103,44 @@ dangerous_eval_prompt = <<~PROMPT
       # The full risk description is included so the classifier sees the same detection steps as the LLM.
       def build_question(risk_key)
         <<~TEXT
-          Does the following code contain the security vulnerability described below? The code may be a git diff; judge the code that is added or kept, not the removed lines.
+          Does the following code contain the security vulnerability described below? #{DIFF_NOTE}
 
           #{@risk_prompts.fetch(risk_key)}
         TEXT
+      end
+
+      DIFF_NOTE = 'The code may be a git diff; judge the code that is added or kept, not the removed lines.'
+      SUB_CHECKS_DIR = File.expand_path('sub_checks', __dir__)
+      SUB_CHECK_SEPARATOR = '__'
+
+      # The overall question for a risk plus one question per sub-check (a concrete pattern that alone makes the
+      # risk real). Returns { question_name => text }; sub-check names look like :xss__raw_output.
+      def build_questions(risk_key, sub_checks: true)
+        questions = { risk_key => build_question(risk_key) }
+        return questions unless sub_checks
+
+        sub_checks_for(risk_key).each do |name, text|
+          questions[:"#{risk_key}#{SUB_CHECK_SEPARATOR}#{name}"] = "#{text} #{DIFF_NOTE}"
+        end
+        questions
+      end
+
+      # The risk a question name belongs to (:xss__raw_output -> :xss)
+      def self.risk_of(question_name)
+        question_name.to_s.split(SUB_CHECK_SEPARATOR, 2).first.to_sym
+      end
+
+      def sub_check_text(question_name)
+        risk, name = question_name.to_s.split(SUB_CHECK_SEPARATOR, 2)
+        name && sub_checks_for(risk.to_sym)[name]
+      end
+
+      def sub_checks_for(risk_key)
+        @sub_checks ||= {}
+        @sub_checks[risk_key] ||= begin
+          path = File.join(SUB_CHECKS_DIR, "#{risk_key}.yml")
+          File.exist?(path) ? YAML.safe_load_file(path) : {}
+        end
       end
 
       # Updated to accept file_path keyword argument

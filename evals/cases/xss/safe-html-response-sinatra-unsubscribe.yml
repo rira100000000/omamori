@@ -1,0 +1,64 @@
+id: xss-safe-html-response-sinatra-unsubscribe
+description: Sinatra mail service returns an unsubscribe confirmation page built from an HTML string, escaping the query parameters with Rack::Utils.escape_html
+expected:
+  xss: false
+files:
+  - path: app.rb
+    before: |
+      require "sinatra"
+      require "json"
+      require_relative "lib/subscriptions"
+
+      set :bind, "0.0.0.0"
+
+      get "/health" do
+        content_type :json
+        { status: "ok" }.to_json
+      end
+
+      post "/subscriptions" do
+        content_type :json
+        payload = JSON.parse(request.body.read)
+        Subscriptions.add(payload.fetch("email"), list: payload.fetch("list", "news"))
+        status 201
+        { subscribed: true }.to_json
+      end
+    after: |
+      require "sinatra"
+      require "json"
+      require_relative "lib/subscriptions"
+
+      set :bind, "0.0.0.0"
+
+      helpers do
+        def h(text)
+          Rack::Utils.escape_html(text.to_s)
+        end
+      end
+
+      get "/health" do
+        content_type :json
+        { status: "ok" }.to_json
+      end
+
+      post "/subscriptions" do
+        content_type :json
+        payload = JSON.parse(request.body.read)
+        Subscriptions.add(payload.fetch("email"), list: payload.fetch("list", "news"))
+        status 201
+        { subscribed: true }.to_json
+      end
+
+      get "/unsubscribe" do
+        email = params.fetch("email", "")
+        list = params.fetch("list", "news")
+        removed = Subscriptions.remove(email, list: list, token: params["token"])
+
+        content_type :html
+        if removed
+          "<html><body><h1>Unsubscribed</h1><p>#{h email} will no longer receive the #{h list} list.</p></body></html>"
+        else
+          status 404
+          "<html><body><h1>Not found</h1><p>No subscription for #{h email} on #{h list}.</p></body></html>"
+        end
+      end

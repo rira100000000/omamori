@@ -292,7 +292,8 @@ module Omamori
         model: llm_model,
         threshold: ai_settings.threshold,
         concurrency: ai_settings.classifier_concurrency,
-        report_concurrency: ai_settings.reporter_concurrency
+        report_concurrency: ai_settings.reporter_concurrency,
+        sub_checks: ai_settings.sub_checks?
       )
     end
 

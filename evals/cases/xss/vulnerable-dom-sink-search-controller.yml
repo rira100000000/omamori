@@ -1,0 +1,36 @@
+id: xss-vulnerable-dom-sink-search-controller
+description: Stimulus search controller renders the q URL parameter and fetched post titles into the page with innerHTML
+expected:
+  xss: true
+files:
+  - path: app/javascript/controllers/search_controller.js
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static targets = ["input", "heading", "results"]
+        static values = { url: String }
+
+        connect() {
+          const query = new URLSearchParams(window.location.search).get("q")
+          if (query) {
+            this.inputTarget.value = query
+            this.search()
+          }
+        }
+
+        async search() {
+          const query = this.inputTarget.value.trim()
+          if (query === "") return
+
+          const response = await fetch(`${this.urlValue}?q=${encodeURIComponent(query)}`, {
+            headers: { Accept: "application/json" }
+          })
+          const posts = await response.json()
+
+          this.headingTarget.innerHTML = `${posts.length} results for <em>${query}</em>`
+          this.resultsTarget.innerHTML = posts
+            .map((post) => `<li><a href="/posts/${post.id}">${post.title}</a> <span class="author">${post.author_name}</span></li>`)
+            .join("")
+        }
+      }

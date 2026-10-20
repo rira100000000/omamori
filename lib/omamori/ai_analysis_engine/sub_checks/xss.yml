@@ -1,0 +1,37 @@
+# Concrete patterns that are each enough to make XSS real on their own.
+# The classifier answers each one separately, alongside the overall XSS question.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+raw_output: >-
+  Does the code send data that may come from users to the page as HTML without escaping it? Answer yes when such
+  data reaches raw, html_safe, <%== %>, or safe_concat, or is interpolated into a string that is then marked
+  html_safe, without being escaped first. Answer no when every user value is escaped (h, ERB::Util.html_escape,
+  sanitize) or the HTML is built with tag helpers (content_tag, tag.*, link_to, safe_join) before being marked safe.
+js_context: >-
+  Does the code put data that may come from users into JavaScript (an inline <script> block, an event handler
+  attribute such as onclick, or a JavaScript string) without JavaScript-safe escaping? This includes raw output,
+  and JSON produced by JSON.generate or a JSON library other than Rails' to_json, because it does not escape
+  </script>. Answer no when the data goes through json_escape, j / escape_javascript, or Rails' to_json, which
+  escape the characters that could end the script.
+url_attribute: >-
+  Does the code put a URL that may come from users into href, src, action, or formaction without making sure it is
+  not a javascript: URL? Answer no when the scheme is checked to be http or https, the URL comes from a route helper
+  or a fixed path, or the content goes through sanitize, which removes javascript: URLs.
+html_response: >-
+  Does the code build HTML by interpolating data that may come from users into a string and send it to the browser
+  outside the escaping template engine (render html:, render inline:, or a Rack or Sinatra response body), without
+  escaping that data? Answer no when every interpolated value is escaped (h, ERB::Util.html_escape,
+  Rack::Utils.escape_html).
+sanitizer_config: >-
+  Does the code change how content that may come from users is sanitized or rendered so that dangerous HTML can now
+  get through? For example allowing script, iframe, or object tags or on* attributes in sanitize, or enabling raw
+  HTML in a Markdown renderer (Commonmarker unsafe: true, Redcarpet without filter_html). Answer no when the change
+  keeps raw HTML disabled and keeps the default sanitize allowlist.
+dom_sink: >-
+  Does front-end JavaScript insert data that may come from users or from the server into the page as HTML, through
+  innerHTML, outerHTML, insertAdjacentHTML, document.write, or jQuery .html()? Answer no when it only uses
+  textContent, createTextNode, or creates elements and sets their text.
+attribute_injection: >-
+  Does the code build an HTML attribute value by interpolating data that may come from users into a string, without
+  escaping the quotes, so that the value could end the attribute and add a new one such as onmouseover? Answer no
+  when the value is escaped with h or ERB::Util.html_escape (which escape quotes) or the attribute is set through a
+  tag helper.

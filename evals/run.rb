@@ -36,13 +36,18 @@ module OmamoriEvals
       @settings = Omamori::AISettings.new(PromptConfig.new(config), options.slice(:classifier, :classifier_model,
                                                                                   :reporter, :reporter_model))
       @llm_client = @settings.build_reporter_client
+      @question_log = {}
+      @reporter_calls = 0
+      @reporter_unanswered = 0
+      @reporter_calls_mutex = Mutex.new
+      @question_log_mutex = Mutex.new
     end
 
     def run
       cases = load_cases
       abort 'No cases found.' if cases.empty?
       cases.each { |c| c.diff = build_diff(c) }
-      puts "#{@settings.describe} / cases: #{cases.size} / runs: #{@options[:runs]}"
+      puts "#{setup} / cases: #{cases.size} / runs: #{@options[:runs]}"
 
       started = Time.now
       runs = Array.new(@options[:runs]) do |run_index|
@@ -61,6 +66,8 @@ module OmamoriEvals
     def load_cases
       Dir[File.join(CASES_DIR, '**', '*.yml')].sort.filter_map do |path|
         data = YAML.safe_load_file(path)
+        next if @options[:case] && !data.fetch('id').include?(@options[:case])
+
         expected = data.fetch('expected').transform_keys(&:to_sym)
         if @options[:risk]
           next unless expected.key?(@options[:risk])
@@ -108,10 +115,40 @@ module OmamoriEvals
     def evaluate_with_decision_model(eval_case)
       units = @diff_splitter.split_by_file(eval_case.diff)
       classified = scanner.classify_units(units, RISKS)
-      RISKS.to_h do |risk|
-        probabilities = classified.map { |_chunk, result| result[risk] }
-        [risk, probabilities.include?(nil) ? nil : probabilities.max]
+      record_questions(eval_case, classified)
+      probabilities = RISKS.to_h do |risk|
+        per_file = classified.map { |_chunk, result| result[risk] }
+        [risk, per_file.include?(nil) ? nil : per_file.max]
       end
+      @options[:pipeline] ? apply_reporter(eval_case, classified, probabilities) : probabilities
+    end
+
+    # Pipeline mode: for each labeled risk the classifier flagged, ask the reporter as `omamori scan` does.
+    # The final answer is 1.0 when the reporter reports something (or could not answer), 0.0 when it finds nothing.
+    def apply_reporter(eval_case, classified, probabilities)
+      eval_case.expected.each_key do |risk|
+        flagged = classified.select { |_chunk, result, _triggers| scanner.flagged?(result[risk]) }
+        next probabilities[risk] = 0.0 if flagged.empty?
+
+        reports = flagged.map { |chunk, result, triggers| scanner.report(chunk, risk, result[risk], triggers[risk]) }
+        reported = reports.any?(&:any?)
+        unanswered = reports.flatten.count { |r| r['unreported'] }
+        @reporter_calls_mutex.synchronize do
+          @reporter_calls += flagged.size
+          @reporter_unanswered += unanswered
+        end
+        probabilities[risk] = reported ? 1.0 : 0.0
+      end
+      probabilities
+    end
+
+    # Keeps every question's probability for the labeled risks (highest across files), to see which sub-checks fire
+    def record_questions(eval_case, classified)
+      answers = classified.map(&:last).reduce({}) do |merged, file_answers|
+        merged.merge(file_answers) { |_name, a, b| a && b ? [a, b].max : nil }
+      end
+      labeled = answers.select { |name, _| eval_case.expected.key?(Omamori::AIAnalysisEngine::PromptManager.risk_of(name)) }
+      @question_log_mutex.synchronize { (@question_log[eval_case.id] ||= []) << labeled }
     end
 
     # Baseline: the reporter checks all risks in one prompt, as `omamori scan --classifier none` does.
@@ -134,11 +171,20 @@ module OmamoriEvals
     end
 
     def scanner
-      Omamori::AIAnalysisEngine::ChecklistScanner.new(
+      @scanner ||= Omamori::AIAnalysisEngine::ChecklistScanner.new(
         decision_client: decision_client, llm_client: @llm_client, prompt_manager: @prompt_manager,
         diff_splitter: @diff_splitter, json_schema: Omamori::CoreRunner::JSON_SCHEMA, model: @settings.reporter_model,
-        concurrency: 1 # cases are already run in parallel
+        threshold: @options[:threshold],
+        concurrency: 1, # cases are already run in parallel
+        sub_checks: @options[:sub_checks]
       )
+    end
+
+    def setup
+      return @settings.describe unless @settings.classifier?
+
+      "#{@settings.describe}, sub-checks: #{@options[:sub_checks] ? 'on' : 'off'}" \
+        "#{@options[:pipeline] ? ", pipeline at threshold #{@options[:threshold]}" : ''}"
     end
 
     def decision_client
@@ -151,7 +197,10 @@ module OmamoriEvals
       threshold = @options[:threshold]
 
       {
-        setup: @settings.describe,
+        setup: setup,
+        classifier_input_tokens: decision_client&.input_tokens,
+        reporter_calls: @options[:pipeline] ? @reporter_calls : nil,
+        reporter_unanswered: @options[:pipeline] ? @reporter_unanswered : nil,
         runs: runs.size, cases: cases.size,
         elapsed_seconds: elapsed.round(1),
         errors: runs.sum { |run| run.values.sum { |probs| probs.values.count(&:nil?) } },
@@ -212,6 +261,13 @@ module OmamoriEvals
     def print_report(report)
       puts
       puts "== #{report[:setup]} (#{report[:cases]} cases x #{report[:runs]} runs, #{report[:elapsed_seconds]}s, errors: #{report[:errors]})"
+      if report[:reporter_calls]
+        puts "Reporter calls: #{report[:reporter_calls]} (unanswered, kept as flags: #{report[:reporter_unanswered]})"
+      end
+      if report[:classifier_input_tokens]
+        per_case = report[:classifier_input_tokens] / (report[:cases] * report[:runs])
+        puts "Classifier input tokens: #{report[:classifier_input_tokens]} (#{per_case} per case)"
+      end
       puts
       puts 'threshold  recall  specificity   TP   FN   FP   TN'
       report[:sweep].each do |s|
@@ -238,13 +294,13 @@ module OmamoriEvals
       name = @settings.classifier? ? @settings.classifier['provider'] : "llm-#{@settings.reporter['provider'] || 'auto'}"
       path = File.join(RESULTS_DIR, "#{name}-#{Time.now.strftime('%Y%m%d-%H%M%S')}.json")
       raw = cases.to_h { |c| [c.id, runs.map { |run| run[c.id] }] }
-      File.write(path, JSON.pretty_generate(report.merge(raw: raw)))
+      File.write(path, JSON.pretty_generate(report.merge(raw: raw, questions: @question_log)))
       puts "Saved: #{path}"
     end
   end
 end
 
-options = { classifier: 'typesafe', runs: 1, concurrency: 8,
+options = { classifier: 'typesafe', sub_checks: true, runs: 1, concurrency: 8,
             threshold: Omamori::AISettings::DEFAULT_THRESHOLD }
 OptionParser.new do |opts|
   opts.banner = 'Usage: ruby evals/run.rb [options]'
@@ -252,6 +308,10 @@ OptionParser.new do |opts|
     options[:classifier] = v
   end
   opts.on('--classifier-model MODEL', 'e.g. jev-1.13.0, gpt-6-luna') { |v| options[:classifier_model] = v }
+  opts.on('--pipeline', 'Also run the reporter on flagged checks and score its final answer (uses --threshold)') do
+    options[:pipeline] = true
+  end
+  opts.on('--[no-]sub-checks', 'Also ask each risk as concrete sub-checks (default on)') { |v| options[:sub_checks] = v }
   opts.on('--base-url URL', 'Server for the classifier provider (e.g. a local SystemOne server)') { |v| options[:base_url] = v }
   opts.on('--reporter PROVIDER', 'Reporter for --classifier none: a RubyLLM provider, claude_code, or codex') do |v|
     options[:reporter] = v
@@ -259,6 +319,7 @@ OptionParser.new do |opts|
   opts.on('--reporter-model MODEL', 'e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet') { |v| options[:reporter_model] = v }
   opts.on('--runs N', Integer, 'Run every case N times (default 1)') { |v| options[:runs] = v }
   opts.on('--risk RISK', 'Only cases labeled with this risk') { |v| options[:risk] = v.to_sym }
+  opts.on('--case TEXT', 'Only cases whose id contains TEXT') { |v| options[:case] = v }
   opts.on('--threshold T', Float, 'Threshold for the per-risk table (default 0.3)') { |v| options[:threshold] = v }
   opts.on('--concurrency N', Integer, 'Cases run in parallel (default 8)') { |v| options[:concurrency] = v }
 end.parse!

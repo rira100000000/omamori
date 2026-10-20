@@ -21,7 +21,8 @@ RSpec.describe Omamori::AIAnalysisEngine::ChecklistScanner do
 
   before do
     allow($stdout).to receive(:puts)
-    allow(prompt_manager).to receive(:build_question) { |risk| "question #{risk}" }
+    allow(prompt_manager).to receive(:build_questions) { |risk, **| { risk => "question #{risk}" } }
+    allow(prompt_manager).to receive(:sub_check_text).and_return(nil)
     allow(prompt_manager).to receive(:build_prompt) { |content, risks, *| "prompt #{content} #{risks.join}" }
     stub_const("#{described_class}::SINGLE_RISK_INSTRUCTION", '')
   end
@@ -62,6 +63,51 @@ RSpec.describe Omamori::AIAnalysisEngine::ChecklistScanner do
 
     risks = scanner.scan([['app/a.rb', 'diff a']], %i[xss])['security_risks']
     expect(risks).to contain_exactly(include('type' => 'xss', 'location' => 'app/a.rb', 'severity' => 'Info'))
+  end
+
+  context 'with sub-checks' do
+    let(:real_prompt_manager) do
+      Omamori::AIAnalysisEngine::PromptManager.new(Struct.new(:v) { def get(_k, d = nil) = d }.new({}))
+    end
+    let(:scanner) do
+      described_class.new(decision_client: decision_client, llm_client: llm_client,
+                          prompt_manager: real_prompt_manager, diff_splitter: diff_splitter,
+                          json_schema: json_schema, model: 'gemini-test', threshold: 0.5)
+    end
+
+    it 'asks the overall question and every sub-check, and uses the highest probability for the risk' do
+      expect(decision_client).to receive(:classify) do |_state, questions|
+        expect(questions.keys).to include(:xss, :xss__raw_output, :xss__url_attribute)
+        questions.keys.to_h { |name| [name, name == :xss__url_attribute ? 0.8 : 0.1] }
+      end
+
+      classified = scanner.classify_units([['app/a.rb', 'diff a']], %i[xss])
+
+      _chunk, probabilities, triggers = classified.first
+      expect(probabilities).to eq(xss: 0.8)
+      expect(triggers[:xss]).to eq([:xss__url_attribute])
+    end
+
+    it 'tells the reporter which sub-checks matched' do
+      allow(decision_client).to receive(:classify) do |_state, questions|
+        questions.keys.to_h { |name| [name, name == :xss__url_attribute ? 0.8 : 0.1] }
+      end
+      expect(llm_client).to receive(:analyze) do |prompt, *|
+        expect(prompt).to include('A classifier flagged these patterns', 'javascript: URL')
+        { 'security_risks' => [] }
+      end
+
+      scanner.scan([['app/a.rb', 'diff a']], %i[xss])
+    end
+
+    it 'escalates the risk when any of its questions has no answer' do
+      allow(decision_client).to receive(:classify) do |_state, questions|
+        questions.keys.to_h { |name| [name, name == :xss__dom_sink ? nil : 0.0] }
+      end
+
+      _chunk, probabilities, = scanner.classify_units([['app/a.rb', 'diff a']], %i[xss]).first
+      expect(probabilities).to eq(xss: nil)
+    end
   end
 
   it 'splits a unit larger than the chunk size' do

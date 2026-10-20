@@ -12,6 +12,7 @@ module Omamori
   #   classifier:            # omit to let the reporter check everything itself
   #     provider: typesafe   # any RubyLLM provider that can judge (typesafe, openai, ollama)
   #     model: jev-1.13.0
+  #     sub_checks: true     # also ask each risk's concrete patterns (sub_checks/*.yml)
   #   reporter:
   #     provider: anthropic  # any RubyLLM provider, or claude_code / codex (subscription CLIs)
   #     model: claude-sonnet-5-5
@@ -24,6 +25,8 @@ module Omamori
     DEFAULT_REPORTER = { 'provider' => 'gemini', 'model' => AIAnalysisEngine::LLMClient::DEFAULT_MODEL }.freeze
     # Classifier providers whose model can be omitted
     DEFAULT_CLASSIFIER_MODELS = { 'typesafe' => 'jev-1.13.0', 'openai' => 'gpt-6-luna' }.freeze
+    # Questions per request accepted by each classifier provider (no entry: no limit)
+    MAX_QUESTIONS = { 'openai' => 200 }.freeze
     # RubyLLM protocols that answer judgment questions
     JUDGE_PROTOCOLS = %i[system_one decisions].freeze
     DEFAULT_THRESHOLD = 0.3
@@ -60,6 +63,11 @@ module Omamori
       @classifier.fetch('threshold', DEFAULT_THRESHOLD)
     end
 
+    # Whether each risk is also asked as concrete sub-checks (on unless `classifier.sub_checks: false`)
+    def sub_checks?
+      @classifier.fetch('sub_checks', true)
+    end
+
     def classifier_concurrency
       @classifier.fetch('concurrency', DEFAULT_CLASSIFIER_CONCURRENCY)
     end
@@ -75,8 +83,11 @@ module Omamori
     def build_classifier_client
       return nil unless classifier?
 
-      AIAnalysisEngine::JudgeClient.new(ruby_llm_context, provider: @classifier['provider'].to_sym,
-                                                          model: @classifier['model'])
+      AIAnalysisEngine::JudgeClient.new(
+        ruby_llm_context,
+        provider: @classifier['provider'].to_sym, model: @classifier['model'],
+        max_questions: @classifier.fetch('max_questions', MAX_QUESTIONS[@classifier['provider']])
+      )
     end
 
     def build_reporter_client
