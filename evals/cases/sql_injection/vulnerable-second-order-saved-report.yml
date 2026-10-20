@@ -1,0 +1,67 @@
+id: sql_injection-vulnerable-second-order-saved-report
+description: Users save sales report definitions with a free-text region and SKU prefix; a background job later reads the saved definition and interpolates those stored values into the report query
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/saved_reports_controller.rb
+    after: |
+      class SavedReportsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @saved_reports = current_user.saved_reports.order(created_at: :desc)
+        end
+
+        def create
+          @saved_report = current_user.saved_reports.build(saved_report_params)
+          if @saved_report.save
+            SalesReportJob.perform_later(@saved_report.id)
+            redirect_to saved_reports_path, notice: "Report scheduled"
+          else
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def saved_report_params
+          params.expect(saved_report: [:name, :region, :sku_prefix])
+        end
+      end
+  - path: app/models/saved_report.rb
+    after: |
+      class SavedReport < ApplicationRecord
+        belongs_to :user
+        has_one_attached :result_csv
+
+        validates :name, presence: true, length: { maximum: 100 }
+        validates :region, presence: true, length: { maximum: 100 }
+        validates :sku_prefix, length: { maximum: 50 }
+      end
+  - path: app/jobs/sales_report_job.rb
+    after: |
+      require "csv"
+
+      class SalesReportJob < ApplicationJob
+        queue_as :reports
+
+        def perform(saved_report_id)
+          report = SavedReport.find(saved_report_id)
+          account_id = report.user.account_id
+
+          scope = OrderLine.joins(:order)
+                           .where(orders: { account_id: account_id })
+                           .where("orders.region = '#{report.region}'")
+          scope = scope.where("order_lines.sku LIKE '#{report.sku_prefix}%'") if report.sku_prefix.present?
+
+          rows = scope.group("order_lines.sku")
+                      .pluck(Arel.sql("order_lines.sku"), Arel.sql("SUM(order_lines.quantity)"))
+
+          csv = CSV.generate do |out|
+            out << %w[sku quantity]
+            rows.each { |sku, quantity| out << [sku, quantity] }
+          end
+
+          report.result_csv.attach(io: StringIO.new(csv), filename: "#{report.name.parameterize}.csv")
+        end
+      end

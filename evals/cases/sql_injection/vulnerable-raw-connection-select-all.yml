@@ -1,0 +1,36 @@
+id: sql_injection-vulnerable-raw-connection-select-all
+description: Analytics endpoint runs a daily event count through connection.select_all, interpolating the event name and day count from params
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/analytics_controller.rb
+    before: |
+      class AnalyticsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @event_names = current_account.events.distinct.order(:name).pluck(:name)
+        end
+      end
+    after: |
+      class AnalyticsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @event_names = current_account.events.distinct.order(:name).pluck(:name)
+        end
+
+        def daily
+          rows = ActiveRecord::Base.connection.select_all(<<~SQL)
+            SELECT date_trunc('day', occurred_at) AS day, COUNT(*) AS total
+            FROM events
+            WHERE account_id = #{current_account.id}
+              AND name = '#{params[:event]}'
+              AND occurred_at >= NOW() - INTERVAL '#{params.fetch(:days, 30)} days'
+            GROUP BY 1
+            ORDER BY 1
+          SQL
+
+          render json: rows.map { |r| { day: r["day"], total: r["total"].to_i } }
+        end
+      end

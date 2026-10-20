@@ -1,0 +1,61 @@
+id: mass_assignment-vulnerable-client-chosen-permit-list
+description: Inline profile editing endpoint permits whichever field names the request lists in params[:fields]
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/profiles_controller.rb
+    before: |
+      class ProfilesController < ApplicationController
+        before_action :authenticate_user!
+
+        def show
+          @user = current_user
+        end
+
+        def update
+          if current_user.update(profile_params)
+            redirect_to profile_path, notice: "Profile saved"
+          else
+            @user = current_user
+            render :show, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def profile_params
+          params.require(:user).permit(:display_name, :bio, :location, :website)
+        end
+      end
+    after: |
+      class ProfilesController < ApplicationController
+        before_action :authenticate_user!
+
+        def show
+          @user = current_user
+        end
+
+        def update
+          if current_user.update(profile_params)
+            redirect_to profile_path, notice: "Profile saved"
+          else
+            @user = current_user
+            render :show, status: :unprocessable_entity
+          end
+        end
+
+        def inline_update
+          fields = Array(params[:fields]).map(&:to_sym)
+          if current_user.update(params.require(:user).permit(*fields))
+            render json: current_user.slice(*fields)
+          else
+            render json: { errors: current_user.errors }, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def profile_params
+          params.require(:user).permit(:display_name, :bio, :location, :website)
+        end
+      end

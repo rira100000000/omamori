@@ -60,7 +60,7 @@ module Omamori
 
     # Default risks to check, can be overridden by config
     DEFAULT_RISKS_TO_CHECK = [
-      :xss, :csrf, :idor, :open_redirect, :ssrf, :session_fixation
+      :xss, :sql_injection, :csrf, :idor, :mass_assignment, :open_redirect, :ssrf, :session_fixation
       # TODO: Add other risks from requirements based on PromptManager::RISK_PROMPTS.keys
     ].freeze
 

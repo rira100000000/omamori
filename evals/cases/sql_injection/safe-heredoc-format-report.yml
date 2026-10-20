@@ -1,0 +1,57 @@
+id: sql_injection-safe-heredoc-format-report
+description: Revenue report query object keeps a heredoc SQL template with named placeholders, binds the from and to dates and the channel from params through sanitize_sql_array, and runs it with select_all
+expected:
+  sql_injection: false
+files:
+  - path: app/queries/revenue_by_day_query.rb
+    after: |
+      class RevenueByDayQuery
+        SQL = <<~SQL
+          SELECT DATE_TRUNC('day', orders.paid_at) AS day,
+                 COUNT(*) AS orders_count,
+                 SUM(orders.total_cents) AS revenue_cents
+          FROM orders
+          WHERE orders.account_id = :account_id
+            AND orders.state = 'paid'
+            AND orders.paid_at >= :from
+            AND orders.paid_at < :to
+            AND orders.channel = :channel
+          GROUP BY 1
+          ORDER BY 1
+        SQL
+
+        def initialize(account:, from:, to:, channel: "web")
+          @account = account
+          @from = from
+          @to = to
+          @channel = channel
+        end
+
+        def call
+          sql = ActiveRecord::Base.sanitize_sql_array(
+            [SQL, { account_id: @account.id, from: @from, to: @to, channel: @channel }]
+          )
+          ActiveRecord::Base.connection.select_all(sql).to_a
+        end
+      end
+  - path: app/controllers/reports/revenue_controller.rb
+    after: |
+      module Reports
+        class RevenueController < ApplicationController
+          before_action :require_account_admin!
+
+          def show
+            @rows = RevenueByDayQuery.new(
+              account: current_account,
+              from: params.fetch(:from, 30.days.ago.to_date.iso8601),
+              to: params.fetch(:to, Date.tomorrow.iso8601),
+              channel: params.fetch(:channel, "web")
+            ).call
+
+            respond_to do |format|
+              format.html
+              format.json { render json: @rows }
+            end
+          end
+        end
+      end

@@ -1,0 +1,33 @@
+id: sql_injection-safe-like-and-in-search
+description: Product search builds a LIKE clause with sanitize_sql_like and a placeholder, and filters brands with a hash condition
+expected:
+  sql_injection: false
+files:
+  - path: app/models/product_search.rb
+    after: |
+      class ProductSearch
+        attr_reader :query, :brand_ids
+
+        def initialize(query:, brand_ids: [])
+          @query = query.to_s.strip
+          @brand_ids = Array(brand_ids).reject(&:blank?)
+        end
+
+        def results
+          scope = Product.available.includes(:brand)
+          if query.present?
+            scope = scope.where("products.name ILIKE ?", "%#{Product.sanitize_sql_like(query)}%")
+          end
+          scope = scope.where(brand_id: brand_ids) if brand_ids.any?
+          scope.order(:name)
+        end
+      end
+  - path: app/controllers/search_controller.rb
+    after: |
+      class SearchController < ApplicationController
+        def index
+          @search = ProductSearch.new(query: params[:q], brand_ids: params[:brand_ids])
+          @products = @search.results.page(params[:page])
+          @brands = Brand.order(:name)
+        end
+      end

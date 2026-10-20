@@ -36,6 +36,8 @@ expected:
   environment_differences: false
   audit_log_missing: false
   time_based_side_channel: false
+  sql_injection: false
+  mass_assignment: false
 files:
   - path: app/views/projects/index.html.erb
     before: |

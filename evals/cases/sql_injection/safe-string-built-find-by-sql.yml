@@ -1,0 +1,54 @@
+id: sql_injection-safe-string-built-find-by-sql
+description: Catalog category page loads products with find_by_sql, passing the category param as a bound named parameter
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/catalog_controller.rb
+    before: |
+      class CatalogController < ApplicationController
+        def index
+          @categories = Category.order(:position)
+          @featured = Product.available.where(featured: true).limit(8)
+        end
+
+        def show
+          @product = Product.available.find_by!(slug: params[:slug])
+        end
+      end
+    after: |
+      class CatalogController < ApplicationController
+        def index
+          @categories = Category.order(:position)
+          @featured = Product.available.where(featured: true).limit(8)
+        end
+
+        def category
+          @category_name = params[:category]
+          @products = Product.find_by_sql([<<~SQL, { slug: params[:category] }])
+            SELECT products.*, COALESCE(AVG(reviews.rating), 0) AS avg_rating
+            FROM products
+            INNER JOIN categories ON categories.id = products.category_id
+            LEFT JOIN reviews ON reviews.product_id = products.id
+            WHERE products.available = TRUE
+              AND categories.slug = :slug
+            GROUP BY products.id
+            ORDER BY avg_rating DESC
+          SQL
+        end
+
+        def show
+          @product = Product.available.find_by!(slug: params[:slug])
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "catalog#index"
+        get "products/:slug", to: "catalog#show", as: :product
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "catalog#index"
+        get "categories/:category", to: "catalog#category", as: :category
+        get "products/:slug", to: "catalog#show", as: :product
+      end

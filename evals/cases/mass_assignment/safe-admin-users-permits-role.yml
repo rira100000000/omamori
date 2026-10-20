@@ -1,0 +1,63 @@
+id: mass_assignment-safe-admin-users-permits-role
+description: New admin-only users controller, guarded by require_admin, lets administrators change a user's role and plan
+expected:
+  mass_assignment: false
+files:
+  - path: app/controllers/admin/base_controller.rb
+    after: |
+      module Admin
+        class BaseController < ApplicationController
+          before_action :require_admin
+
+          private
+
+          def require_admin
+            head :forbidden unless Current.user&.admin?
+          end
+        end
+      end
+  - path: app/controllers/admin/users_controller.rb
+    after: |
+      module Admin
+        class UsersController < BaseController
+          def index
+            @users = User.order(created_at: :desc).page(params[:page])
+          end
+
+          def edit
+            @user = User.find(params[:id])
+          end
+
+          def update
+            @user = User.find(params[:id])
+            if @user.update(user_params)
+              AuditLog.record!(actor: Current.user, action: "user.updated", target: @user, changes: @user.saved_changes)
+              redirect_to admin_users_path, notice: "#{@user.email_address} updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def user_params
+            params.expect(user: [:name, :role, :plan])
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resource :session
+        resource :registration, only: [:new, :create]
+        root "dashboards#show"
+      end
+    after: |
+      Rails.application.routes.draw do
+        resource :session
+        resource :registration, only: [:new, :create]
+        namespace :admin do
+          resources :users, only: [:index, :edit, :update]
+        end
+        root "dashboards#show"
+      end

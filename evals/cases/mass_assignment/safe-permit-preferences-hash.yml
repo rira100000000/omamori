@@ -1,0 +1,84 @@
+id: mass_assignment-safe-permit-preferences-hash
+description: Account settings update adds a free-form preferences hash, stored in a jsonb column of UI preferences, next to the explicit permit list
+expected:
+  mass_assignment: false
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+
+        enum :role, { member: 0, admin: 1 }
+
+        validates :email, presence: true, uniqueness: true
+        validates :time_zone, inclusion: { in: ActiveSupport::TimeZone.all.map(&:name) }
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+
+        enum :role, { member: 0, admin: 1 }
+
+        store_accessor :preferences, :theme, :density, :digest_frequency, :sidebar_collapsed
+
+        validates :email, presence: true, uniqueness: true
+        validates :time_zone, inclusion: { in: ActiveSupport::TimeZone.all.map(&:name) }
+      end
+  - path: db/migrate/20261020090000_add_preferences_to_users.rb
+    after: |
+      class AddPreferencesToUsers < ActiveRecord::Migration[8.0]
+        def change
+          add_column :users, :preferences, :jsonb, null: false, default: {}
+        end
+      end
+  - path: app/controllers/settings/accounts_controller.rb
+    before: |
+      module Settings
+        class AccountsController < ApplicationController
+          before_action :authenticate_user!
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(account_params)
+              redirect_to edit_settings_account_path, notice: "Settings saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def account_params
+            params.require(:user).permit(:name, :email, :time_zone, :locale)
+          end
+        end
+      end
+    after: |
+      module Settings
+        class AccountsController < ApplicationController
+          before_action :authenticate_user!
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(account_params)
+              redirect_to edit_settings_account_path, notice: "Settings saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def account_params
+            params.require(:user).permit(:name, :email, :time_zone, :locale, preferences: {})
+          end
+        end
+      end

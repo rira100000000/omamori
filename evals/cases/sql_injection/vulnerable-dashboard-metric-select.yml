@@ -1,0 +1,55 @@
+id: sql_injection-vulnerable-dashboard-metric-select
+description: Dashboard chart endpoint lets the client choose the metric and grouping and places both params into select and group SQL strings
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/dashboard/charts_controller.rb
+    before: |
+      module Dashboard
+        class ChartsController < ApplicationController
+          before_action :authenticate_user!
+
+          def show
+            orders = current_account.orders
+                                    .where(paid_at: range)
+                                    .group("DATE(orders.paid_at)")
+                                    .order("DATE(orders.paid_at)")
+                                    .sum(:total_cents)
+
+            render json: orders.map { |day, value| { label: day, value: value } }
+          end
+
+          private
+
+          def range
+            days = params.fetch(:days, 30).to_i.clamp(1, 365)
+            days.days.ago.beginning_of_day..Time.current
+          end
+        end
+      end
+    after: |
+      module Dashboard
+        class ChartsController < ApplicationController
+          before_action :authenticate_user!
+
+          def show
+            metric = params.fetch(:metric, "SUM(orders.total_cents)")
+            dimension = params.fetch(:dimension, "DATE(orders.paid_at)")
+
+            rows = current_account.orders
+                                  .where(paid_at: range)
+                                  .group(Arel.sql(dimension))
+                                  .order(Arel.sql(dimension))
+                                  .pluck(Arel.sql(dimension), Arel.sql(metric))
+
+            render json: rows.map { |label, value| { label: label, value: value } }
+          end
+
+          private
+
+          def range
+            days = params.fetch(:days, 30).to_i.clamp(1, 365)
+            days.days.ago.beginning_of_day..Time.current
+          end
+        end
+      end

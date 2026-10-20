@@ -1,0 +1,41 @@
+id: sql_injection-safe-raw-sql-method-arel-order
+description: Product listing adds user-chosen sorting with Arel.sql, picking the column from a fixed list and the direction from two literals
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/products_controller.rb
+    before: |
+      class ProductsController < ApplicationController
+        def index
+          @products = Product.available
+                             .includes(:brand)
+                             .order(created_at: :desc)
+                             .page(params[:page])
+        end
+
+        def show
+          @product = Product.available.find(params[:id])
+        end
+      end
+    after: |
+      class ProductsController < ApplicationController
+        SORT_COLUMNS = {
+          "newest" => "products.created_at",
+          "price" => "products.price_cents",
+          "rating" => "products.average_rating"
+        }.freeze
+
+        def index
+          column = SORT_COLUMNS.fetch(params[:sort], SORT_COLUMNS["newest"])
+          direction = params[:direction] == "asc" ? "ASC" : "DESC"
+
+          @products = Product.available
+                             .includes(:brand)
+                             .order(Arel.sql("#{column} #{direction} NULLS LAST"))
+                             .page(params[:page])
+        end
+
+        def show
+          @product = Product.available.find(params[:id])
+        end
+      end

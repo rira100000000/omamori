@@ -1,0 +1,20 @@
+# Concrete patterns that are each enough to make SQL injection real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+string_built_query: >-
+  Does the code interpolate or concatenate data that may come from users into a SQL fragment passed to an
+  ActiveRecord method that accepts raw SQL (where, having, joins, from, lock, find_by_sql)? Answer no when the value
+  is passed through a ? or named placeholder, a hash condition, sanitize_sql_array, connection.quote, or is cast to
+  an integer first.
+raw_connection: >-
+  Does the code run SQL through the database connection directly (connection.execute, select_all, select_value,
+  select_rows, exec_query) with data that may come from users interpolated into the SQL string? Answer no when the
+  values are bound as parameters, quoted with connection.quote, or cast to integers.
+raw_sql_method: >-
+  Does data that may come from users reach a method that takes raw SQL without checking it: Arel.sql(...),
+  select("..."), group("..."), or order / reorder / pluck with Arel.sql? Answer no when the value is mapped through
+  a fixed allowlist of column names or directions, or passed as a symbol or hash such as order(created_at: :desc).
+  Note that plain order(params[:sort]) without Arel.sql is rejected by Rails 6+ for anything but a column name.
+like_and_in_clauses: >-
+  Does the code build a LIKE pattern or an IN (...) list by putting data that may come from users directly into
+  the SQL string, for example where("name LIKE '%#{q}%'") or where("id IN (#{ids.join(',')})")? Answer no when it
+  uses where("name LIKE ?", "%#{sanitize_sql_like(q)}%"), a placeholder, or a hash condition such as where(id: ids).

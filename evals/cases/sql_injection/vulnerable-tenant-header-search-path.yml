@@ -1,0 +1,60 @@
+id: sql_injection-vulnerable-tenant-header-search-path
+description: API base controller switches the PostgreSQL schema per request using the X-Tenant header, interpolating it into a SET search_path statement
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/api/base_controller.rb
+    before: |
+      module Api
+        class BaseController < ActionController::API
+          include ActionController::HttpAuthentication::Token::ControllerMethods
+
+          before_action :authenticate_client!
+
+          rescue_from ActiveRecord::RecordNotFound do
+            render json: { error: "not_found" }, status: :not_found
+          end
+
+          private
+
+          def authenticate_client!
+            authenticate_or_request_with_http_token do |token, _options|
+              @current_client = ApiClient.active.find_by(token_digest: ApiClient.digest(token))
+            end
+          end
+
+          attr_reader :current_client
+        end
+      end
+    after: |
+      module Api
+        class BaseController < ActionController::API
+          include ActionController::HttpAuthentication::Token::ControllerMethods
+
+          before_action :authenticate_client!
+          around_action :switch_tenant
+
+          rescue_from ActiveRecord::RecordNotFound do
+            render json: { error: "not_found" }, status: :not_found
+          end
+
+          private
+
+          def authenticate_client!
+            authenticate_or_request_with_http_token do |token, _options|
+              @current_client = ApiClient.active.find_by(token_digest: ApiClient.digest(token))
+            end
+          end
+
+          def switch_tenant
+            tenant = request.headers["X-Tenant"].presence || "public"
+            connection = ActiveRecord::Base.connection
+            connection.execute("SET search_path TO #{tenant}, public")
+            yield
+          ensure
+            ActiveRecord::Base.connection.execute("SET search_path TO public")
+          end
+
+          attr_reader :current_client
+        end
+      end

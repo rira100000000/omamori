@@ -1,0 +1,39 @@
+id: sql_injection-safe-order-interpolated-params
+description: Member directory lets the client sort by any column and direction by interpolating the sort and direction params into a plain order string, which Rails 7 checks against a column-name-with-direction pattern
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/members_controller.rb
+    before: |
+      class MembersController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @members = current_organization.memberships
+                                         .includes(:user)
+                                         .order(created_at: :desc)
+                                         .page(params[:page])
+        end
+
+        def show
+          @member = current_organization.memberships.find(params[:id])
+        end
+      end
+    after: |
+      class MembersController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          sort = params.fetch(:sort, "created_at")
+          direction = params.fetch(:direction, "desc")
+
+          @members = current_organization.memberships
+                                         .includes(:user)
+                                         .order("#{sort} #{direction}")
+                                         .page(params[:page])
+        end
+
+        def show
+          @member = current_organization.memberships.find(params[:id])
+        end
+      end

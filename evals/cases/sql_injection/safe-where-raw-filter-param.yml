@@ -1,0 +1,73 @@
+id: sql_injection-safe-where-raw-filter-param
+description: Posts API accepts a filter param and passes it to where as a hash condition after permitting the status and category_id keys
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/api/v1/posts_controller.rb
+    before: |
+      module Api
+        module V1
+          class PostsController < BaseController
+            def index
+              posts = Post.published
+                          .includes(:author, :category)
+                          .order(published_at: :desc)
+                          .limit(per_page)
+                          .offset(offset)
+
+              render json: PostSerializer.new(posts).serializable_hash
+            end
+
+            def show
+              post = Post.published.find_by!(slug: params[:id])
+              render json: PostSerializer.new(post).serializable_hash
+            end
+
+            private
+
+            def per_page
+              params.fetch(:per_page, 20).to_i.clamp(1, 100)
+            end
+
+            def offset
+              (params.fetch(:page, 1).to_i - 1).clamp(0, 10_000) * per_page
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class PostsController < BaseController
+            def index
+              posts = Post.published
+                          .includes(:author, :category)
+                          .order(published_at: :desc)
+                          .limit(per_page)
+                          .offset(offset)
+              posts = posts.where(filter_params.to_h) if params[:filter].present?
+
+              render json: PostSerializer.new(posts).serializable_hash
+            end
+
+            def show
+              post = Post.published.find_by!(slug: params[:id])
+              render json: PostSerializer.new(post).serializable_hash
+            end
+
+            private
+
+            def filter_params
+              params.require(:filter).permit(:status, :category_id)
+            end
+
+            def per_page
+              params.fetch(:per_page, 20).to_i.clamp(1, 100)
+            end
+
+            def offset
+              (params.fetch(:page, 1).to_i - 1).clamp(0, 10_000) * per_page
+            end
+          end
+        end
+      end

@@ -1,0 +1,79 @@
+id: sql_injection-safe-indirect-scope-argument
+description: Ticket index passes the assignee and date filters from params to a new model class method, which binds its arguments with placeholders
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/tickets_controller.rb
+    before: |
+      class TicketsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @tickets = current_account.tickets
+                                    .open
+                                    .includes(:assignee, :labels)
+                                    .order(updated_at: :desc)
+                                    .page(params[:page])
+        end
+
+        def show
+          @ticket = current_account.tickets.find(params[:id])
+        end
+      end
+    after: |
+      class TicketsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @tickets = current_account.tickets
+                                    .open
+                                    .filtered(assignee: params[:assignee], since: params[:since])
+                                    .includes(:assignee, :labels)
+                                    .order(updated_at: :desc)
+                                    .page(params[:page])
+        end
+
+        def show
+          @ticket = current_account.tickets.find(params[:id])
+        end
+      end
+  - path: app/models/ticket.rb
+    before: |
+      class Ticket < ApplicationRecord
+        belongs_to :account
+        belongs_to :assignee, class_name: "User", optional: true
+        has_many :comments, dependent: :destroy
+        has_and_belongs_to_many :labels
+
+        enum :state, { open: 0, pending: 1, closed: 2 }
+
+        validates :title, presence: true, length: { maximum: 200 }
+
+        def overdue?
+          due_on.present? && due_on < Date.current
+        end
+      end
+    after: |
+      class Ticket < ApplicationRecord
+        belongs_to :account
+        belongs_to :assignee, class_name: "User", optional: true
+        has_many :comments, dependent: :destroy
+        has_and_belongs_to_many :labels
+
+        enum :state, { open: 0, pending: 1, closed: 2 }
+
+        validates :title, presence: true, length: { maximum: 200 }
+
+        def self.filtered(assignee: nil, since: nil)
+          scope = all
+          if assignee.present?
+            scope = scope.joins(:assignee).where("users.username = ?", assignee)
+          end
+          scope = scope.where("tickets.created_at >= ?", since) if since.present?
+          scope
+        end
+
+        def overdue?
+          due_on.present? && due_on < Date.current
+        end
+      end

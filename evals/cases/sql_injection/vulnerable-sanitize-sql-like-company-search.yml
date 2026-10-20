@@ -1,0 +1,56 @@
+id: sql_injection-vulnerable-sanitize-sql-like-company-search
+description: Company directory search escapes the query with sanitize_sql_like and interpolates the result inside a quoted LIKE pattern
+expected:
+  sql_injection: true
+files:
+  - path: app/models/company.rb
+    before: |
+      class Company < ApplicationRecord
+        belongs_to :workspace
+        has_many :contacts, dependent: :destroy
+        has_many :deals, dependent: :nullify
+
+        validates :name, presence: true
+        validates :domain, uniqueness: { scope: :workspace_id }, allow_blank: true
+
+        scope :active, -> { where(archived_at: nil) }
+
+        def display_domain
+          domain.presence || "-"
+        end
+      end
+    after: |
+      class Company < ApplicationRecord
+        belongs_to :workspace
+        has_many :contacts, dependent: :destroy
+        has_many :deals, dependent: :nullify
+
+        validates :name, presence: true
+        validates :domain, uniqueness: { scope: :workspace_id }, allow_blank: true
+
+        scope :active, -> { where(archived_at: nil) }
+
+        def self.matching(query)
+          term = sanitize_sql_like(query.to_s.strip.downcase)
+          where("LOWER(companies.name) LIKE '%#{term}%' OR LOWER(companies.domain) LIKE '#{term}%'")
+        end
+
+        def display_domain
+          domain.presence || "-"
+        end
+      end
+  - path: app/controllers/companies_controller.rb
+    before: |
+      class CompaniesController < ApplicationController
+        def index
+          @companies = current_workspace.companies.active.order(:name).page(params[:page])
+        end
+      end
+    after: |
+      class CompaniesController < ApplicationController
+        def index
+          @companies = current_workspace.companies.active.order(:name)
+          @companies = @companies.matching(params[:q]) if params[:q].present?
+          @companies = @companies.page(params[:page])
+        end
+      end

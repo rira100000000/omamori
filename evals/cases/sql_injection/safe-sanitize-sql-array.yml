@@ -1,0 +1,53 @@
+id: sql_injection-safe-sanitize-sql-array
+description: Article tag filter scope passes the slug to sanitize_sql as a bound value in an array condition
+expected:
+  sql_injection: false
+files:
+  - path: app/models/article.rb
+    before: |
+      class Article < ApplicationRecord
+        belongs_to :author, class_name: "User"
+        has_many :taggings, dependent: :destroy
+        has_many :tags, through: :taggings
+
+        scope :published, -> { where.not(published_at: nil).where(published_at: ..Time.current) }
+        scope :recent, -> { order(published_at: :desc) }
+
+        validates :title, :body, presence: true
+      end
+    after: |
+      class Article < ApplicationRecord
+        belongs_to :author, class_name: "User"
+        has_many :taggings, dependent: :destroy
+        has_many :tags, through: :taggings
+
+        scope :published, -> { where.not(published_at: nil).where(published_at: ..Time.current) }
+        scope :recent, -> { order(published_at: :desc) }
+        scope :tagged, ->(slug) {
+          joins(:tags).where(sanitize_sql(["tags.slug = ?", slug]))
+        }
+
+        validates :title, :body, presence: true
+      end
+  - path: app/controllers/articles_controller.rb
+    before: |
+      class ArticlesController < ApplicationController
+        def index
+          @articles = Article.published.recent.page(params[:page])
+        end
+
+        def show
+          @article = Article.published.find(params[:id])
+        end
+      end
+    after: |
+      class ArticlesController < ApplicationController
+        def index
+          @articles = Article.published.recent.page(params[:page])
+          @articles = @articles.tagged(params[:tag]) if params[:tag].present?
+        end
+
+        def show
+          @article = Article.published.find(params[:id])
+        end
+      end
