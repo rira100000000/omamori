@@ -65,7 +65,7 @@ module OmamoriEvals
     private
 
     def load_cases
-      Dir[File.join(CASES_DIR, '**', '*.yml')].sort.filter_map do |path|
+      Dir[File.join(@options[:cases_dir] || CASES_DIR, '**', '*.yml')].sort.filter_map do |path|
         data = YAML.safe_load_file(path)
         next if @options[:case] && !data.fetch('id').include?(@options[:case])
 
@@ -325,6 +325,9 @@ OptionParser.new do |opts|
   opts.on('--runs N', Integer, 'Run every case N times (default 1)') { |v| options[:runs] = v }
   opts.on('--risk RISK', 'Only cases labeled with this risk') { |v| options[:risk] = v.to_sym }
   opts.on('--case TEXT', 'Only cases whose id contains TEXT') { |v| options[:case] = v }
+  opts.on('--holdout', 'Use the held-out cases in evals/holdout/ (never used for tuning)') do
+    options[:cases_dir] = File.expand_path('holdout', __dir__)
+  end
   opts.on('--threshold T', Float, 'Threshold for the per-risk table (default 0.3)') { |v| options[:threshold] = v }
   opts.on('--concurrency N', Integer, 'Cases run in parallel (default 8)') { |v| options[:concurrency] = v }
 end.parse!

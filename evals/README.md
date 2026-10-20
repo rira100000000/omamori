@@ -17,6 +17,12 @@ bundle exec ruby evals/run.rb --case safe-url-attribute --pipeline      # one ca
 
 By default only the classifier is scored: a case's answer is the classifier's probability, and the table shows recall and specificity at each threshold. With `--pipeline`, every labeled check the classifier flags at `--threshold` is also sent to the reporter, as `omamori scan` does, and the case's answer becomes the reporter's verdict. This is the accuracy a user actually sees. When the reporter cannot answer (for example Gemini refusing the content), the check stays flagged; those are counted separately as "unanswered".
 
+`evals/holdout/` is a separate validation set, written without looking at `evals/cases/` or the sub-checks. Tune questions and sub-checks on `evals/cases/` only, and run `--holdout` to check that the improvement carries over to cases the tuning never saw. Do not edit sub-checks to fix holdout mistakes; add those shapes to `evals/cases/` instead, and write fresh holdout cases later.
+
+```bash
+bundle exec ruby evals/run.rb --holdout --pipeline --threshold 0.5
+```
+
 Results also keep every question's probability for the labeled risks (`questions` in the JSON), so you can see which sub-checks fire on which cases.
 
 For each case, the runner creates a throwaway git repository, commits the `before` files, writes the `after` files, and takes `git diff`. The diff then goes through the same path as `omamori scan`: split per file, every risk asked for each file. A case's probability for a risk is the highest probability among its files.

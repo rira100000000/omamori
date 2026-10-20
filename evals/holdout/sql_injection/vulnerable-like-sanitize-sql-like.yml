@@ -1,0 +1,44 @@
+id: sql_injection-vulnerable-like-sanitize-sql-like
+description: Knowledge base search query object escapes LIKE wildcards with sanitize_sql_like but still interpolates the term into the SQL string
+expected:
+  sql_injection: true
+files:
+  - path: app/queries/articles/search_query.rb
+    before: |
+      module Articles
+        class SearchQuery
+          def initialize(scope = Article.published)
+            @scope = scope
+          end
+
+          def call(params)
+            relation = @scope
+            relation = relation.where(category_id: params[:category_id]) if params[:category_id].present?
+            relation = relation.where(locale: params[:locale]) if params[:locale].present?
+            relation.order(published_at: :desc)
+          end
+        end
+      end
+    after: |
+      module Articles
+        class SearchQuery
+          def initialize(scope = Article.published)
+            @scope = scope
+          end
+
+          def call(params)
+            relation = @scope
+            relation = relation.where(category_id: params[:category_id]) if params[:category_id].present?
+            relation = relation.where(locale: params[:locale]) if params[:locale].present?
+            relation = search(relation, params[:q]) if params[:q].present?
+            relation.order(published_at: :desc)
+          end
+
+          private
+
+          def search(relation, term)
+            pattern = ActiveRecord::Base.sanitize_sql_like(term.strip)
+            relation.where("articles.title ILIKE '%#{pattern}%' OR articles.summary ILIKE '%#{pattern}%'")
+          end
+        end
+      end

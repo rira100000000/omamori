@@ -1,0 +1,39 @@
+id: csrf-safe-token-api-base
+description: New mobile API base controller inherits ActionController::API and authenticates every request with a bearer token instead of cookies
+expected:
+  csrf: false
+files:
+  - path: app/controllers/api/mobile/base_controller.rb
+    after: |
+      module Api
+        module Mobile
+          class BaseController < ActionController::API
+            include ActionController::HttpAuthentication::Token::ControllerMethods
+
+            before_action :authenticate_device!
+
+            private
+
+            attr_reader :current_user
+
+            def authenticate_device!
+              @current_user = authenticate_with_http_token do |token, _options|
+                DeviceToken.active.find_by(token_digest: DeviceToken.digest(token))&.user
+              end
+              head :unauthorized unless @current_user
+            end
+          end
+        end
+      end
+  - path: app/controllers/api/mobile/notification_settings_controller.rb
+    after: |
+      module Api
+        module Mobile
+          class NotificationSettingsController < BaseController
+            def update
+              current_user.update!(params.require(:settings).permit(:push_enabled, :digest_frequency))
+              render json: { push_enabled: current_user.push_enabled, digest_frequency: current_user.digest_frequency }
+            end
+          end
+        end
+      end

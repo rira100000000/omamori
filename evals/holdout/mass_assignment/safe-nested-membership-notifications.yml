@@ -1,0 +1,66 @@
+id: mass_assignment-safe-nested-membership-notifications
+description: SaaS profile settings page edits per-team notification levels through nested membership attributes with a fixed permit list
+expected:
+  mass_assignment: false
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :memberships, dependent: :destroy
+        has_many :teams, through: :memberships
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false }
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :memberships, dependent: :destroy
+        has_many :teams, through: :memberships
+
+        accepts_nested_attributes_for :memberships
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false }
+      end
+  - path: app/controllers/settings/profiles_controller.rb
+    before: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: t(".saved")
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:user).permit(:name, :email, :time_zone, :avatar)
+          end
+        end
+      end
+    after: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: t(".saved")
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:user).permit(
+              :name, :email, :time_zone, :avatar,
+              memberships_attributes: [:id, :notification_level]
+            )
+          end
+        end
+      end

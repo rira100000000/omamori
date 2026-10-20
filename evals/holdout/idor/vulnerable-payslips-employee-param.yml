@@ -1,0 +1,51 @@
+id: idor-vulnerable-payslips-employee-param
+description: Payslip list gains an employee_id parameter so managers can view their reports' payslips, but any employee can pass any id
+expected:
+  idor: true
+files:
+  - path: app/controllers/payslips_controller.rb
+    before: |
+      class PayslipsController < ApplicationController
+        before_action :require_employee!
+
+        def index
+          @payslips = current_employee.payslips.order(period_end: :desc).limit(24)
+        end
+
+        def show
+          @payslip = current_employee.payslips.find(params[:id])
+          send_data PayslipPdf.new(@payslip).render, filename: @payslip.filename, type: "application/pdf"
+        end
+      end
+    after: |
+      class PayslipsController < ApplicationController
+        before_action :require_employee!
+        before_action :set_employee
+
+        def index
+          @payslips = @employee.payslips.order(period_end: :desc).limit(24)
+        end
+
+        def show
+          @payslip = @employee.payslips.find(params[:id])
+          send_data PayslipPdf.new(@payslip).render, filename: @payslip.filename, type: "application/pdf"
+        end
+
+        private
+
+        def set_employee
+          @employee =
+            if params[:employee_id].present? && current_employee.manager?
+              Employee.find(params[:employee_id])
+            else
+              current_employee
+            end
+        end
+      end
+  - path: app/views/team/members/_member.html.erb
+    after: |
+      <tr>
+        <td><%= member.full_name %></td>
+        <td><%= member.job_title %></td>
+        <td><%= link_to "Payslips", payslips_path(employee_id: member.id) %></td>
+      </tr>

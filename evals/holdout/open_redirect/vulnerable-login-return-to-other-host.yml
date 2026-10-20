@@ -1,0 +1,45 @@
+id: open_redirect-vulnerable-login-return-to-other-host
+description: Login now honours a return_to param with allow_other_host so users coming from the help-center subdomain land back there
+expected:
+  open_redirect: true
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :authenticate_user!, only: %i[new create]
+
+        def new
+        end
+
+        def create
+          user = User.authenticate_by(email: params[:email], password: params[:password])
+
+          if user
+            start_session_for(user)
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :authenticate_user!, only: %i[new create]
+
+        def new
+          session[:return_to] = params[:return_to] if params[:return_to].present?
+        end
+
+        def create
+          user = User.authenticate_by(email: params[:email], password: params[:password])
+
+          if user
+            start_session_for(user)
+            redirect_to session.delete(:return_to).presence || dashboard_path, allow_other_host: true
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end

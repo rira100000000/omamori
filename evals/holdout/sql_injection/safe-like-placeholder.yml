@@ -1,0 +1,45 @@
+id: sql_injection-safe-like-placeholder
+description: Knowledge base search query object builds the LIKE pattern with sanitize_sql_like and passes it as a bound placeholder, with only the constant table name interpolated
+expected:
+  sql_injection: false
+files:
+  - path: app/queries/articles/search_query.rb
+    before: |
+      module Articles
+        class SearchQuery
+          def initialize(scope = Article.published)
+            @scope = scope
+          end
+
+          def call(params)
+            relation = @scope
+            relation = relation.where(category_id: params[:category_id]) if params[:category_id].present?
+            relation = relation.where(locale: params[:locale]) if params[:locale].present?
+            relation.order(published_at: :desc)
+          end
+        end
+      end
+    after: |
+      module Articles
+        class SearchQuery
+          def initialize(scope = Article.published)
+            @scope = scope
+          end
+
+          def call(params)
+            relation = @scope
+            relation = relation.where(category_id: params[:category_id]) if params[:category_id].present?
+            relation = relation.where(locale: params[:locale]) if params[:locale].present?
+            relation = search(relation, params[:q]) if params[:q].present?
+            relation.order(published_at: :desc)
+          end
+
+          private
+
+          def search(relation, term)
+            table = Article.quoted_table_name
+            pattern = "%#{ActiveRecord::Base.sanitize_sql_like(term.strip)}%"
+            relation.where("#{table}.title ILIKE :pattern OR #{table}.summary ILIKE :pattern", pattern: pattern)
+          end
+        end
+      end

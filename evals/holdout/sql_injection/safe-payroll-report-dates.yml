@@ -1,0 +1,50 @@
+id: sql_injection-safe-payroll-report-dates
+description: HR payroll summary service passes the request date range to a raw select_all query through sanitize_sql_array named binds
+expected:
+  sql_injection: false
+files:
+  - path: app/services/payroll/department_summary.rb
+    after: |
+      module Payroll
+        class DepartmentSummary
+          SQL = <<~SQL.freeze
+            SELECT d.name AS department,
+                   COUNT(DISTINCT p.employee_id) AS headcount,
+                   SUM(p.gross_cents) AS gross_cents,
+                   SUM(p.net_cents) AS net_cents
+            FROM payslips p
+            JOIN employees e ON e.id = p.employee_id
+            JOIN departments d ON d.id = e.department_id
+            WHERE e.company_id = :company_id
+              AND p.period_start >= :from
+              AND p.period_end <= :to
+            GROUP BY d.name
+            ORDER BY d.name
+          SQL
+
+          def initialize(company:, from:, to:)
+            @company = company
+            @from = from
+            @to = to
+          end
+
+          def rows
+            query = ActiveRecord::Base.sanitize_sql_array([SQL, { company_id: @company.id, from: @from, to: @to }])
+            ActiveRecord::Base.connection.select_all(query).to_a
+          end
+        end
+      end
+  - path: app/controllers/reports/payroll_controller.rb
+    after: |
+      module Reports
+        class PayrollController < ApplicationController
+          before_action :require_hr_role
+
+          def show
+            @from = params[:from].presence || Date.current.beginning_of_month.to_s
+            @to = params[:to].presence || Date.current.end_of_month.to_s
+
+            @rows = Payroll::DepartmentSummary.new(company: current_company, from: @from, to: @to).rows
+          end
+        end
+      end

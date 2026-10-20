@@ -1,0 +1,51 @@
+id: idor-safe-invoice-eager-load
+description: Customer billing portal refactors invoice lookup to eager-load line items while keeping the lookup on the current account's invoices
+expected:
+  idor: false
+files:
+  - path: app/controllers/billing/invoices_controller.rb
+    before: |
+      module Billing
+        class InvoicesController < ApplicationController
+          before_action :authenticate_user!
+
+          def index
+            @invoices = current_account.invoices.order(issued_on: :desc).page(params[:page])
+          end
+
+          def show
+            @invoice = current_account.invoices.find(params[:id])
+
+            respond_to do |format|
+              format.html
+              format.pdf { send_data InvoicePdf.new(@invoice).render, filename: "#{@invoice.number}.pdf" }
+            end
+          end
+        end
+      end
+    after: |
+      module Billing
+        class InvoicesController < ApplicationController
+          before_action :authenticate_user!
+          before_action :set_invoice, only: %i[show]
+
+          def index
+            @invoices = current_account.invoices.order(issued_on: :desc).page(params[:page])
+          end
+
+          def show
+            respond_to do |format|
+              format.html
+              format.pdf { send_data InvoicePdf.new(@invoice).render, filename: "#{@invoice.number}.pdf" }
+            end
+          end
+
+          private
+
+          def set_invoice
+            @invoice = current_account.invoices
+              .includes(:line_items, :payments, billing_address: :country)
+              .find(params[:id])
+          end
+        end
+      end

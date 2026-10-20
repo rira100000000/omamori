@@ -1,0 +1,45 @@
+id: open_redirect-safe-login-return-to-url-from
+description: Login now honours a return_to param but passes it through url_from, which returns nil for URLs on other hosts
+expected:
+  open_redirect: false
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :authenticate_user!, only: %i[new create]
+
+        def new
+        end
+
+        def create
+          user = User.authenticate_by(email: params[:email], password: params[:password])
+
+          if user
+            start_session_for(user)
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :authenticate_user!, only: %i[new create]
+
+        def new
+          session[:return_to] = params[:return_to] if params[:return_to].present?
+        end
+
+        def create
+          user = User.authenticate_by(email: params[:email], password: params[:password])
+
+          if user
+            start_session_for(user)
+            redirect_to url_from(session.delete(:return_to)) || dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end

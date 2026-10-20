@@ -1,0 +1,49 @@
+id: open_redirect-safe-js-next-same-origin
+description: Front-end magic-link sign-in page resolves the next parameter against the current origin and only navigates when the origin matches
+expected:
+  open_redirect: false
+files:
+  - path: app/javascript/controllers/magic_link_controller.js
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static values = { exchangeUrl: String }
+        static targets = ["status"]
+
+        async connect() {
+          const params = new URLSearchParams(window.location.search)
+          const token = params.get("token")
+          if (!token) {
+            this.statusTarget.textContent = "This sign-in link is missing its token."
+            return
+          }
+
+          const response = await fetch(this.exchangeUrlValue, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": document.querySelector("meta[name='csrf-token']").content
+            },
+            body: JSON.stringify({ token })
+          })
+
+          if (response.ok) {
+            window.location.assign(this.nextPath(params.get("next")))
+          } else {
+            this.statusTarget.textContent = "This link has expired. Request a new one."
+          }
+        }
+
+        nextPath(next) {
+          if (!next) return "/dashboard"
+
+          try {
+            const url = new URL(next, window.location.origin)
+            if (url.origin !== window.location.origin) return "/dashboard"
+            return url.pathname + url.search + url.hash
+          } catch {
+            return "/dashboard"
+          }
+        }
+      }

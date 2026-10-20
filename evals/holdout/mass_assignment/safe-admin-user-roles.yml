@@ -1,0 +1,44 @@
+id: mass_assignment-safe-admin-user-roles
+description: Admin-only users controller behind a staff check permits plan, staff flag and credit balance for support staff
+expected:
+  mass_assignment: false
+files:
+  - path: app/controllers/admin/base_controller.rb
+    after: |
+      module Admin
+        class BaseController < ApplicationController
+          before_action :require_staff!
+          layout "admin"
+
+          private
+
+          def require_staff!
+            head :not_found unless current_user&.staff?
+          end
+        end
+      end
+  - path: app/controllers/admin/users_controller.rb
+    after: |
+      module Admin
+        class UsersController < Admin::BaseController
+          def edit
+            @user = User.find(params[:id])
+          end
+
+          def update
+            @user = User.find(params[:id])
+            if @user.update(user_params)
+              AuditLog.record!(actor: current_user, subject: @user, changes: @user.saved_changes)
+              redirect_to admin_user_path(@user), notice: "User updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def user_params
+            params.require(:user).permit(:display_name, :plan, :staff, :credit_balance_cents, :email_verified_at)
+          end
+        end
+      end

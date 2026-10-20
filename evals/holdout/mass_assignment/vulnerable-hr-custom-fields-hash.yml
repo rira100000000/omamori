@@ -1,0 +1,65 @@
+id: mass_assignment-vulnerable-hr-custom-fields-hash
+description: HR self-service form sends arbitrary profile fields as a hash whose keys are passed straight to the employee update
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/self_service/profiles_controller.rb
+    before: |
+      module SelfService
+        class ProfilesController < ApplicationController
+          before_action :set_employee
+
+          def update
+            if @employee.update(profile_params)
+              redirect_to self_service_profile_path, notice: "Your details were updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def set_employee
+            @employee = current_user.employee
+          end
+
+          def profile_params
+            params.require(:employee).permit(:preferred_name, :phone, :emergency_contact_name, :emergency_contact_phone)
+          end
+        end
+      end
+    after: |
+      module SelfService
+        class ProfilesController < ApplicationController
+          before_action :set_employee
+
+          def update
+            if @employee.update(profile_params[:fields].to_h)
+              redirect_to self_service_profile_path, notice: "Your details were updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def set_employee
+            @employee = current_user.employee
+          end
+
+          def profile_params
+            params.require(:employee).permit(fields: {})
+          end
+        end
+      end
+  - path: app/views/self_service/profiles/edit.html.erb
+    after: |
+      <%= form_with model: @employee, url: self_service_profile_path, method: :patch do |f| %>
+        <% Employee::SELF_EDITABLE_FIELDS.each do |field| %>
+          <div class="field">
+            <%= label_tag "employee[fields][#{field}]", Employee.human_attribute_name(field) %>
+            <%= text_field_tag "employee[fields][#{field}]", @employee.public_send(field) %>
+          </div>
+        <% end %>
+        <%= f.submit "Save" %>
+      <% end %>
