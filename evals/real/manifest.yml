@@ -1,0 +1,2204 @@
+---
+entries:
+- id: csrf-ghsa-24fg-p96v-hxh8-66ce384
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-24fg-p96v-hxh8
+  summary: actionpack Cross-Site Request Forgery vulnerability
+  repo: rails/rails
+  commit: 66ce3843d32e9f2ac3b1da20067af53019bbb034
+  parent: 354da43ab0a10b3b7b3f9cb0619aa562c3be8474
+  files:
+  - actionpack/lib/action_controller/metal/request_forgery_protection.rb
+  - actionpack/lib/action_dispatch/http/request.rb
+  kind: library
+- id: csrf-ghsa-24fg-p96v-hxh8-7e86f9b
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-24fg-p96v-hxh8
+  summary: actionpack Cross-Site Request Forgery vulnerability
+  repo: rails/rails
+  commit: 7e86f9b4d2b7dfa974c10ae7e6d8ef90f3d77f06
+  parent: abe97736b8316f1b714cac56c115c0779aa73217
+  files:
+  - actionpack/lib/action_controller/request_forgery_protection.rb
+  - actionpack/lib/action_view/helpers.rb
+  kind: library
+- id: csrf-ghsa-26xx-m4q2-xhq8-adf6ed4
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-26xx-m4q2-xhq8
+  summary: Spree Auth Devise vulnerability allows for authentication bypass through
+    CSRF weakness
+  repo: spree/spree_auth_devise
+  commit: adf6ed4cd94d66091776b5febd4ff3767362de63
+  parent: db4ccf202f42cdb713931e9915b213ab9c9b2062
+  files:
+  - lib/controllers/frontend/spree/users_controller.rb
+  kind: library
+- id: csrf-ghsa-2hxv-mx8x-mcj9-bfe44f2
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-2hxv-mx8x-mcj9
+  summary: Spina gem vulnerable to Cross-site request forgery (CSRF) vulnerability
+  repo: denkGroot/Spina
+  commit: bfe44f289e336f80b6593032679300c493735e75
+  parent: 2b3e8f724a97b312a61503f378a5ce6def58bfe2
+  files:
+  - app/controllers/spina/application_controller.rb
+  kind: app
+- id: csrf-ghsa-cf36-985g-v73c-ccfcc26
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-cf36-985g-v73c
+  summary: omniauth-facebook Cross-Site Request Forgery vulnerability
+  repo: mkdynamic/omniauth-facebook
+  commit: ccfcc26fe7e34acbd75ad4a095fd01ce5ff48ee7
+  parent: 48455110d6a50e590e20e3263d53d29050235df7
+  files:
+  - lib/omniauth/strategies/facebook.rb
+  kind: library
+- id: csrf-ghsa-f3qm-vfc3-jg6v-57a4b46
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-f3qm-vfc3-jg6v
+  summary: Possible CSRF attack at questionnaire templates preview
+  repo: decidim/decidim
+  commit: 57a4b467787448307b5d9b01ce6e2c8502e121ac
+  parent: dfbd5587d5dbe7cdd9286ce0fa72180402249125
+  files:
+  - decidim-templates/app/controllers/decidim/templates/admin/questionnaire_templates_controller.rb
+  - decidim-templates/app/packs/src/decidim/templates/admin/choose_template.js
+  kind: app
+- id: csrf-ghsa-h3fg-h5v3-vf8m-4d17cac
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-h3fg-h5v3-vf8m
+  summary: CSRF forgery protection bypass in solidus_frontend
+  repo: solidusio/solidus
+  commit: 4d17cacf066d9492fc04eb3a0b16084b47376d81
+  parent: f4b6de0872e1d2270d17671c7f1632d5bb33ee47
+  files:
+  - frontend/app/controllers/spree/orders_controller.rb
+  kind: app
+- id: csrf-ghsa-h8hx-2c5r-32cf-cb95b05
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-h8hx-2c5r-32cf
+  summary: Cross-Site Request Forgery (CSRF) in trestle-auth
+  repo: TrestleAdmin/trestle-auth
+  commit: cb95b05cdb2609052207af07b4b8dfe3a23c11dc
+  parent: '021955aa5d67260d6ba1faf2b5d59b9772164968'
+  files:
+  - lib/trestle/auth/controller/authentication.rb
+  kind: library
+- id: csrf-ghsa-jmgf-p46x-982h-7282ed8
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-jmgf-p46x-982h
+  summary: rails is vulnerable to CRLF injection
+  repo: rails/rails
+  commit: 7282ed863ca7e6f928bae9162c9a63a98775a19d
+  parent: e8577991dcc47bcb11f99fd6582ee2a3f8270498
+  files:
+  - actionpack/lib/action_controller/response.rb
+  kind: library
+- id: csrf-ghsa-mcvq-7xjq-46x6-a7fedbb
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-mcvq-7xjq-46x6
+  summary: Fat Free CRM contains Cross-site Request Forgery vulnerablilities
+  repo: fatfreecrm/fat_free_crm
+  commit: a7fedbb36388bad0c0f32b2346481e0ea126dea6
+  parent: 93c182dd4c6f3620b721d2a15ba6a6ecab5669df
+  files:
+  - app/controllers/application_controller.rb
+  kind: app
+- id: csrf-ghsa-p4xx-w6fr-c4w9-ec28965
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-p4xx-w6fr-c4w9
+  summary: Clockwork Web contains a Cross-Site Request Forgery Vulnerability with
+    Rails < 5.2
+  repo: ankane/clockwork_web
+  commit: ec2896503ee231588547c2fad4cb93a94e78f857
+  parent: 4b9c35162cb93323271e911a5b706bdf5a251426
+  files:
+  - app/controllers/clockwork_web/home_controller.rb
+  kind: app
+- id: csrf-ghsa-pxqr-8v54-m2hj-b13e879
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-pxqr-8v54-m2hj
+  summary: Cross-site request forgery in rails_admin
+  repo: railsadminteam/rails_admin
+  commit: b13e879eb93b661204e9fb5e55f7afa4f397537a
+  parent: 464440cbdea7147634f020cde21c4606d3629dc5
+  files:
+  - app/controllers/rails_admin/application_controller.rb
+  kind: app
+- id: csrf-ghsa-qwv2-2x8g-g43g-a01c4e8
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-qwv2-2x8g-g43g
+  summary: Gem in a Box vulnerable to Cross-site Request Forgery
+  repo: geminabox/geminabox
+  commit: a01c4e8b3403624109499dec75eb6ee30bd01a55
+  parent: 9227caab8d22d32ac5172e4526d7d741dfd7b903
+  files:
+  - lib/geminabox.rb
+  - lib/geminabox/server.rb
+  kind: library
+- id: csrf-ghsa-v6fx-752r-ccp2-14b67b3
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-v6fx-752r-ccp2
+  summary: PgHero gem allows CSRF
+  repo: ankane/pghero
+  commit: 14b67b32fed19a30aaf9826ee72f2a29cda604e9
+  parent: 8f190fa59805cee2398f87604775229101264f98
+  files:
+  - app/controllers/pg_hero/home_controller.rb
+  kind: app
+- id: csrf-ghsa-w542-cpp9-r3g7-defd3fd
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-w542-cpp9-r3g7
+  summary: Field Test CSRF vulnerability
+  repo: ankane/field_test
+  commit: defd3fdf457c22d7dc5b3be7048481947bd5f0d0
+  parent: 5c7df3eb83c3fc217c8903bef13dc1ba1cfb35b6
+  files:
+  - app/controllers/field_test/base_controller.rb
+  kind: app
+- id: csrf-ghsa-wj5j-xpcj-45gc-d1bb19e
+  risk: csrf
+  cwe: CWE-352
+  advisory: GHSA-wj5j-xpcj-45gc
+  summary: Cross-Site Request Forgery (CSRF)
+  repo: scambra/devise_invitable
+  commit: d1bb19efca8e35885e1c2f0931d6171fce8cf74e
+  parent: 1fe5501780bf8430ec4a28e4138bbf01f6ba7c4e
+  files:
+  - app/controllers/devise/invitations_controller.rb
+  kind: app
+- id: dangerous_eval-ghsa-35jh-r3h4-6jhm-3469357
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-35jh-r3h4-6jhm
+  summary: Command Injection in lodash
+  repo: lodash/lodash
+  commit: 3469357cff396a26c363f8c1b5a91dde28ba4b1c
+  parent: ded9bc66583ed0b4e3b7dc906206d40757b4a90a
+  files:
+  - lodash.js
+  kind: library
+- id: dangerous_eval-ghsa-6xxq-j39w-g3f6-0d6d299
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-6xxq-j39w-g3f6
+  summary: Puppet Arbitrary Command Execution
+  repo: puppetlabs/puppet
+  commit: 0d6d29933e613fe177e9235415919a5428db67bc
+  parent: 19bd30a35c0dcf01d58934413d7dabb7edfabd3f
+  files:
+  - lib/puppet/network/http/api/v1.rb
+  kind: library
+- id: dangerous_eval-ghsa-73qw-ww62-m54x-570b5e8
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-73qw-ww62-m54x
+  summary: colorscore Command Injection vulnerability
+  repo: quadule/colorscore
+  commit: 570b5e854cecddd44d2047c44126aed951b61718
+  parent: d589ce05be678c87174adae013ca5ac79f567828
+  files:
+  - lib/colorscore/histogram.rb
+  kind: library
+- id: dangerous_eval-ghsa-75xq-5h9v-w6px-9db3e9d
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-75xq-5h9v-w6px
+  summary: net-imap vulnerable to command Injection via unvalidated Symbol inputs
+  repo: ruby/net-imap
+  commit: 9db3e9d60bfb8f3735ea95015bf8a700f4af9cbb
+  parent: 99f59eab6064955a23debd95410263ad144df758
+  files:
+  - lib/net/imap/command_data.rb
+  kind: library
+- id: dangerous_eval-ghsa-7vxr-6cxg-j3x8-828064f
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-7vxr-6cxg-j3x8
+  summary: OS Command Injection in ftpd
+  repo: wconrad/ftpd
+  commit: 828064f1a0ab69b2642c59cab8292a67bb44182c
+  parent: 21016c1f3ce9cb5907e3e6e1cc1f997e88faf962
+  files:
+  - lib/ftpd.rb
+  - lib/ftpd/disk_file_system.rb
+  kind: library
+- id: dangerous_eval-ghsa-8832-4mm5-x2r6-91e1304
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-8832-4mm5-x2r6
+  summary: discordrb OS Command Injection vulnerability
+  repo: shardlab/discordrb
+  commit: 91e13043ffa89227c3fcdc3408f06da237d28c95
+  parent: 413cd095d41706814179a257129e24560afdbc9d
+  files:
+  - lib/discordrb/voice/encoder.rb
+  kind: library
+- id: dangerous_eval-ghsa-c5r5-7pfh-6qg6-14406f4
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-c5r5-7pfh-6qg6
+  summary: BibTeX-Ruby vulnerable to OS command injection
+  repo: inukshuk/bibtex-ruby
+  commit: 14406f4460f4e1ecabd25ca94f809b3ea7c5fb11
+  parent: 707b9303e4ed9a7e136dd1268e21d73d5faab817
+  files:
+  - lib/bibtex/bibliography.rb
+  kind: library
+- id: dangerous_eval-ghsa-cr5j-953j-xw5p-a652474
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-cr5j-953j-xw5p
+  summary: Nokogiri Command Injection Vulnerability
+  repo: tenderlove/rexical
+  commit: a652474dbc66be350055db3e8f9b3a7b3fd75926
+  parent: '080b2fed4acef5f1480c8a9dac8f5a750e6e44ee'
+  files:
+  - lib/rexical/generator.rb
+  kind: library
+- id: dangerous_eval-ghsa-cxf7-qrc5-9446-038e457
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-cxf7-qrc5-9446
+  summary: Remote shell execution vulnerability in image_processing
+  repo: janko/image_processing
+  commit: '038e4574e8f4f4b636a62394e09983c71980dada'
+  parent: 183c0589a94ee99103ab2aa82a9bf8e7dca1e0df
+  files:
+  - lib/image_processing/chainable.rb
+  kind: library
+- id: dangerous_eval-ghsa-ggxm-pgc9-g7fp-a7f5d6a
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-ggxm-pgc9-g7fp
+  summary: Arbitrary Code Execution in Rdoc
+  repo: ruby/rdoc
+  commit: a7f5d6ab88632b3b482fe10611382ff73d14eed7
+  parent: 06112d5c3479fe3f96907cae379d400acf89b295
+  files:
+  - lib/rdoc/rdoc.rb
+  kind: library
+- id: dangerous_eval-ghsa-hm49-wcqc-g2xg-0ec4fd3
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-hm49-wcqc-g2xg
+  summary: net-imap vulnerable to command Injection via "raw" arguments to multiple
+    commands
+  repo: ruby/net-imap
+  commit: 0ec4fd351263e8b9a4f683713427827b7b1ad974
+  parent: a4f7649c3da77dec7631f03a037a478eb4330048
+  files:
+  - lib/net/imap.rb
+  kind: library
+- id: dangerous_eval-ghsa-jppv-gw3r-w3q8-5b8f8fc
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-jppv-gw3r-w3q8
+  summary: OS Command Injection in Rake
+  repo: ruby/rake
+  commit: 5b8f8fc41a5d7d7d6a5d767e48464c60884d3aee
+  parent: 6497ba4d94d12c123df48cc8ab40f0a4eb7fb337
+  files:
+  - lib/rake/file_list.rb
+  kind: library
+- id: dangerous_eval-ghsa-q66h-m87m-j2q6-0703271
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-q66h-m87m-j2q6
+  summary: 'Bitcoinrb Vulnerable to Command injection via RPC '
+  repo: chaintope/bitcoinrb
+  commit: 070327133a2a3e5a6d265b2d82f06f9414c01e74
+  parent: 7d7d2e75b69a75bdb02e35e9cf19ff491c5ed78e
+  files:
+  - lib/bitcoin/rpc/http_server.rb
+  kind: library
+- id: dangerous_eval-ghsa-qpqw-mc85-qvm9-e524f85
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-qpqw-mc85-qvm9
+  summary: OS Command Injection in awesome spawn
+  repo: ManageIQ/awesome_spawn
+  commit: e524f85f1c6e292ef7d117d7818521307ac269ff
+  parent: 0f56ab524d978a3e9c39ffa1486b7c09fd8a1a60
+  files:
+  - lib/awesome_spawn.rb
+  kind: library
+- id: dangerous_eval-ghsa-r364-2pj4-pf7f-9853651
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-r364-2pj4-pf7f
+  summary: ruby-saml vulnerable to XPath injection
+  repo: SAML-Toolkits/ruby-saml
+  commit: 9853651b96b99653ea8627d757d46bfe62ab6448
+  parent: 45f9493ad6fd2aaf95323d3ffc8bf769263a818a
+  files:
+  - lib/xml_security.rb
+  kind: library
+- id: dangerous_eval-ghsa-r4mg-4433-c7g3-1b1adf6
+  risk: dangerous_eval
+  cwe: CWE-77
+  advisory: GHSA-r4mg-4433-c7g3
+  summary: Active Storage allowed transformation methods that were potentially unsafe
+  repo: rails/rails
+  commit: 1b1adf6ee6ca0f3104fcfce79360b2ec1e06a354
+  parent: 14c115b120ed089331ff3dc13f36bd9129ced33d
+  files:
+  - activestorage/lib/active_storage.rb
+  kind: library
+- id: dangerous_eval-ghsa-r7j3-vvh2-xrpj-4cd5081
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-r7j3-vvh2-xrpj
+  summary: OS Command Injection in MiniMagick
+  repo: minimagick/minimagick
+  commit: 4cd5081e58810d3394d27a67219e8e4e0445d851
+  parent: 152d33ac824ecce993134735d1aefc092567d661
+  files:
+  - lib/mini_magick/image.rb
+  kind: library
+- id: dangerous_eval-ghsa-v222-6mr4-qj29-c7ea001
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-v222-6mr4-qj29
+  summary: Command Injection vulnerability in asciidoctor-include-ext
+  repo: jirutka/asciidoctor-include-ext
+  commit: c7ea001a597c7033575342c51483dab7b87ae155
+  parent: 7227a60978cfd4bf5fecc8705a4fc83f536c0d3b
+  files:
+  - lib/asciidoctor/include_ext/include_processor.rb
+  kind: library
+- id: dangerous_eval-ghsa-vp3w-52v9-q57f-be70d1d
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-vp3w-52v9-q57f
+  summary: 'OpenC3 COSMOS: Authenticated OS command injection via the `pypi_url` setting'
+  repo: OpenC3/cosmos
+  commit: be70d1d836c83c3b084e768e31a399312d4cbe0b
+  parent: f29c7250bb3db027605389a79ef38e47a3aebfca
+  files:
+  - openc3/lib/openc3/models/plugin_model.rb
+  - openc3/lib/openc3/models/python_package_model.rb
+  kind: library
+- id: dangerous_eval-ghsa-x485-rhg3-cqr4-0a9a360
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-x485-rhg3-cqr4
+  summary: Spree Commerce is vulnerable to RCE through Search API
+  repo: spree/spree
+  commit: 0a9a360c590829d8a377ceae0cf997bbbbcc2df4
+  parent: 3b559e7219f3681184be409ad00cd34a34a37978
+  files:
+  - core/app/controllers/admin/orders_controller.rb
+  - core/app/controllers/admin/products_controller.rb
+  - core/app/views/admin/orders/index.html.erb
+  kind: app
+- id: dangerous_eval-ghsa-x485-rhg3-cqr4-3b559e7
+  risk: dangerous_eval
+  cwe: CWE-78
+  advisory: GHSA-x485-rhg3-cqr4
+  summary: Spree Commerce is vulnerable to RCE through Search API
+  repo: spree/spree
+  commit: 3b559e7219f3681184be409ad00cd34a34a37978
+  parent: 53e2cefe2cd529396cfaf5f1cac49e5ec2fe34b2
+  files:
+  - core/lib/spree_core.rb
+  kind: library
+- id: directory_traversal-ghsa-2xmw-f8j8-wfxc-efcf096
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-2xmw-f8j8-wfxc
+  summary: Pagy I18n locale option is not validated before being used in a file path
+  repo: ddnexus/pagy
+  commit: efcf09690e9fa7d7abdfb987b785a55f87e287df
+  parent: cbc77ebba1fc839345e78714eef41e3f672b6205
+  files:
+  - gem/lib/pagy/modules/abilities/configurable.rb
+  - gem/lib/pagy/modules/i18n/i18n.rb
+  - src/wand.ts
+  kind: library
+- id: directory_traversal-ghsa-47m2-wp7j-p9vc-17edfbf
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-47m2-wp7j-p9vc
+  summary: rubyzip path traversal vulnerability
+  repo: rubyzip/rubyzip
+  commit: 17edfbf4423b83211b075acc23a7d8640da63449
+  parent: c5909168af5f0fe3688f2cec8c2f43d997e5dc63
+  files:
+  - lib/zip/entry.rb
+  kind: library
+- id: directory_traversal-ghsa-5cm2-9h8c-rvfx-9905ca9
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-5cm2-9h8c-rvfx
+  summary: TZInfo relative path traversal vulnerability allows loading of arbitrary
+    files
+  repo: tzinfo/tzinfo
+  commit: 9905ca93abf7bf3e387bd592406e403cd18334c7
+  parent: 07b5941668423f4eb1aaeaf04d67837519d08fac
+  files:
+  - lib/tzinfo/ruby_data_source.rb
+  kind: library
+- id: directory_traversal-ghsa-5cm2-9h8c-rvfx-9eddbb5
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-5cm2-9h8c-rvfx
+  summary: TZInfo relative path traversal vulnerability allows loading of arbitrary
+    files
+  repo: tzinfo/tzinfo
+  commit: 9eddbb5c0e682736f61d0dd803b6031a5db9eadf
+  parent: f4f3c2e71a4c6c776b20dd70c8f5bdd81deb5edb
+  files:
+  - lib/tzinfo/timezone.rb
+  kind: library
+- id: directory_traversal-ghsa-5f9h-9pjv-v6j7-dddb7ad
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-5f9h-9pjv-v6j7
+  summary: Directory traversal in Rack::Directory app bundled with Rack
+  repo: rack/rack
+  commit: dddb7ad18ed79ca6ab06ccc417a169fde451246e
+  parent: 16a51d8e0b64964323c3719b8154106af5cc0feb
+  files:
+  - lib/rack/directory.rb
+  kind: library
+- id: directory_traversal-ghsa-7x4w-cj9r-h4v9-f5d0325
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-7x4w-cj9r-h4v9
+  summary: Camaleon CMS vulnerable to remote code execution through code injection
+    (GHSL-2024-185)
+  repo: owen2345/camaleon-cms
+  commit: f5d032549fa0a204d06e738caf2663607967dee2
+  parent: be0acac55001f7bc4b3d96ee5ce35768139a7eb1
+  files:
+  - app/models/camaleon_cms/custom_field_group.rb
+  - app/views/camaleon_cms/admin/settings/custom_fields/_get_items.html.erb
+  - app/views/camaleon_cms/admin/settings/custom_fields/_render.html.erb
+  kind: app
+- id: directory_traversal-ghsa-85r7-w5mv-c849-6f237e4
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-85r7-w5mv-c849
+  summary: Rack Vulnerable to Path Traversal
+  repo: rack/rack
+  commit: 6f237e4c9fab649d3750482514f0fde76c56ab30
+  parent: 0cd7e9aa397f8ebb3b8481d67dbac8b4863a7f07
+  files:
+  - lib/rack/file.rb
+  kind: library
+- id: directory_traversal-ghsa-8qxg-mff5-j3wc-5971b48
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-8qxg-mff5-j3wc
+  summary: RubyGems Path Traversal vulnerability
+  repo: rubygems/rubygems
+  commit: 5971b486d4dbb2bad5d3445b3801c456eb0ce183
+  parent: 666ef793cad42eed96f7aee1cdf77865db921099
+  files:
+  - lib/rubygems.rb
+  kind: library
+- id: directory_traversal-ghsa-8qxg-mff5-j3wc-666ef79
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-8qxg-mff5-j3wc
+  summary: RubyGems Path Traversal vulnerability
+  repo: rubygems/rubygems
+  commit: 666ef793cad42eed96f7aee1cdf77865db921099
+  parent: a67d9f629b88c08b871d9bb1ac34ae6b832a1640
+  files:
+  - lib/rubygems/package.rb
+  kind: library
+- id: directory_traversal-ghsa-cf8v-5mrc-jv7f-fc7e113
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-cf8v-5mrc-jv7f
+  summary: OpenC3 COSMOS Vulnerable to Directory Traversal via openc3-api/tables endpoint
+  repo: OpenC3/cosmos
+  commit: fc7e11310a7cdf9f1939886e1b29009db4d4b718
+  parent: e319cdbe94b39594005010da07107d86535303fc
+  files:
+  - openc3-cosmos-cmd-tlm-api/app/controllers/application_controller.rb
+  - openc3-cosmos-script-runner-api/app/controllers/application_controller.rb
+  kind: app
+- id: directory_traversal-ghsa-cj92-c4fj-w9c5-29aca25
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-cj92-c4fj-w9c5
+  summary: Mail Gem Path Traversal vulnerability
+  repo: mikel/mail
+  commit: 29aca25218e4c82991400eb9b0c933626aefc98f
+  parent: 9beb079c70d236a5ad2e1ba95b2c977e55deb7af
+  files:
+  - lib/mail/network/delivery_methods/file_delivery.rb
+  kind: library
+- id: directory_traversal-ghsa-g89m-3wjw-h857-554eefc
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-g89m-3wjw-h857
+  summary: Puppet vulnerable to Path Traversal
+  repo: puppetlabs/puppet
+  commit: 554eefc55f57ed2b76e5ee04d8f194d36f6ee67f
+  parent: fe536476093ff973fbf0a4f6a7c9e5acd5828f70
+  files:
+  - lib/puppet/reports/store.rb
+  kind: library
+- id: directory_traversal-ghsa-gj4p-3wh3-2rmf-b0217b3
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-gj4p-3wh3-2rmf
+  summary: Arbitrary file read vulnerability in yard server
+  repo: lsegal/yard
+  commit: b0217b3e30dc53d057b1682506333335975e62b4
+  parent: bd56c5d1dc6f8e332ecfe6cd90dbf2e3f0be89f2
+  files:
+  - lib/yard/core_ext/file.rb
+  kind: library
+- id: directory_traversal-ghsa-h5g2-38x9-4gv3-e25205e
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-h5g2-38x9-4gv3
+  summary: archive-tar-minitar and minitar vulnerable to Path Traversal
+  repo: halostatue/minitar
+  commit: e25205ecbb6277ae8a3df1e6a306d7ed4458b6e4
+  parent: 27569dfa292584950958ead0118daa003d0f49e8
+  files:
+  - lib/archive/tar/minitar.rb
+  - lib/archive/tar/minitar/input.rb
+  kind: library
+- id: directory_traversal-ghsa-jw5g-f64p-6x78-f54a77e
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-jw5g-f64p-6x78
+  summary: Camaleon CMS vulnerable to Path Traversal through AWS S3 uploader implementation
+  repo: owen2345/camaleon-cms
+  commit: f54a77e2a7be601215ea1b396038c589a0cab9af
+  parent: df576a2f80539b847e84768b7cc36f776f1b8dfb
+  files:
+  - app/uploaders/camaleon_cms_aws_uploader.rb
+  kind: app
+- id: directory_traversal-ghsa-jx6p-9c26-g373-a5220a0
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-jx6p-9c26-g373
+  summary: Oxidized Web RANCID migration page allows unauthenticated user to gain
+    control over Linux user account
+  repo: ytti/oxidized-web
+  commit: a5220a0ddc57b85cd122bffee228d3ed4901668e
+  parent: f147fe4e8d795378940d88188c0f31c0289c59c2
+  files:
+  - lib/oxidized/web/public/scripts/oxidized.js
+  - lib/oxidized/web/views/layout.haml
+  - lib/oxidized/web/webapp.rb
+  kind: library
+- id: directory_traversal-ghsa-mg5p-95m9-rmfp-127da70
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-mg5p-95m9-rmfp
+  summary: Arbitrary file write in actionpack-page_caching gem
+  repo: rails/actionpack-page_caching
+  commit: 127da70a559bed4fc573fdb4a6d498a7d5815ce2
+  parent: b775ea26c23eea01d40877d357d7a4ffa0cd7f2e
+  files:
+  - lib/action_controller/caching/pages.rb
+  kind: library
+- id: directory_traversal-ghsa-pf8f-w267-mq2h-e4d4fc3
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-pf8f-w267-mq2h
+  summary: The rack-cors rubygem may allow directory traveral
+  repo: cyu/rack-cors
+  commit: e4d4fc362a4315808927011cbe5afcfe5486f17d
+  parent: 145a5df2f1a02bcddfaaf7cf61690e330a1d2a84
+  files:
+  - lib/rack/cors.rb
+  kind: library
+- id: directory_traversal-ghsa-pm9x-4392-2c2p-ad5c0a5
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-pm9x-4392-2c2p
+  summary: RubyGems may allow a maliciously crafted gem to overwrite files
+  repo: rubygems/rubygems
+  commit: ad5c0a53a86ca5b218c7976765c0365b91d22cb2
+  parent: 44cc27cd6123b8eaafbcec5c8fe0dd0bc01d2a95
+  files:
+  - lib/rubygems/installer.rb
+  kind: library
+- id: directory_traversal-ghsa-pmwx-rm49-xv39-b242c8a
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-pmwx-rm49-xv39
+  summary: ActiveRecord::Tenanted::Storage::DiskService#path_for has a possible path
+    traversal
+  repo: basecamp/activerecord-tenanted
+  commit: b242c8ad9bf58bbd7f5a032d153b0f29db54b9ba
+  parent: fd97ea2a4815a903f7c7a07756b50a0afa5f5478
+  files:
+  - lib/active_record/tenanted/storage.rb
+  kind: library
+- id: directory_traversal-ghsa-pr3h-jjhj-573x-18b8a7f
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-pr3h-jjhj-573x
+  summary: Sprockets path traversal leads to information leak
+  repo: rails/sprockets
+  commit: 18b8a7f07a50c245e9aee7854ecdbe606bbd8bb5
+  parent: 2199a6012cc2b9cdbcbc0049361e5ee02770dff0
+  files:
+  - lib/sprockets/server.rb
+  kind: library
+- id: directory_traversal-ghsa-pxcc-8665-phx8-f78c19f
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-pxcc-8665-phx8
+  summary: YARD static cache reads raw traversal paths before router sanitization
+  repo: lsegal/yard
+  commit: f78c19f0dd33a407085b4ed181bb60c0aa0078b4
+  parent: d29a77cd5fe7ea2be352e4079c93c5dc216ccefe
+  files:
+  - lib/yard/server/commands/base.rb
+  - lib/yard/server/static_caching.rb
+  kind: library
+- id: directory_traversal-ghsa-rprj-g6xc-p5gq-fe31bb2
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-rprj-g6xc-p5gq
+  summary: Wicked gem contains Path traversal vulnerability
+  repo: schneems/wicked
+  commit: fe31bb2533fffc9d098c69ebeb7afc3b80509f53
+  parent: 6b8189e78c797540143190266c195174821b2acd
+  files:
+  - lib/wicked.rb
+  - lib/wicked/controller/concerns/render_redirect.rb
+  kind: library
+- id: directory_traversal-ghsa-vx9j-46rh-fqr8-8a1d3ea
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-vx9j-46rh-fqr8
+  summary: actionview contains Path Traversal vulnerability
+  repo: rails/rails
+  commit: 8a1d3ea617ffb0c8ae8467fa439bf63a3bfc4324
+  parent: 31ab3aa0e881acfd1475abae602455905a4cadf1
+  files:
+  - actionview/lib/action_view/rendering.rb
+  kind: library
+- id: directory_traversal-ghsa-wmjg-vqhv-q5p5-b3b12b1
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-wmjg-vqhv-q5p5
+  summary: Camaleon CMS affected by arbitrary file write to RCE (GHSL-2024-182)
+  repo: owen2345/camaleon-cms
+  commit: b3b12b1e4a9e3fccaf5bb4330820fa7f8744e6bd
+  parent: a916faedbe5b2db37de225355043b6237e5a9945
+  files:
+  - app/helpers/camaleon_cms/uploader_helper.rb
+  - app/uploaders/camaleon_cms_uploader.rb
+  kind: app
+- id: directory_traversal-ghsa-xmgj-5fh3-xjmm-9b6deee
+  risk: directory_traversal
+  cwe: CWE-22
+  advisory: GHSA-xmgj-5fh3-xjmm
+  summary: Path traversal when MessageBus::Diagnostics is enabled
+  repo: discourse/message_bus
+  commit: 9b6deee01ed474c7e9b5ff65a06bb0447b4db2ba
+  parent: 0b21d19364e8291d81b6e38402f48135fea67d4a
+  files:
+  - lib/message_bus/rack/diagnostics.rb
+  kind: library
+- id: idor-ghsa-3ghg-3787-w2xr-16067de
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-3ghg-3787-w2xr
+  summary: Spree API has Unauthenticated IDOR - Guest Address
+  repo: spree/spree
+  commit: 16067def6de8e0742d55313e83b0fbab6d2fd795
+  parent: 5c8cf5d16fbc0eeedddb243eeb0bc9ec86caff47
+  files:
+  - core/app/models/spree/ability.rb
+  - storefront/app/controllers/spree/addresses_controller.rb
+  - storefront/app/controllers/spree/store_controller.rb
+  kind: app
+- id: idor-ghsa-3ghg-3787-w2xr-4c2bd62
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-3ghg-3787-w2xr
+  summary: Spree API has Unauthenticated IDOR - Guest Address
+  repo: spree/spree
+  commit: 4c2bd62326fba0d846fd9e4bad2c62433829b3ad
+  parent: d69d2e12e2251f6739ed55c2c3b367d1eaf888f6
+  files:
+  - core/app/models/spree/ability.rb
+  kind: app
+- id: idor-ghsa-3ghg-3787-w2xr-e1cff46
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-3ghg-3787-w2xr
+  summary: Spree API has Unauthenticated IDOR - Guest Address
+  repo: spree/spree
+  commit: e1cff4605eb15472904602aebaf8f2d04852d6ad
+  parent: fb4d360503d4191b179afbc1a64d03da4de2dbaf
+  files:
+  - core/app/models/spree/ability.rb
+  - core/app/models/spree/permission_sets/default_customer.rb
+  - storefront/app/controllers/spree/addresses_controller.rb
+  kind: app
+- id: idor-ghsa-4825-p4xm-pcf2-8834230
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-4825-p4xm-pcf2
+  summary: 'Spree: Broken Access Control in `PATCH /api/v3/store/carts/:id/associate`
+    (IDOR)'
+  repo: spree/spree
+  commit: 8834230a1f47bb5988f23f45dbd162776cf592bd
+  parent: c281af5b7978cee49157b994cc60b195529875b2
+  files:
+  - spree/api/app/controllers/spree/api/v3/store/carts_controller.rb
+  kind: app
+- id: idor-ghsa-87fh-rc96-6fr6-1561961
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-87fh-rc96-6fr6
+  summary: Unauthenticated Spree Commerce users can access all guest addresses
+  repo: spree/spree
+  commit: 15619618e43b367617ec8d2d4aafc5e54fa7b734
+  parent: 62e41d24e3f0b982f632d935b19291ecc967c42c
+  files:
+  - core/app/models/spree/order/address_book.rb
+  kind: app
+- id: idor-ghsa-8fq9-273g-6mrg-995928e
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-8fq9-273g-6mrg
+  summary: 'Avo: Missing Authorization in Avo Association Attach Endpoint Allows Unauthorized
+    Relationship Manipulation and Privilege Escalation'
+  repo: avo-hq/avo
+  commit: 995928e586fd1788dd496bd51c4dbe4a79cb2b9c
+  parent: 336ffc967fcbd965ffbdc37f4bb833f625ea3d8e
+  files:
+  - app/controllers/avo/associations_controller.rb
+  kind: app
+- id: idor-ghsa-9hf4-67fc-4vf4-cac3fd1
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-9hf4-67fc-4vf4
+  summary: Puma's header normalization allows for client to clobber proxy set headers
+  repo: puma/puma
+  commit: cac3fd18cf29ed43719ff5d52d9cfec215f0a043
+  parent: 5fc43d73b6ff193325e657a24ed76dec79133e93
+  files:
+  - lib/puma/const.rb
+  - lib/puma/request.rb
+  kind: library
+- id: idor-ghsa-c273-c6vg-4pv5-c0aba87
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-c273-c6vg-4pv5
+  summary: Publify has Improper Access Controls
+  repo: publify/publify
+  commit: c0aba87844d1e47da50c0d99a3465164a4d244ce
+  parent: d254b06983335eae40d31653ed2f1472edd85099
+  files:
+  - publify_core/app/controllers/admin/content_controller.rb
+  kind: app
+- id: idor-ghsa-g268-72p7-9j6j-02acabd
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-g268-72p7-9j6j
+  summary: Spree API has Authenticated Insecure Direct Object Reference (IDOR) via
+    Order Modification
+  repo: spree/spree
+  commit: 02acabdce2c5f14fd687335b068d901a957a7e72
+  parent: e1cff4605eb15472904602aebaf8f2d04852d6ad
+  files:
+  - core/app/services/spree/checkout/update.rb
+  kind: app
+- id: idor-ghsa-p6pv-q7rc-g4h9-3e00be6
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-p6pv-q7rc-g4h9
+  summary: Unauthenticated Spree Commerce users can view completed guest orders by
+    Order ID
+  repo: spree/spree
+  commit: 3e00be64c128ef4bd4b99731f0c3ab469509cfab
+  parent: 3e18ec0055a117b7a65a6f09226ddd823ede4ea3
+  files:
+  - storefront/app/controllers/spree/order_status_controller.rb
+  - storefront/app/controllers/spree/orders_controller.rb
+  kind: app
+- id: idor-ghsa-qvqr-5cv7-wh35-db40143
+  risk: idor
+  cwe: CWE-639
+  advisory: GHSA-qvqr-5cv7-wh35
+  summary: 'MCP Ruby SDK: Insufficient Session Binding Allows SSE Stream Hijacking
+    via Session ID Replay'
+  repo: modelcontextprotocol/ruby-sdk
+  commit: db40143402d65b4fb6923cec42d2d72cb89b3874
+  parent: 7cede9c5fd03651b8995d08801ab6334f16090e8
+  files:
+  - lib/mcp/server/transports/streamable_http_transport.rb
+  kind: library
+- id: open_redirect-ghsa-7pwc-wh6m-44q3-a0548a6
+  risk: open_redirect
+  cwe: CWE-601
+  advisory: GHSA-7pwc-wh6m-44q3
+  summary: Google Sign-In for Rails allowed redirects to malformed URLs
+  repo: basecamp/google_sign_in
+  commit: a0548a604fb17e4eb1a57029f0d87e34e8499623
+  parent: 44f572a59965082c4dfc12c069d688735848249e
+  files:
+  - lib/google_sign_in/redirect_protector.rb
+  kind: library
+- id: open_redirect-ghsa-8877-prq4-9xfw-b5de7b3
+  risk: open_redirect
+  cwe: CWE-601
+  advisory: GHSA-8877-prq4-9xfw
+  summary: 'Actionpack Open Redirect Vulnerability '
+  repo: rails/rails
+  commit: b5de7b3a4787d8a55aaad39f477c16e3af65e444
+  parent: 536503dffe1af707501d7744c575579269e5c373
+  files:
+  - actionpack/lib/action_dispatch/middleware/host_authorization.rb
+  kind: library
+- id: open_redirect-ghsa-jp94-3292-c3xv-025fe21
+  risk: open_redirect
+  cwe: CWE-601
+  advisory: GHSA-jp94-3292-c3xv
+  summary: Devise has an Open Redirect via Unvalidated `request.referrer` in Timeoutable
+    Session Timeout Handler
+  repo: heartcombo/devise
+  commit: 025fe2124f9928766fc46520e999633b598d0360
+  parent: 7ca7ed9c174525a4d36167441b35af4a0991b6af
+  files:
+  - lib/devise/controllers/store_location.rb
+  - lib/devise/failure_app.rb
+  kind: library
+- id: open_redirect-ghsa-pp92-crg2-gfv9-0f0a474
+  risk: open_redirect
+  cwe: CWE-601
+  advisory: GHSA-pp92-crg2-gfv9
+  summary: 'OAuth2::Client#request: Protocol-relative redirect Location overrides
+    authority, leaking bearer Authorization to attacker host'
+  repo: ruby-oauth/oauth2
+  commit: 0f0a474f1b38453e119e660c2daca742d4378ce9
+  parent: 1118527f311a23d06feede403b88b8f6bd2a4eed
+  files:
+  - lib/oauth2/client.rb
+  kind: library
+- id: sql_injection-ghsa-527r-mfmj-prqf-5645ed4
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-527r-mfmj-prqf
+  summary: Katello SQL Injection vulnerabilities
+  repo: Katello/katello
+  commit: 5645ed4365980a34e30a9c57fe0793dff729e8e4
+  parent: 999296d94b5b3c18264b4ade470979a1c9df50e1
+  files:
+  - app/controllers/katello/api/v2/api_controller.rb
+  - app/controllers/katello/api/v2/content_view_versions_controller.rb
+  kind: app
+- id: sql_injection-ghsa-6j63-35hj-vmcg-9ae9209
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-6j63-35hj-vmcg
+  summary: mysql-bunuuid-rails vulnerable to SQL injection
+  repo: nedap/mysql-binuuid-rails
+  commit: 9ae920951b46ff0163b16c55d744e89acb1036d4
+  parent: 687a6c159ed9765e59df439a118deb841f69d6fe
+  files:
+  - lib/mysql-binuuid/type.rb
+  kind: library
+- id: sql_injection-ghsa-76wq-xw4h-f8wj-62f81f4
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-76wq-xw4h-f8wj
+  summary: activerecord vulnerable to SQL Injection
+  repo: rails/rails
+  commit: 62f81f4d6b3ee40e9887ffd92ab14714bad93f18
+  parent: e8c05974e1a26859144e02fd26df174ffd25cd95
+  files:
+  - activerecord/lib/active_record/base.rb
+  kind: library
+- id: sql_injection-ghsa-85gf-wr67-f83w-93a9a77
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-85gf-wr67-f83w
+  summary: curupira is vulnerable to SQL injection
+  repo: prodigasistemas/curupira
+  commit: 93a9a77896bb66c949acb8e64bceafc74bc8c271
+  parent: 9afbf9e35692b975242f829f4d1b719c5a18e219
+  files:
+  - app/controllers/curupira/passwords_controller.rb
+  kind: app
+- id: sql_injection-ghsa-864j-6qpp-cmrr-dcdc3d8
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-864j-6qpp-cmrr
+  summary: SQL Injection in Geocoder
+  repo: alexreisner/geocoder
+  commit: dcdc3d8675411edce3965941a2ca7c441ca48613
+  parent: 1ff64c47b6fc21d9c5ce30a6549d9eaa67c81a9e
+  files:
+  - lib/geocoder/sql.rb
+  kind: library
+- id: sql_injection-ghsa-9ggp-5rf4-x7q9-078035f
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-9ggp-5rf4-x7q9
+  summary: Fat Free CRM vulnerable to SQL Injection
+  repo: fatfreecrm/fat_free_crm
+  commit: '078035f1ef73ed85285ac9d128c3c5f670cef066'
+  parent: cf26a04b356ad2161c4c6160260eb870a3de5328
+  files:
+  - app/controllers/home_controller.rb
+  kind: app
+- id: sql_injection-ghsa-fwj4-6wgp-mpxm-a0a793b
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-fwj4-6wgp-mpxm
+  summary: 'Katello: Denial of Service and potential information disclosure via SQL
+    injection'
+  repo: Katello/katello
+  commit: a0a793b08d4f0a897ee985d79a687ad043f99e57
+  parent: b8794344d24e28564bdd4a061391205454a7cd8d
+  files:
+  - app/controllers/katello/api/v2/host_bootc_images_controller.rb
+  - webpack/components/Bookmark/AddBookmarkModal.js
+  - webpack/scenes/ContainerImages/Booted/BootedContainerImagesPage.js
+  kind: app
+- id: sql_injection-ghsa-h6w6-xmqv-7q78-8a39f41
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-h6w6-xmqv-7q78
+  summary: activerecord vulnerable to SQL Injection
+  repo: rails/rails
+  commit: 8a39f411dc3c806422785b1f4d5c7c9d58e4bf85
+  parent: b0555bb88b090ca981fcc7661b6f9ea333e7f42e
+  files:
+  - activerecord/lib/active_record/connection_adapters/mysql2_adapter.rb
+  - activerecord/lib/active_record/connection_adapters/mysql_adapter.rb
+  - activerecord/lib/active_record/connection_adapters/sqlite_adapter.rb
+  kind: library
+- id: sql_injection-ghsa-hq7p-j377-6v63-d7aba06
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-hq7p-j377-6v63
+  summary: SQL Injection Vulnerability via ActiveRecord comments
+  repo: rails/rails
+  commit: d7aba06953f9fa789c411676b941d20df8ef73de
+  parent: 8d82687f3b04b2803320b64f985308239a8c3d2f
+  files:
+  - activerecord/lib/active_record/connection_adapters/abstract/quoting.rb
+  - activerecord/lib/active_record/query_logs.rb
+  - activerecord/lib/active_record/relation/query_methods.rb
+  kind: library
+- id: sql_injection-ghsa-jmm9-2p29-vh2w-354da43
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-jmm9-2p29-vh2w
+  summary: activerecord vulnerable to SQL Injection
+  repo: rails/rails
+  commit: 354da43ab0a10b3b7b3f9cb0619aa562c3be8474
+  parent: ad9d21d0d6c0bf5edb655944887f9f3cdff64d9a
+  files:
+  - activerecord/lib/active_record/connection_adapters/abstract/database_statements.rb
+  - activerecord/lib/active_record/relation/query_methods.rb
+  kind: library
+- id: sql_injection-ghsa-mhwp-qhpc-h3jm-1f2192e
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-mhwp-qhpc-h3jm
+  summary: SQL Injection in Active Record
+  repo: rails/rails
+  commit: 1f2192e46d78ee0ba2b06373f2c24caf8440ff5b
+  parent: 297bff7f8f01fbda2a6bacaed4afb3d060292b9f
+  files:
+  - activerecord/lib/active_record/connection_adapters/postgresql_adapter.rb
+  kind: library
+- id: sql_injection-ghsa-v529-vhwc-wfc5-9ba60c0
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-v529-vhwc-wfc5
+  summary: OpenC3 COSMOS has SQL Injection in QuestDB Time-Series Database
+  repo: OpenC3/cosmos
+  commit: 9ba60c09c8836a37a2e4ea67ab35fe403e041415
+  parent: 0ce3c12bda9662502ccb2ceb0ccddd45d6abba91
+  files:
+  - openc3/lib/openc3/models/cvt_model.rb
+  kind: library
+- id: sql_injection-ghsa-xf96-32q2-9rw2-ef0ea78
+  risk: sql_injection
+  cwe: CWE-89
+  advisory: GHSA-xf96-32q2-9rw2
+  summary: Rails ActiveRecord gem vulnerable to SQL injection
+  repo: rails/rails
+  commit: ef0ea782b1f5cf7b08e74ea3002a16c708f66645
+  parent: a6e79083273dfb1a62aa8ff02db07454c65729ff
+  files:
+  - activerecord/lib/active_record/connection_adapters/abstract/database_statements.rb
+  kind: library
+- id: ssrf-ghsa-33mh-2634-fwr2-a6d3a3a
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-33mh-2634-fwr2
+  summary: Faraday affected by SSRF via protocol-relative URL host override in build_exclusive_url
+  repo: lostisland/faraday
+  commit: a6d3a3a0bf59c2ab307d0abd91bc126aef5561bc
+  parent: b23f710d28c0dba169470f568df4017a1e8beea7
+  files:
+  - lib/faraday/connection.rb
+  kind: library
+- id: ssrf-ghsa-f3qm-vfc3-jg6v-57a4b46
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-f3qm-vfc3-jg6v
+  summary: Possible CSRF attack at questionnaire templates preview
+  repo: decidim/decidim
+  commit: 57a4b467787448307b5d9b01ce6e2c8502e121ac
+  parent: dfbd5587d5dbe7cdd9286ce0fa72180402249125
+  files:
+  - decidim-templates/app/controllers/decidim/templates/admin/questionnaire_templates_controller.rb
+  - decidim-templates/app/packs/src/decidim/templates/admin/choose_template.js
+  kind: app
+- id: ssrf-ghsa-fwcm-636p-68r5-012702e
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-fwcm-636p-68r5
+  summary: Server-side request forgery in CarrierWave
+  repo: carrierwaveuploader/carrierwave
+  commit: 012702eb3ba1663452aa025831caa304d1a665c0
+  parent: '09f9f27c0259d5c644caf0e93cf2582f32784018'
+  files:
+  - features/step_definitions/download_steps.rb
+  - lib/carrierwave/downloader/base.rb
+  - lib/carrierwave/downloader/remote_file.rb
+  kind: library
+- id: ssrf-ghsa-hm5p-x4rq-38w4-0529bcd
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-hm5p-x4rq-38w4
+  summary: httparty Has Potential SSRF Vulnerability That Leads to API Key Leakage
+  repo: jnunemaker/httparty
+  commit: '0529bcd6309c9fd9bfdd50ae211843b10054c240'
+  parent: 05f38fd35d8088b9770513c2eaecce671f0940ec
+  files:
+  - lib/httparty/exceptions.rb
+  - lib/httparty/request.rb
+  kind: library
+- id: ssrf-ghsa-vx6p-q4gj-x6xx-5a252d5
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-vx6p-q4gj-x6xx
+  summary: Camaleon CMS vulnerable to Server-Side Request Forgery
+  repo: owen2345/camaleon-cms
+  commit: 5a252d537411fdd0127714d66c1d76069dc7e190
+  parent: c8fe87c2dd1a2bde182fc873ea0c32a4c9b59531
+  files:
+  - app/controllers/camaleon_cms/admin/media_controller.rb
+  kind: app
+- id: ssrf-ghsa-vx9g-377x-xwxq-b2eb99e
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-vx9g-377x-xwxq
+  summary: Server side request forgery in gibbon
+  repo: amro/gibbon
+  commit: b2eb99ed304d7491a6d348a5bbdc83a008fc6e0b
+  parent: f71acf2dc0db88a1c5dffe0801009085e4325982
+  files:
+  - lib/gibbon/api_request.rb
+  kind: library
+- id: ssrf-ghsa-vx9g-377x-xwxq-cade20c
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-vx9g-377x-xwxq
+  summary: Server side request forgery in gibbon
+  repo: amro/gibbon
+  commit: cade20ca2438cd1b182dad70cbb77fb895779d10
+  parent: 6933225393d7d261072e0c708365c3750d799381
+  files:
+  - lib/gibbon/api_request.rb
+  - lib/gibbon/gibbon_helpers.rb
+  kind: library
+- id: ssrf-ghsa-x27v-x225-gq8g-1bb0284
+  risk: ssrf
+  cwe: CWE-918
+  advisory: GHSA-x27v-x225-gq8g
+  summary: Recurly gem Server-Side Request Forgery in Resource#find method
+  repo: recurly/recurly-client-ruby
+  commit: 1bb0284d6e668b8b3d31167790ed6db1f6ccc4be
+  parent: 5278237bab683407a0a99b290c14f1ee63862474
+  files:
+  - lib/recurly/api.rb
+  - lib/recurly/api/net_http_adapter.rb
+  - lib/recurly/resource.rb
+  kind: library
+- id: xss-ghsa-228g-948r-83gx-415677f
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-228g-948r-83gx
+  summary: Improper neutralization of data URIs may allow XSS in Loofah
+  repo: flavorjones/loofah
+  commit: 415677f3cf7f9254f42f811e784985cd63c7407f
+  parent: 84ca20c58a0e8addf08a2cfc8b6fca4d7d10f033
+  files:
+  - lib/loofah/html5/safelist.rb
+  kind: library
+- id: xss-ghsa-242p-4v39-2v8g-aa50c60
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-242p-4v39-2v8g
+  summary: Cross-site Scripting (XSS) possible with maliciously formed HTML attribute
+    names and values in Phlex
+  repo: phlex-ruby/phlex
+  commit: aa50c604cdee1d0ce7ef068a4c66cbd5d43f96a1
+  parent: b4a813d15a79a3bf706293a8722cd5243d6ca8d4
+  files:
+  - lib/phlex/sgml.rb
+  kind: library
+- id: xss-ghsa-257q-pv89-v3xv-1d61fd9
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-257q-pv89-v3xv
+  summary: 'Duplicate Advisory: jQuery Cross Site Scripting vulnerability'
+  repo: jquery/jquery
+  commit: 1d61fd9407e6fbe82fe55cb0b938307aa0791f77
+  parent: 04bf577e2f961c9dde85ddadc77f71bc7bc671cc
+  files:
+  - src/manipulation.js
+  kind: library
+- id: xss-ghsa-2pqj-h3vj-pqgw-05531fc
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-2pqj-h3vj-pqgw
+  summary: Cross-Site Scripting in jquery
+  repo: jquery/jquery
+  commit: 05531fc4080ae24070930d15ae0cea7ae056457d
+  parent: 452e32769d514d835988c544492e4083df2bc1d6
+  files:
+  - src/core.js
+  kind: library
+- id: xss-ghsa-2x5m-9ch4-qgrr-f02ffbb
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-2x5m-9ch4-qgrr
+  summary: rails-html-sanitizer has XSS vulnerability with certain configurations
+  repo: rails/rails-html-sanitizer
+  commit: f02ffbb8465e73920b6de0da940f5530f855965e
+  parent: 5104ca94644d0eb495ef0dced17f62c3e68df8c0
+  files:
+  - lib/rails/html/scrubbers.rb
+  kind: library
+- id: xss-ghsa-399p-vq28-5hg8-05be435
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-399p-vq28-5hg8
+  summary: keynote Cross-site Scripting vulnerability
+  repo: rf-/keynote
+  commit: 05be4356b0a6ca7de48da926a9b997beb5ffeb4a
+  parent: 87d309c740bf4547868852d6548d1572fee6055a
+  files:
+  - lib/keynote/rumble.rb
+  kind: library
+- id: xss-ghsa-3h7v-wqw7-ff28-d99c087
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-3h7v-wqw7-ff28
+  summary: Cross site scripting in publify
+  repo: publify/publify
+  commit: d99c0870d3dbbfde7febdc6cad33199b84770101
+  parent: 6067e2abd8bb087884085de31c543e2f8395cd5b
+  files:
+  - publify_core/app/uploaders/resource_uploader.rb
+  kind: app
+- id: xss-ghsa-3wqf-4x89-9g79-1490960
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-3wqf-4x89-9g79
+  summary: Bootstrap vulnerable to Cross-Site Scripting (XSS)
+  repo: twbs/bootstrap
+  commit: 149096016f70fd815540d62c0989fd99cdc809e0
+  parent: 2d90d369bbc2bd2647620246c55cec8c4705e3d0
+  files:
+  - js/src/collapse.js
+  kind: library
+- id: xss-ghsa-3wqf-4x89-9g79-2a5ba23
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-3wqf-4x89-9g79
+  summary: Bootstrap vulnerable to Cross-Site Scripting (XSS)
+  repo: twbs/bootstrap
+  commit: 2a5ba23ce8f041f3548317acc992ed8a736b609d
+  parent: 13bf8aeae3db71e28af69782328c22215795c169
+  files:
+  - js/affix.js
+  - js/collapse.js
+  - js/tooltip.js
+  kind: library
+- id: xss-ghsa-4249-gjr8-jpq3-4d59f94
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-4249-gjr8-jpq3
+  summary: 'Duplicate Advisory: ProsemirrorToHtml has a Cross-Site Scripting (XSS)
+    vulnerability through unescaped HTML attribute values'
+  repo: etaminstudio/prosemirror_to_html
+  commit: 4d59f94f550bcabeec30d298791bbdd883298ad8
+  parent: '0797c1555aee010606c82f873489716a001903f0'
+  files:
+  - lib/prosemirror_to_html.rb
+  kind: library
+- id: xss-ghsa-4p8f-mmfj-r45g-6d60bc8
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-4p8f-mmfj-r45g
+  summary: Cross-site scripting in fat_free_crm
+  repo: fatfreecrm/fat_free_crm
+  commit: 6d60bc8ed010c4eda05d6645c64849f415f68d65
+  parent: 557fe238a65ca94ce21e3940724ab96e55e1b27d
+  files:
+  - app/helpers/tags_helper.rb
+  kind: app
+- id: xss-ghsa-4q53-fqhc-cr46-45ee8df
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-4q53-fqhc-cr46
+  summary: ember-source Cross-site Scripting vulnerability
+  repo: emberjs/ember.js
+  commit: 45ee8df2a0efc0afe233d6b9b17045782a2e6b2d
+  parent: ca2dc5db4ddfce0687c38b276e840274f7100855
+  files:
+  - packages/ember-routing/lib/helpers/link_to.js
+  kind: library
+- id: xss-ghsa-53g2-mvcc-q9x3-9c0a993
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-53g2-mvcc-q9x3
+  summary: 'Trix: Stored XSS via HTMLParser attribute injection on paste'
+  repo: basecamp/trix
+  commit: 9c0a993d9fc2ffe9d56b013b030bc238f9c0557c
+  parent: e62fcc3b5872a310a79cecb47472bd16bf6499ad
+  files:
+  - action_text-trix/app/assets/javascripts/trix.js
+  - src/trix/models/string_piece.js
+  kind: library
+- id: xss-ghsa-59c7-4xj2-hgvw-297161e
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-59c7-4xj2-hgvw
+  summary: rails-html-sanitizer Cross-site Scripting vulnerability
+  repo: rails/rails-html-sanitizer
+  commit: 297161e29a3e11186ce4c02bf7defc088bf544d4
+  parent: bc771d15989f00525a2f0547e6b0ba007ea06449
+  files:
+  - lib/rails/html/sanitizer.rb
+  - lib/rails/html/scrubbers.rb
+  kind: library
+- id: xss-ghsa-5qhf-9phg-95m2-f1be9d8
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-5qhf-9phg-95m2
+  summary: Loofah `allowed_uri?` does not detect `javascript:` URIs split by numeric
+    character references without semicolons
+  repo: flavorjones/loofah
+  commit: f1be9d893b5a8dd79240441a912d8897e74c38c0
+  parent: 5e91af861e3cdab47b91dd0b81f3afdfd13a5e19
+  files:
+  - lib/loofah/html5/scrub.rb
+  kind: library
+- id: xss-ghsa-653m-r33x-39ff-f8429a9
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-653m-r33x-39ff
+  summary: Geminabox contains Cross-site Scripting
+  repo: geminabox/geminabox
+  commit: f8429a9e364658459add170e4ebc7a5d3b4759e7
+  parent: c173cb5df1b660ba390d0b57bca820a8b3cb5e6c
+  files:
+  - lib/geminabox/server.rb
+  - views/gem.erb
+  - views/index.erb
+  kind: library
+- id: xss-ghsa-6jvm-3j5h-79f6-9aee411
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-6jvm-3j5h-79f6
+  summary: paperclip Cross-site Scripting vulnerability
+  repo: thoughtbot/paperclip
+  commit: 9aee4112f36058cd28d5fe4a006d6981bd1eda57
+  parent: ea1fc3c89743192d8ad906ecb4ced99bb1497957
+  files:
+  - lib/paperclip/media_type_spoof_detector.rb
+  - lib/paperclip/validators/media_type_spoof_detection_validator.rb
+  kind: library
+- id: xss-ghsa-75w6-p6mg-vh8j-abe9773
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-75w6-p6mg-vh8j
+  summary: Rails actionpack gem vulnerable to Cross-site Scripting
+  repo: rails/rails
+  commit: abe97736b8316f1b714cac56c115c0779aa73217
+  parent: 7e0f60d2ed93297ff1cc2656fe1cc88d9b74bf49
+  files:
+  - actionpack/lib/action_view/helpers/url_helper.rb
+  kind: library
+- id: xss-ghsa-78vq-9j56-wrfr-fe3c7b2
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-78vq-9j56-wrfr
+  summary: Gon gem lack of escaping certain input when outputting as JSON
+  repo: gazay/gon
+  commit: fe3c7b2191a992386dc9edd37de5447a4e809bc7
+  parent: 9924c70cd1127d46eaf2390ff5bea94f4db759cb
+  files:
+  - lib/gon/json_dumper.rb
+  kind: library
+- id: xss-ghsa-7g26-2qgj-chfg-21221cc
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-7g26-2qgj-chfg
+  summary: CarrierWave has a denylisted_content_type bypass via Unescaped Regex Metacharacters
+  repo: carrierwaveuploader/carrierwave
+  commit: 21221cc6e260633f7da78c6133a88666a5529d27
+  parent: 7023b899b52916304abc9ac310f8cec850c4648a
+  files:
+  - lib/carrierwave/uploader/content_type_denylist.rb
+  kind: library
+- id: xss-ghsa-7g26-2qgj-chfg-4c4a005
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-7g26-2qgj-chfg
+  summary: CarrierWave has a denylisted_content_type bypass via Unescaped Regex Metacharacters
+  repo: carrierwaveuploader/carrierwave
+  commit: 4c4a005775a436c5165df014dc9b1874c227d86c
+  parent: 316da6907a5cbd5fddf2e217b819497b6793d4b1
+  files:
+  - lib/carrierwave/uploader/content_type_blacklist.rb
+  kind: library
+- id: xss-ghsa-7g65-ghrg-hpf5-cf48c9c
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-7g65-ghrg-hpf5
+  summary: actionpack Cross-site Scripting vulnerability
+  repo: rails/rails
+  commit: cf48c9c7dcbef8543171f7f7de8d3d9a16b58e77
+  parent: 3dc0cd373bcc84f9a5c0c43fdd57735c5d29bc90
+  files:
+  - actionpack/lib/action_view/helpers/sanitize_helper.rb
+  kind: library
+- id: xss-ghsa-7mvr-5x2g-wfc8-2d90d36
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-7mvr-5x2g-wfc8
+  summary: Bootstrap Cross-site Scripting vulnerability
+  repo: twbs/bootstrap
+  commit: 2d90d369bbc2bd2647620246c55cec8c4705e3d0
+  parent: e3084c3842809ca83aaaba7c8f53ea2b0ffabe0a
+  files:
+  - js/src/tooltip.js
+  kind: library
+- id: xss-ghsa-87qx-g5wg-mwmj-5971b48
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-87qx-g5wg-mwmj
+  summary: RubyGems Cross-site Scripting vulnerability
+  repo: rubygems/rubygems
+  commit: 5971b486d4dbb2bad5d3445b3801c456eb0ce183
+  parent: 666ef793cad42eed96f7aee1cdf77865db921099
+  files:
+  - lib/rubygems.rb
+  kind: library
+- id: xss-ghsa-87qx-g5wg-mwmj-66a28b9
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-87qx-g5wg-mwmj
+  summary: RubyGems Cross-site Scripting vulnerability
+  repo: rubygems/rubygems
+  commit: 66a28b9275551384fdab45f3591a82d6b59952cb
+  parent: f83f911e19e27cbac1ccce7471d96642241dd759
+  files:
+  - lib/rubygems/server.rb
+  kind: library
+- id: xss-ghsa-89vf-4333-qx8v-50d732a
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-89vf-4333-qx8v
+  summary: Rails Active Support has a possible XSS vulnerability in SafeBuffer#%
+  repo: rails/rails
+  commit: 50d732af3b7c8aaf63cbcca0becbc00279b215b7
+  parent: d9502f5214e2198245a4c1defe9cd02a7c8057d0
+  files:
+  - activesupport/lib/active_support/core_ext/string/output_safety.rb
+  kind: library
+- id: xss-ghsa-8qgm-g2vv-vwvc-b5a287d
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-8qgm-g2vv-vwvc
+  summary: RailsAdmin Cross-site Scripting vulnerability in the list view
+  repo: railsadminteam/rails_admin
+  commit: b5a287d82e2cbd1737a1a01e11ede2911cce7fef
+  parent: 6fc208b3f9d2c6b1b79e8003984dbf2bc4e1e9c5
+  files:
+  - app/views/rails_admin/main/index.html.erb
+  kind: app
+- id: xss-ghsa-8qgm-g2vv-vwvc-d84b398
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-8qgm-g2vv-vwvc
+  summary: RailsAdmin Cross-site Scripting vulnerability in the list view
+  repo: railsadminteam/rails_admin
+  commit: d84b39884059c4ed50197cec8522cca029a17673
+  parent: e066c4fc2f02daf3459c68d70202b55ad9c0135b
+  files:
+  - app/views/rails_admin/main/index.html.haml
+  kind: app
+- id: xss-ghsa-8qwh-rm6c-jv96-55ab9bd
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-8qwh-rm6c-jv96
+  summary: Oxidized Web vulnerable to Cross-site Scripting
+  repo: ytti/oxidized-web
+  commit: 55ab9bdc68b03ebce9280b8746ef31d7fdedcc45
+  parent: 5add416a32a2ac34ff8dc23c0e1587a82813b339
+  files:
+  - lib/oxidized/web/views/conf_search.haml
+  kind: library
+- id: xss-ghsa-97jw-64cj-jc58-48e5fd2
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-97jw-64cj-jc58
+  summary: 'ViewComponent: around_render HTML-Safety Bypass'
+  repo: ViewComponent/view_component
+  commit: 48e5fd2d602344c7d33019fbc5c8b087e315bb78
+  parent: c35ec3f2b38344ed193cbc113546843a0fb613f4
+  files:
+  - lib/view_component/base.rb
+  - lib/view_component/collection.rb
+  kind: library
+- id: xss-ghsa-97wh-6hmj-g8j9-9adfe7b
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-97wh-6hmj-g8j9
+  summary: Spina Cross-site Scripting vulnerability
+  repo: spinacms/spina
+  commit: 9adfe7b4807b3cc10dbb7351a26cc32f5d8c14a3
+  parent: 7f73bbd5db27f9f8016883fb7a701ad81518a120
+  files:
+  - app/components/spina/pages/actions_component.html.erb
+  kind: library
+- id: xss-ghsa-9822-6m93-xqf4-4c83b33
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-9822-6m93-xqf4
+  summary: Rails has possible XSS Vulnerability in Action Controller
+  repo: rails/rails
+  commit: 4c83b331092a79d58e4adffe4be5f250fa5782cc
+  parent: 723f54566023e91060a67b03353e7c03e7436433
+  files:
+  - actionpack/lib/abstract_controller/translation.rb
+  kind: library
+- id: xss-ghsa-98mf-8f57-64qf-6d0526d
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-98mf-8f57-64qf
+  summary: actionpack Cross-site Scripting vulnerability
+  repo: rails/rails
+  commit: 6d0526db91afb0675c2ad3d871529d1536303c64
+  parent: 65b5e35e898ac09a50b61c671d98a3cf92453003
+  files:
+  - actionpack/lib/action_view/helpers/form_tag_helper.rb
+  kind: library
+- id: xss-ghsa-9chr-4fjh-5rgw-be177e4
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-9chr-4fjh-5rgw
+  summary: Cross-site Scripting in actionpack
+  repo: rails/rails
+  commit: be177e4566747b73ff63fd5f529fab564e475ed4
+  parent: be0b5c65a175b6c92514375fc7044efb11cdbe90
+  files:
+  - actionpack/lib/action_dispatch/middleware/templates/routes/_table.html.erb
+  kind: library
+- id: xss-ghsa-9p29-94hp-8rvc-b5d4e60
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-9p29-94hp-8rvc
+  summary: qiita-markdown Cross-site Scripting vulnerability
+  repo: increments/qiita-markdown
+  commit: b5d4e60bf537ceb177e70bf91653d29575e1aa21
+  parent: 3fa361384a084c0c6457ed51a3228e5b7397ee81
+  files:
+  - lib/qiita/markdown.rb
+  - lib/qiita/markdown/transformers/filter_script.rb
+  kind: library
+- id: xss-ghsa-9w99-78rj-hmxq-aaf7278
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-9w99-78rj-hmxq
+  summary: Cross-site scripting (XSS) in the dynamic file uploads
+  repo: decidim/decidim
+  commit: aaf72787cf18beeeb6a771c1f7cbb7654b073423
+  parent: 87e545e950b1a48d1e90a3ebd70657df79433a70
+  files:
+  - decidim-core/app/cells/decidim/upload_modal_cell.rb
+  - decidim-core/app/packs/src/decidim/direct_uploads/redesigned_upload_modal.js
+  - decidim-core/app/packs/src/decidim/direct_uploads/upload_modal.js
+  kind: app
+- id: xss-ghsa-9wjq-cp2p-hrgf-20867b9
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-9wjq-cp2p-hrgf
+  summary: 'Loofah: SVG `href` attribute bypasses local-reference restriction'
+  repo: flavorjones/loofah
+  commit: 20867b9be689521887364b74822c41ef830523c9
+  parent: 5f3bff46b610c1221c4bdb4e5b5b90e1178576cc
+  files:
+  - lib/loofah/html5/safelist.rb
+  - lib/loofah/html5/scrub.rb
+  kind: library
+- id: xss-ghsa-cfjv-5498-mph5-e663f08
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-cfjv-5498-mph5
+  summary: XSS in Action View
+  repo: rails/rails
+  commit: e663f084460ea56c55c3dc76f78c7caeddeeb02e
+  parent: 5259062868dcf10fbcf735d6520e6a14e15fdcdb
+  files:
+  - actionview/lib/action_view/helpers/translation_helper.rb
+  kind: library
+- id: xss-ghsa-ch3h-j2vf-95pv-649516c
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-ch3h-j2vf-95pv
+  summary: XSS Vulnerability in Action View tag helpers
+  repo: rails/rails
+  commit: 649516ce0feb699ae06a8c5e81df75d460cc9a85
+  parent: 63b487d7e4f50e8743d82f1e3d62223d2cd04356
+  files:
+  - actionview/lib/action_view/helpers/tag_helper.rb
+  - activesupport/lib/active_support/core_ext/string/output_safety.rb
+  kind: library
+- id: xss-ghsa-cm9w-c4rj-r2cf-3f82a6e
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-cm9w-c4rj-r2cf
+  summary: Improper Neutralization of Input During Web Page Generation ('Cross-site
+    Scripting') in view_component
+  repo: github/view_component
+  commit: 3f82a6e62578ff6f361aba24a1feb2caccf83ff9
+  parent: f455eb33e1291e079cb997209349e160b8311e57
+  files:
+  - lib/view_component/translatable.rb
+  kind: library
+- id: xss-ghsa-cqf3-vpx7-rxhw-5d6283a
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-cqf3-vpx7-rxhw
+  summary: Improper Neutralization of Script-Related HTML Tags in a Web Page (Basic
+    XSS) in Pay
+  repo: pay-rails/pay
+  commit: 5d6283a24062bd272a524ec48415f536a67ad57f
+  parent: a1f60d15710f81ec3a55007bb97615dcdbd44817
+  files:
+  - app/controllers/pay/payments_controller.rb
+  - app/views/pay/payments/show.html.erb
+  kind: app
+- id: xss-ghsa-f599-5m7p-hcpf-6876b71
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-f599-5m7p-hcpf
+  summary: grape subject to Cross-site Scripting
+  repo: ruby-grape/grape
+  commit: 6876b71efc7b03f7ce1be3f075eaa4e7e6de19af
+  parent: 9a4b939adb441e1c4275eb7a7ced47c5bc7032c4
+  files:
+  - lib/grape/middleware/error.rb
+  kind: library
+- id: xss-ghsa-fhx8-5c23-x7x5-cd09ba6
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-fhx8-5c23-x7x5
+  summary: 'Cross Site Scripting vulnerability in Contribsys Sidekiq '
+  repo: mhenrixon/sidekiq-unique-jobs
+  commit: cd09ba6108f98973b6649a6149790c3d4502b4cc
+  parent: 81cc8752508ebdcb5a615daffe9685a4ee59e91f
+  files:
+  - lib/sidekiq_unique_jobs/sidekiq_unique_jobs.rb
+  - lib/sidekiq_unique_jobs/web.rb
+  kind: library
+- id: xss-ghsa-fhx8-5c23-x7x5-ec3afd9
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-fhx8-5c23-x7x5
+  summary: 'Cross Site Scripting vulnerability in Contribsys Sidekiq '
+  repo: mhenrixon/sidekiq-unique-jobs
+  commit: ec3afd920c1b55843c72f748a87baac7f8be82ed
+  parent: 6e367f7615260db74cecacfd6fab28e909b5b344
+  files:
+  - lib/sidekiq_unique_jobs/web.rb
+  kind: library
+- id: xss-ghsa-fj2w-qmjp-3rjm-137728c
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-fj2w-qmjp-3rjm
+  summary: Gollum Cross-site Scripting vulnerability via filename parameter to New
+    Page dialog
+  repo: gollum/gollum
+  commit: 137728cdabc0f60859fcd30404ad2b8fff6ef715
+  parent: 3f7fd21d4a2feb177d8157adf4de6bc6099e9766
+  files:
+  - lib/gollum/views/overview.rb
+  - lib/gollum/views/page.rb
+  kind: library
+- id: xss-ghsa-fw3g-2h3j-qmm7-ec14265
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-fw3g-2h3j-qmm7
+  summary: Improper neutralization of `noscript` element content may allow XSS in
+    Sanitize
+  repo: rgrove/sanitize
+  commit: ec14265e530dc3fe31ce2ef773594d3a97778d22
+  parent: b4ee521df0d0616340c9648444be488381c238b1
+  files:
+  - lib/sanitize/transformers/clean_element.rb
+  kind: library
+- id: xss-ghsa-g8vp-2v5p-9qfh-51bb80b
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-g8vp-2v5p-9qfh
+  summary: Cross-site scripting (XSS) in Action messages on Avo
+  repo: avo-hq/avo
+  commit: 51bb80b181cd8e31744bdc4e7f9b501c81172347
+  parent: adc874f441eab24dd1ec5ce581f252682457a409
+  files:
+  - app/javascript/js/controllers/fields/key_value_controller.js
+  kind: app
+- id: xss-ghsa-g9jg-w8vm-g96v-73c20cf
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-g9jg-w8vm-g96v
+  summary: Trix has a stored XSS vulnerability through its attachment attribute
+  repo: basecamp/trix
+  commit: 73c20cf03ab2b56c0ef9c9b1aaf63f2de44f4010
+  parent: 07a5e47f673807db98a4d538894cbc0d27b1f017
+  files:
+  - action_text-trix/app/assets/javascripts/trix.js
+  - src/trix/views/attachment_view.js
+  kind: library
+- id: xss-ghsa-gpqq-952q-5327-effa323
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-gpqq-952q-5327
+  summary: XSS in the `of` option of the `.position()` util in jquery-ui
+  repo: jquery/jquery-ui
+  commit: effa323f1505f2ce7a324e4f429fa9032c72f280
+  parent: 32850869d308d5e7c9bf3e3b4d483ea886d373ce
+  files:
+  - ui/position.js
+  kind: library
+- id: xss-ghsa-grh7-935j-hg6w-64f7033
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-grh7-935j-hg6w
+  summary: Cross-site Scripting in Sidekiq
+  repo: mperham/sidekiq
+  commit: 64f70339d1dcf50a55c00d36bfdb61d97ec63ed8
+  parent: 2a57abc5e5571369ecc203c95ef21df3c1aa771e
+  files:
+  - lib/sidekiq/web/action.rb
+  - lib/sidekiq/web/application.rb
+  kind: library
+- id: xss-ghsa-gxhx-g4fq-49hj-39b282d
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-gxhx-g4fq-49hj
+  summary: CarrierWave Content-Type allowlist bypass vulnerability, possibly leading
+    to XSS
+  repo: carrierwaveuploader/carrierwave
+  commit: 39b282db5c1303899b3d3381ce8a837840f983b5
+  parent: 2f91bee6487d8e5d8bd2c1a88dd25269a2c1e4d0
+  files:
+  - lib/carrierwave/uploader/content_type_whitelist.rb
+  kind: library
+- id: xss-ghsa-gxhx-g4fq-49hj-863d425
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-gxhx-g4fq-49hj
+  summary: CarrierWave Content-Type allowlist bypass vulnerability, possibly leading
+    to XSS
+  repo: carrierwaveuploader/carrierwave
+  commit: 863d425c76eba12c3294227b39018f6b2dccbbf3
+  parent: a5c0d3cfb989ced5bf109d88294736735e256a97
+  files:
+  - lib/carrierwave/uploader/content_type_allowlist.rb
+  kind: library
+- id: xss-ghsa-h3r8-h5qw-4r35-458fdf7
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-h3r8-h5qw-4r35
+  summary: 'sidekiq vulnerable to cross-site scripting '
+  repo: sidekiq/sidekiq
+  commit: 458fdf74176a9881478c48dc5cf0269107b22214
+  parent: cf686d4ddc98f8e21579b6392306549c6be2ddca
+  files:
+  - lib/sidekiq/web/application.rb
+  kind: library
+- id: xss-ghsa-h6gj-6jjq-h8g9-8cc5bae
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-h6gj-6jjq-h8g9
+  summary: jQuery UI vulnerable to XSS when refreshing a checkboxradio with an HTML-like
+    initial text label
+  repo: jquery/jquery-ui
+  commit: 8cc5bae1caa1fcf96bf5862c5646c787020ba3f9
+  parent: b53e7beb6884a8de7710146112bc48aecd8737b4
+  files:
+  - ui/widgets/checkboxradio.js
+  kind: library
+- id: xss-ghsa-hpcf-8vf9-q4gj-9644e7b
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-hpcf-8vf9-q4gj
+  summary: jQuery-UI vulnerable to Cross-site Scripting in dialog closeText
+  repo: jquery/jquery-ui
+  commit: 9644e7bae9116edaf8d37c5b38cb32b892f10ff6
+  parent: 3e9e9d58ec47a4cbb917193bb64f6fc6e6fc2cb9
+  files:
+  - ui/widgets/dialog.js
+  kind: library
+- id: xss-ghsa-m46p-ggm5-5j83-08d0a11
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-m46p-ggm5-5j83
+  summary: Rails vulnerable to Cross-site Scripting
+  repo: rails/rails
+  commit: '08d0a11a3f62718d601d39e617c834759cf59bbb'
+  parent: f706d5f945c5751072bb90d080aff154e6858435
+  files:
+  - actionview/lib/action_view/helpers/number_helper.rb
+  kind: library
+- id: xss-ghsa-mm33-5vfq-3mm3-2b820a2
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-mm33-5vfq-3mm3
+  summary: Cross-site Scripting Vulnerability in Action Pack
+  repo: rails/rails
+  commit: 2b820a2a69fa50cffa74b4aedc57bf92ed6910ec
+  parent: 53410537594be0c0a528cff53dce433dd386cb6a
+  files:
+  - actionpack/lib/action_dispatch/http/content_security_policy.rb
+  kind: library
+- id: xss-ghsa-mq35-wqvf-r23c-1278686
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-mq35-wqvf-r23c
+  summary: Sinatra Cross-site Scripting vulnerability
+  repo: sinatra/sinatra
+  commit: 12786867d6faaceaec62c7c2cb5b0e2dc074d71a
+  parent: 5149dc9e0b0e281231b91223c6a414c905ad3a96
+  files:
+  - lib/sinatra/base.rb
+  kind: library
+- id: xss-ghsa-p33q-4h4m-j994-f5363b3
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-p33q-4h4m-j994
+  summary: Inline SVG vulnerable to Cross-site Scripting
+  repo: jamesmartin/inline_svg
+  commit: f5363b351508486021f99e083c92068cf2943621
+  parent: f64cf53b8f91d4226e32c41f333339ba5d006e9e
+  files:
+  - lib/inline_svg/action_view/helpers.rb
+  kind: library
+- id: xss-ghsa-p4x4-rw2p-8j8m-a11498d
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-p4x4-rw2p-8j8m
+  summary: 'Cross-site Scripting in Sanitize '
+  repo: rgrove/sanitize
+  commit: a11498de9e283cd457b35ee252983662f7452aa9
+  parent: 1d0d688120fb8309b31859319143ef16f92755eb
+  files:
+  - lib/sanitize/config/default.rb
+  kind: library
+- id: xss-ghsa-pg8v-g4xq-hww9-45a5c10
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-pg8v-g4xq-hww9
+  summary: Rails::Html::Sanitizer vulnerable to Cross-site Scripting
+  repo: rails/rails-html-sanitizer
+  commit: 45a5c10fed3d9aa141594c80afa06d748fa0967d
+  parent: 045774aec722d2f6bae99e8b3143b3e893e5eb29
+  files:
+  - lib/rails/html/sanitizer.rb
+  kind: library
+- id: xss-ghsa-pgm4-439c-5jp6-6752711
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-pgm4-439c-5jp6
+  summary: Rails has a possible XSS vulnerability in its Action Pack debug exceptions
+  repo: rails/rails
+  commit: 6752711c8c31d79ba50d13af6a6698a3b85415e0
+  parent: 63f5ad83edaa0b976f82d46988d745426aa4a42d
+  files:
+  - actionpack/lib/action_dispatch/middleware/templates/rescues/layout.erb
+  kind: library
+- id: xss-ghsa-prjp-h48f-jgf6-e215bf3
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-prjp-h48f-jgf6
+  summary: ActionText ContentAttachment can Contain Unsanitized HTML
+  repo: rails/rails
+  commit: e215bf3360e6dfe1497c1503a495e384ed6b0995
+  parent: 35858f1d9d57f6c4050a8d9ab754bd5d088b4523
+  files:
+  - actiontext/app/helpers/action_text/content_helper.rb
+  - actiontext/lib/action_text/content.rb
+  kind: app
+- id: xss-ghsa-q3wr-qw3g-3p4h-a699c82
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-q3wr-qw3g-3p4h
+  summary: Injection/XSS in Redcarpet
+  repo: vmg/redcarpet
+  commit: a699c82292b17c8e6a62e1914d5eccc252272793
+  parent: 6270d6b4ab6b46ee6bb57a6c0e4b2377c01780ae
+  files:
+  - lib/redcarpet.rb
+  kind: library
+- id: xss-ghsa-q58j-fmvf-9rq6-61ee344
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-q58j-fmvf-9rq6
+  summary: Cross site scripting in actionpack Rubygem
+  repo: rails/rails
+  commit: 61ee3449674c591747db95f9b3472c5c3bd9e84d
+  parent: b13be616a11ffa2c489e1b3ee4ae54e234990fcf
+  files:
+  - actionpack/lib/action_view/helpers/text_helper.rb
+  kind: library
+- id: xss-ghsa-q655-3pj8-9fxq-30786e0
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-q655-3pj8-9fxq
+  summary: Sidekiq vulnerable to a Reflected XSS in Queues Web Page
+  repo: sidekiq/sidekiq
+  commit: 30786e082c70349ab27ffa9eccc42fb0c696164d
+  parent: 371884e00396f787924ac11f466d5563bf1ce992
+  files:
+  - web/views/metrics.erb
+  kind: library
+- id: xss-ghsa-qqxp-xp9v-vvx6-f285440
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-qqxp-xp9v-vvx6
+  summary: jquery-ui Tooltip widget vulnerable to XSS
+  repo: jquery/jquery-ui
+  commit: f2854408cce7e4b7fc6bf8676761904af9c96bde
+  parent: 5fee6fd5000072ff32f2d65b6451f39af9e0e39e
+  files:
+  - ui/jquery.ui.tooltip.js
+  kind: library
+- id: xss-ghsa-r53w-g4xm-3gc6-18576ae
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-r53w-g4xm-3gc6
+  summary: Haml vulnerable to cross-site scripting
+  repo: haml/haml
+  commit: 18576ae6e9bdcb4303fdbe6b3199869d289d67c2
+  parent: a171248fb05cc354ddca9a90cd1e2486e514f227
+  files:
+  - lib/haml/helpers.rb
+  kind: library
+- id: xss-ghsa-r5hc-9xx5-97rw-92b57b1
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-r5hc-9xx5-97rw
+  summary: 'i18n gem Cross-site Scripting vulnerability '
+  repo: svenfuchs/i18n
+  commit: 92b57b1e4f84adcdcc3a375278f299274be62445
+  parent: 6a25ff0e226e32118401d3c00a8334103729f57c
+  files:
+  - lib/i18n/exceptions.rb
+  kind: library
+- id: xss-ghsa-r5jw-62xg-j433-8dd52a1
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-r5jw-62xg-j433
+  summary: Cross-Site Scripting in Kaminari
+  repo: kaminari/kaminari
+  commit: 8dd52a1aed3d2fa2835d836de23fc0d8c4ff5db8
+  parent: 04d86ed3f2537aff620941413e5fca254e87aebe
+  files:
+  - kaminari-core/lib/kaminari/helpers/tags.rb
+  kind: library
+- id: xss-ghsa-r9cr-qmfw-pmrc-b18fbc7
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-r9cr-qmfw-pmrc
+  summary: Camaleon CMS vulnerable to stored XSS through user file upload (GHSL-2024-184)
+  repo: owen2345/camaleon-cms
+  commit: b18fbc74f3ecd98a1f781d015f5466ef16b1425b
+  parent: 071b1b09d6d61ab02a5960b1ccafd9d9c2155a3e
+  files:
+  - app/helpers/camaleon_cms/uploader_helper.rb
+  - app/uploaders/camaleon_cms_uploader.rb
+  kind: app
+- id: xss-ghsa-r9mq-m72x-257g-7623b8d
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-r9mq-m72x-257g
+  summary: Resque vulnerable to reflected XSS in Queue Endpoint
+  repo: resque/resque
+  commit: 7623b8dfbdd0a07eb04b19fb25b16a8d6f087f9a
+  parent: 811ef35f8c088eeb65d29dd3cdab1b7e1d23539c
+  files:
+  - lib/resque/server/views/queues.erb
+  kind: library
+- id: xss-ghsa-rcx6-7jp6-pqf2-12fa46b
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-rcx6-7jp6-pqf2
+  summary: ember-source Cross-site Scripting vulnerability
+  repo: emberjs/ember.js
+  commit: 12fa46ba1c6efb9ddac7bfdef7f4f6909781c801
+  parent: 0c255ed219f88e9e21a2aa2bc61fd0aee63445d6
+  files:
+  - packages/ember-handlebars/lib/helpers/binding.js
+  kind: library
+- id: xss-ghsa-rmxg-73gg-4p98-b078a62
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-rmxg-73gg-4p98
+  summary: Cross-Site Scripting (XSS) in jquery
+  repo: jquery/jquery
+  commit: b078a62013782c7424a4a61a240c23c4c0b42614
+  parent: 735dea34fb0ae625542d51eae3f4e7316e403eaa
+  files:
+  - src/ajax.js
+  - src/ajax/script.js
+  kind: library
+- id: xss-ghsa-rmxg-73gg-4p98-f60729f
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-rmxg-73gg-4p98
+  summary: Cross-Site Scripting (XSS) in jquery
+  repo: jquery/jquery
+  commit: f60729f3903d17917dc351f3ac87794de379b0cc
+  parent: 5da5035039c48fd00e3effa5135e257ccda79454
+  files:
+  - src/ajax/script.js
+  kind: library
+- id: xss-ghsa-rx9f-5ggv-5rh6-23fc8d7
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-rx9f-5ggv-5rh6
+  summary: Decidim::Admin vulnerable to cross-site scripting (XSS) in the admin activity
+    log
+  repo: decidim/decidim
+  commit: 23fc8d702a4976727f78617f5e42353d67931645
+  parent: 27c2c4ee668b67a3208de61055464eb7a73ab740
+  files:
+  - decidim-core/app/presenters/decidim/admin_log/organization_presenter.rb
+  kind: library
+- id: xss-ghsa-v2r9-c84j-v7xm-ffa8788
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-v2r9-c84j-v7xm
+  summary: RDoc contains XSS vulnerability
+  repo: rdoc/rdoc
+  commit: ffa87887ee0517793df7541629a470e331f9fe60
+  parent: 67db3ed22843a3a4b31580957e78ceb744552d92
+  files:
+  - lib/rdoc.rb
+  - lib/rdoc/generator/template/darkfish/js/darkfish.js
+  kind: library
+- id: xss-ghsa-v55j-83pf-r9cq-0b6f800
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-v55j-83pf-r9cq
+  summary: Rails has a possible XSS vulnerability in its Action View tag helpers
+  repo: rails/rails
+  commit: 0b6f8002b52b9c606fd6be9e7915d9f944cf539c
+  parent: fa19073546360856e9f4dab221fc2c5d73a45e82
+  files:
+  - actionview/lib/action_view/helpers/tag_helper.rb
+  kind: library
+- id: xss-ghsa-vfj8-5pj7-2f9g-762d7e0
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-vfj8-5pj7-2f9g
+  summary: OpenC3 Cross-site Scripting in Login functionality (`GHSL-2024-128`)
+  repo: OpenC3/cosmos
+  commit: 762d7e0e93bdc2f340b1e42acccedc78994a576e
+  parent: 16f20c2ea6e5134a0f7933d93e03fb8ba34c0175
+  files:
+  - openc3-cosmos-init/plugins/openc3-tool-base/public/js/auth.js
+  kind: library
+- id: xss-ghsa-vfmv-jfc5-pjjw-25b1c80
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-vfmv-jfc5-pjjw
+  summary: CarrierWave content-Type allowlist bypass vulnerability which possibly
+    leads to XSS remained
+  repo: carrierwaveuploader/carrierwave
+  commit: 25b1c800d45ef8e78dc445ebe3bd8a6e3f0a3477
+  parent: e148cd8ba08f13da087425c80b0c0a46a812c96b
+  files:
+  - lib/carrierwave/sanitized_file.rb
+  kind: library
+- id: xss-ghsa-vvqw-fqwx-mqmm-47adca8
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-vvqw-fqwx-mqmm
+  summary: " Decidim::Admin vulnerable to cross-site scripting (XSS) in the admin
+    panel with QuillJS WYSWYG editor"
+  repo: decidim/decidim
+  commit: 47adca81cabea898005ec07b130b008f2a2be99f
+  parent: 7a0da224a0628ffd667c6086739dc463d49f9514
+  files:
+  - decidim-core/lib/decidim/form_builder.rb
+  kind: library
+- id: xss-ghsa-w7q9-xr2x-wh7x-6bcb10e
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-w7q9-xr2x-wh7x
+  summary: delayed_job_web Cross-site Scripting vulnerability
+  repo: ejschmitt/delayed_job_web
+  commit: 6bcb10e61ea2b9a44ffa16be8536dff46ad51449
+  parent: 2c55f1f6344e6e4e82087a431d5beca7b070d023
+  files:
+  - lib/delayed_job_web/application/app.rb
+  kind: library
+- id: xss-ghsa-wcfx-3m6v-4frg-9546449
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-wcfx-3m6v-4frg
+  summary: Fat Free CRM subject to Cross-site Scripting
+  repo: fatfreecrm/fat_free_crm
+  commit: 95464495f1e3e714d5c295fe621af5d2e0d4238d
+  parent: 6369bf842292c44cb565f150c962f730c717374c
+  files:
+  - app/views/layouts/application.html.haml
+  kind: app
+- id: xss-ghsa-wcm2-9c89-wmfm-7e9060c
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-wcm2-9c89-wmfm
+  summary: Cross-site Scripting in jquery-ui
+  repo: jquery/jquery-ui
+  commit: 7e9060c109b928769a664dbcc2c17bd21231b6f3
+  parent: 60486ac632a0a1bbbb0c7449fe17bccfae11af80
+  files:
+  - ui/jquery.ui.dialog.js
+  kind: library
+- id: xss-ghsa-wf2x-8w6j-qw37-0d26944
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-wf2x-8w6j-qw37
+  summary: view_component Cross-site Scripting vulnerability
+  repo: ViewComponent/view_component
+  commit: 0d26944a8d2730ea40e60eae23d70684483e5017
+  parent: 78dbac2bea7285b3a4e9afae2ff839aeb9bb55d1
+  files:
+  - lib/view_component/base.rb
+  - lib/view_component/compiler.rb
+  - lib/view_component/test_helpers.rb
+  kind: library
+- id: xss-ghsa-wf2x-8w6j-qw37-c43d8ba
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-wf2x-8w6j-qw37
+  summary: view_component Cross-site Scripting vulnerability
+  repo: ViewComponent/view_component
+  commit: c43d8bafa7117cbce479669a423ab266de150697
+  parent: 6c8d2ad8cb6bd40f542ec0719928bcb4941e70be
+  files:
+  - lib/view_component/base.rb
+  - lib/view_component/compiler.rb
+  kind: library
+- id: xss-ghsa-whrj-4476-wvmp-f2f225f
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-whrj-4476-wvmp
+  summary: 'Stored XSS in Rack::Directory via javascript: filenames rendered into
+    anchor href'
+  repo: rack/rack
+  commit: f2f225f297b99fbee3d9f51255d41f601fc40aff
+  parent: ce6885a4b7b21d6a97f273ff4a0e155807ee2769
+  files:
+  - lib/rack/directory.rb
+  kind: library
+- id: xss-ghsa-wjx2-7hqq-8h7m-d72090e
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-wjx2-7hqq-8h7m
+  summary: rails_admin ruby gem XSS vulnerability
+  repo: sferik/rails_admin
+  commit: d72090ec6a07c3b9b7b48ab50f3d405f91ff4375
+  parent: 4ef2ea42a9dbb6d900ff1435fcd23e29c1913ecd
+  files:
+  - app/assets/javascripts/rails_admin/ra.nested-form-hooks.js
+  - app/assets/javascripts/rails_admin/ra.widgets.js
+  kind: library
+- id: xss-ghsa-x7p2-x2j6-mwhr-9659f9b
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-x7p2-x2j6-mwhr
+  summary: Gemirro Stored XSS in Gemspec "homepage" value
+  repo: PierreRambaud/gemirro
+  commit: 9659f9b7ce15a723da8e361bd41b9203b19c97de
+  parent: 52b9d60bad38161470cc64516f6b2087402bd2cd
+  files:
+  - lib/gemirro/server.rb
+  - views/gem.erb
+  kind: library
+- id: xss-ghsa-x7rv-cr6v-4vm4-f739cf8
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-x7rv-cr6v-4vm4
+  summary: Cross-site Scripting in loofah
+  repo: flavorjones/loofah
+  commit: f739cf8eac5851f328b8044281d6653f74eff116
+  parent: 0c97c745aaec27f7bba4edd74be0e7d7cb9b82ad
+  files:
+  - lib/loofah.rb
+  - lib/loofah/html5/scrub.rb
+  kind: library
+- id: xss-ghsa-xv9c-mjw8-79gf-7b4ae48
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-xv9c-mjw8-79gf
+  summary: Sidekiq-cron is vulnerable to a cross-site scripting (xss) vulnerability
+    via crafted URL
+  repo: sidekiq-cron/sidekiq-cron
+  commit: 7b4ae4822f93ef4646f5cb55500ca4e25662db7c
+  parent: 11535a5940171513b4ff4ff44d4300e608f4b5cc
+  files:
+  - lib/sidekiq/cron/views/cron.erb
+  - lib/sidekiq/cron/views/legacy/cron.erb
+  kind: library
+- id: xss-ghsa-xxr8-833v-c7wc-2d5b105
+  risk: xss
+  cwe: CWE-79
+  advisory: GHSA-xxr8-833v-c7wc
+  summary: Cross-site Scripting vulnerability in i18n translations helper method
+  repo: rails/rails
+  commit: 2d5b105d4bcb652550dda8b5613376d1b8beb70c
+  parent: 6f08621941a5300f0f590381ba5eba63db443ed7
+  files:
+  - actionpack/lib/action_view/helpers/translation_helper.rb
+  kind: library

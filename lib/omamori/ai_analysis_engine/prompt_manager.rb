@@ -10,6 +10,7 @@ module Omamori
       Report any detected risks in the format specified by the following JSON Schema:
       %{json_schema}
       If no risks are found, output an empty list for the "security_risks" array.
+      If the code is a git diff, a vulnerability can also come from removing or weakening an existing protection, not only from added code.
       Please provide your response in %{language}.
       #{"File context (if available): %{file_path}" if ENV['OMAMORI_DEBUG_PROMPT']}
 
@@ -111,7 +112,11 @@ dangerous_eval_prompt = <<~PROMPT
         TEXT
       end
 
-      DIFF_NOTE = 'The code may be a git diff; judge the code that is added or kept, not the removed lines.'
+      # Real vulnerabilities often come from removing a protection, so removed lines matter too
+      DIFF_NOTE = 'The code may be a git diff, where lines starting with + are added and lines starting with - are ' \
+                  'removed. A change can introduce the vulnerability by adding unsafe code, or by removing or ' \
+                  'weakening a protection that was there before (a check, an escape, a filter or allowlist, an ' \
+                  'authorization or authentication step, or a security setting). Judge the code as it is after the change.'
       SUB_CHECKS_DIR = File.expand_path('sub_checks', __dir__)
       SUB_CHECK_SEPARATOR = '__'
 

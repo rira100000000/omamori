@@ -9,11 +9,15 @@ require 'json'
 require 'tmpdir'
 require 'fileutils'
 require 'open3'
+require 'digest'
 require_relative '../lib/omamori/core_runner'
 
 module OmamoriEvals
   CASES_DIR = File.expand_path('cases', __dir__)
   RESULTS_DIR = File.expand_path('results', __dir__)
+  REAL_DIR = File.expand_path('real', __dir__)
+  # Code from other projects is fetched at eval time and kept out of git (their licenses differ from omamori's)
+  REAL_CACHE_DIR = File.expand_path('.cache/real', __dir__)
   THRESHOLDS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9].freeze
   RISKS = Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys
 
@@ -65,6 +69,8 @@ module OmamoriEvals
     private
 
     def load_cases
+      return load_real_cases if @options[:real]
+
       Dir[File.join(@options[:cases_dir] || CASES_DIR, '**', '*.yml')].sort.filter_map do |path|
         data = YAML.safe_load_file(path)
         next if @options[:case] && !data.fetch('id').include?(@options[:case])
@@ -78,6 +84,44 @@ module OmamoriEvals
 
         Case.new(data.fetch('id'), path, expected, data.fetch('files'))
       end
+    end
+
+    # Real security fixes from evals/real/manifest.yml. Each fix gives two cases: the fix reversed
+    # (introduces the vulnerability) and the fix itself (touches the same code safely).
+    def load_real_cases
+      entries = YAML.safe_load_file(File.join(REAL_DIR, 'manifest.yml')).fetch('entries')
+      entries = entries.select { |e| e['risk'] == @options[:risk].to_s } if @options[:risk]
+      entries = entries.select { |e| e['kind'] == @options[:kind] } if @options[:kind]
+      entries = entries.select { |e| real_split(e['id']) == @options[:split] } if @options[:split]
+      entries.flat_map do |entry|
+        fixed = entry['files'].to_h { |path| [path, fetch_file(entry['repo'], entry['commit'], path)] }
+        vulnerable = entry['files'].to_h { |path| [path, fetch_file(entry['repo'], entry['parent'], path)] }
+        risk = entry['risk'].to_sym
+        [
+          Case.new("#{entry['id']}-reversed", entry['advisory'], { risk => true },
+                   entry['files'].map { |path| { 'path' => path, 'before' => fixed[path], 'after' => vulnerable[path] } }),
+          Case.new("#{entry['id']}-fix", entry['advisory'], { risk => false },
+                   entry['files'].map { |path| { 'path' => path, 'before' => vulnerable[path], 'after' => fixed[path] } })
+        ].select { |c| @options[:case].nil? || c.id.include?(@options[:case]) }
+      end
+    end
+
+    # A fixed half of the real fixes is used for tuning and the other half only for checking
+    def real_split(id)
+      Digest::SHA256.hexdigest(id).to_i(16).even? ? 'tune' : 'holdout'
+    end
+
+    def fetch_file(repo, sha, path)
+      cache = File.join(REAL_CACHE_DIR, repo, sha, path)
+      return File.read(cache) if File.exist?(cache)
+
+      content, status = Open3.capture2('gh', 'api', '-H', 'Accept: application/vnd.github.raw',
+                                       "/repos/#{repo}/contents/#{path}?ref=#{sha}")
+      raise "Could not fetch #{repo}@#{sha}:#{path}" unless status.success?
+
+      FileUtils.mkdir_p(File.dirname(cache))
+      File.write(cache, content)
+      content
     end
 
     # Commits the before files in a throwaway repo, writes the after files, and returns the diff
@@ -325,6 +369,15 @@ OptionParser.new do |opts|
   opts.on('--runs N', Integer, 'Run every case N times (default 1)') { |v| options[:runs] = v }
   opts.on('--risk RISK', 'Only cases labeled with this risk') { |v| options[:risk] = v.to_sym }
   opts.on('--case TEXT', 'Only cases whose id contains TEXT') { |v| options[:case] = v }
+  opts.on('--real', 'Use real security fixes from evals/real/manifest.yml (fetched with the gh CLI)') do
+    options[:real] = true
+  end
+  opts.on('--split SPLIT', %w[tune holdout], 'With --real, only the tuning half or only the held-out half') do |v|
+    options[:split] = v
+  end
+  opts.on('--kind KIND', %w[app library], 'With --real, only application code or only library code') do |v|
+    options[:kind] = v
+  end
   opts.on('--holdout', 'Use the held-out cases in evals/holdout/ (never used for tuning)') do
     options[:cases_dir] = File.expand_path('holdout', __dir__)
   end

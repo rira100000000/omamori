@@ -63,3 +63,4 @@ build-iPhoneSimulator/
 
 # Eval results
 /evals/results/
+/evals/.cache/
