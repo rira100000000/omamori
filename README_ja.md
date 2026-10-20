@@ -9,19 +9,33 @@ Omamoriは、Rubyコードおよび依存関係に潜む潜在的なセキュリ
 
 注意:
 AI解析は静的解析で診断できない脆弱性を発見することができますが、LLMの診断結果は実行のたびにブレが生じやすいです。
-判定モデル（Jevなど）を使うモードでは、35項目を1つずつ独立に判定するため、結果が比較的安定します。
+判定役（classifier）を使うと、35項目を1つずつ独立に判定するため、結果が比較的安定します。
 
 ## 特徴
 
-- ステージされた変更（`git diff --staged`）、ブランチの差分（`--base`）、コードベース全体、または指定されたファイルやディレクトリをスキャンしてセキュリティリスクを検出
-- 35種類の脆弱性を1項目ずつyes/noで判定する高速チェック（TypeSafe Jev、OpenAI Decisions）。引っかかった項目だけLLMが詳しいレポートを書きます
-- LLMを自由に選択可能。RubyLLMが対応するAPI（Gemini、Claude、OpenAIなど）のほか、Claude Code（`claude -p`）やCodex（`codex exec`）のサブスクリプションでも動きます
+- ステージされた変更（`git diff --staged`）、ブランチの差分（`--base`）、コードベース全体、または指定されたファイルやディレクトリをスキャン
+- 35種類の脆弱性を1項目ずつyes/noで判定する高速チェック（TypeSafe Jev、OpenAI Decisionsなど）。引っかかった項目だけ、LLMが詳しいレポートを書きます
+- 判定役とレポート役を、それぞれ自由に選べます。レポート役には、RubyLLMが対応するAPI（Gemini、Claude、OpenAIなど）のほか、Claude Code（`claude -p`）やCodex（`codex exec`）のサブスクリプションも使えます
 - BrakemanやBundler-Auditなどの静的解析ツールと連携
 - 複数のレポート形式に対応（コンソール、HTML、JSON）
 - GitHub Actions / GitLab CI の設定ファイルを生成
 - 検出精度を測るための問題集（`evals/`）
-- `.omamorirc`ファイルによる柔軟な設定が可能
-- `.omamoriignore`ファイルによるスキャン対象からの除外機能（`diff`モードを除く）
+- `.omamorirc`ファイルによる設定と、`.omamoriignore`ファイルによるスキャン対象からの除外
+
+## 仕組み
+
+omamoriのAI解析は、2つの役割で動きます。
+
+- **判定役（classifier）:** 35項目を1つずつyes/noで判定する、高速な判定モデルです。TypeSafe JevやOpenAI Decisionsなどがあります。使うかどうかは選べます。
+- **レポート役（reporter）:** 脆弱性のレポートを書くLLMです。判定役を使わない場合は、レポート役が全項目を一度に判定します。
+
+判定役を使うと、次の流れになります。
+
+1. 差分をファイルごとに分け、各ファイルについて全チェック項目（既定は35項目）を1リクエストでまとめて判定役に問い合わせます。ファイル同士は並列に処理します。
+2. 判定役が返す「脆弱性がある確率」が閾値未満の項目は、その場で通過とします。
+3. 閾値以上の項目だけ、レポート役がその脆弱性の詳細な検出手順に沿ってレポートを書きます。
+
+判定役への質問には、レポート役に渡しているのと同じ脆弱性の定義と検出手順を含めています。判定役がエラーを返したファイルは、全項目をレポート役に回します。レポート役がレポートを書けなかった項目も、判定役の検出結果として残します（判定を黙って飛ばしません）。
 
 ## インストール
 
@@ -53,26 +67,26 @@ gem install omamori
 omamori init
 ```
 
-生成された`.omamorirc`ファイルと`.omamoriignore`ファイルを編集して、使用するLLMとモデル、実行するチェック項目、スキャン対象から除外するファイル/ディレクトリなどを設定します。
+生成された`.omamorirc`ファイルと`.omamoriignore`ファイルを編集して、判定役とレポート役、実行するチェック項目、スキャン対象から除外するファイル/ディレクトリなどを設定します。
 
 ### APIキーの設定
 
 APIキーは環境変数で渡します。使う機能に応じて設定してください。
 
 ```bash
-export GEMINI_API_KEY=...     # 既定のLLM（gemini-3.8-flash）
-export TYPESAFE_API_KEY=...   # --engine jev を使う場合
-export OPENAI_API_KEY=...     # --engine openai を使う場合
+export GEMINI_API_KEY=...     # 既定のレポート役（gemini-3.8-flash）
+export TYPESAFE_API_KEY=...   # 判定役に typesafe（Jev）を使う場合
+export OPENAI_API_KEY=...     # 判定役に openai を使う場合
 ```
 
-Gemini以外のLLMを使う場合は、そのプロバイダの環境変数（`ANTHROPIC_API_KEY` など）を設定します。`--llm claude` / `--llm codex` はインストール済みのCLIのログイン状態を使うので、APIキーは不要です。
+Gemini以外のレポート役を使う場合は、そのプロバイダの環境変数（`ANTHROPIC_API_KEY`、`OPENROUTER_API_KEY` など、RubyLLMの設定名を大文字にしたもの）を設定します。レポート役に `claude_code` / `codex` を使う場合は、インストール済みのCLIのログイン状態を使うので、APIキーは不要です。
 
 ### スキャン
 
-おすすめは、ブランチの差分を判定モデルでチェックする使い方です：
+おすすめは、ブランチの差分を判定役（Jev）でチェックする使い方です：
 
 ```bash
-omamori scan --base main --engine jev
+omamori scan --base main --classifier typesafe
 ```
 
 ステージされた変更をスキャン（デフォルト）：
@@ -94,82 +108,59 @@ omamori scan --all
 ```
 このモードでは`.omamoriignore`ファイルが有効になります。
 
-出力形式を指定（コンソール、HTML、JSON）：
-
-```bash
-bundle exec omamori scan --format html
-bundle exec omamori scan --all --format json
-```
-
-### ファイル/ディレクトリ指定スキャン
-
-特定のファイルやディレクトリを指定してスキャンを実行します。
-
-```bash
-omamori scan <ファイルパス1> <ファイルパス2> ... <ディレクトリパス1> ...
-```
-
-例:
+特定のファイルやディレクトリを指定してスキャン：
 
 ```bash
 omamori scan app/controllers/users_controller.rb app/models/user.rb config/routes.rb lib/
 ```
+このモードでも`.omamoriignore`ファイルが有効になります。
 
-このモードでは`.omamoriignore`ファイルが有効になります。
+出力形式を指定（コンソール、HTML、JSON）：
 
-### AI解析のみ実施
+```bash
+omamori scan --format html
+omamori scan --all --format json
+```
 
-静的解析ツールを使わず、AI解析のみを実行するには、`--ai`オプションを使用します：
+静的解析ツールを使わず、AI解析のみを実行：
 
 ```bash
 omamori scan --ai
 ```
 
-### 判定モデルによる高速チェック（Jev / OpenAI Decisions）
+### 判定役とレポート役を選ぶ
 
-`--engine` に `jev` または `openai` を指定すると、セキュリティチェックを1項目ずつ、独立したyes/no判定として高速な判定モデルで実行します。
+どちらの役も `provider` と `model` で指定します。コマンドラインでも、`.omamorirc`（[設定](#設定)）でも指定できます。
 
 ```bash
-omamori scan --base main --engine jev
-omamori scan --base main --engine openai
+omamori scan --base main --classifier typesafe                           # Jevで判定、Geminiでレポート
+omamori scan --base main --classifier typesafe --reporter claude_code    # Jevで判定、claude -pでレポート
+omamori scan --base main --classifier openai --reporter anthropic --reporter-model claude-sonnet-5-5
+omamori scan --reporter codex                                            # 判定役なし。codex execで全項目を判定
 ```
 
-1. 差分をファイルごとに分け、各ファイルについて全チェック項目（既定は35項目）を1リクエストでまとめて判定モデルに問い合わせます。ファイル同士は並列に処理します。
-2. 判定モデルが返す「脆弱性がある確率」が閾値未満の項目は、その場で通過とします。
-3. 閾値以上の項目だけ、LLMがその脆弱性の詳細な検出手順に沿ってレポートを書きます。
+**判定役（classifier）に指定できるprovider**
 
-判定モデルへの質問には、LLMに渡しているのと同じ脆弱性の定義と検出手順を含めています。判定モデルがエラーを返したファイルは、全項目をLLMに回します。LLMがレポートを書けなかった項目も、判定モデルの検出結果として残します（判定を黙って飛ばしません）。
-
-| engine | 判定モデル | 判定モデルのAPIキー |
+| provider | 判定モデル | APIキー |
 | --- | --- | --- |
-| `llm`（既定） | なし。LLMが全項目を一度に判定 | なし |
-| `jev` | TypeSafe Jev | `TYPESAFE_API_KEY` |
-| `openai` | OpenAI Decisions API（`gpt-6-luna`） | `OPENAI_API_KEY` |
+| `typesafe` | TypeSafe Jev（`model` 省略時は `jev-1.13.0`） | `TYPESAFE_API_KEY` |
+| `openai` | OpenAI Decisions API（`model` 省略時は `gpt-6-luna`） | `OPENAI_API_KEY` |
+| `ollama` | Ollamaで動かす判定モデル（Clefなど）。`model` と、接続先の `base_url`（または `OLLAMA_API_BASE`）が必須 | なし |
+| `none` | 判定役を使わない（既定） | なし |
 
-`jev` は `decision.jev.base_url` を変えることで、SystemOneプロトコルに対応した他のサーバーにも向けられます。以前の `engine: gemini` は `llm` と同じ意味で、そのまま使えます。
+`base_url` を指定すると、SystemOneプロトコルに対応した他のサーバーにも向けられます。
 
-### LLMを選ぶ
+**レポート役（reporter）に指定できるprovider**
 
-レポートを書くLLM（`--engine llm` のときは、全項目を判定するLLM）は `--llm` で選びます。
-
-```bash
-omamori scan --base main --engine jev                # レポートは model に指定したモデル（既定 gemini-3.8-flash）
-omamori scan --base main --engine jev --llm claude   # レポートは claude -p
-omamori scan --base main --engine jev --llm codex    # レポートは codex exec
-omamori scan --llm claude                            # 判定もレポートも claude -p
-```
-
-| llm | 呼び出すもの |
+| provider | 呼び出すもの |
 | --- | --- |
-| `api`（既定） | [RubyLLM](https://rubyllm.com) 経由のAPI。`model` に指定したモデルを使い、Gemini、Anthropic、OpenAI、OpenRouter、Ollamaなど、RubyLLMが対応するプロバイダならどれでも使えます |
-| `claude` | `claude -p`（サブスクリプション）。ツールをすべて無効にし、空の一時ディレクトリで実行 |
+| RubyLLMのプロバイダ（`gemini`、`anthropic`、`openai`、`openrouter`、`ollama` など） | [RubyLLM](https://rubyllm.com) 経由のAPI。既定は `gemini` の `gemini-3.8-flash` |
+| `claude_code` | `claude -p`（サブスクリプション）。ツールをすべて無効にし、空の一時ディレクトリで実行 |
 | `codex` | `codex exec`（サブスクリプション）。読み取り専用のサンドボックスで、空の一時ディレクトリで実行 |
 
-`api` のAPIキーは、各プロバイダの環境変数（`GEMINI_API_KEY`、`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`OPENROUTER_API_KEY` など、RubyLLMの設定名を大文字にしたもの）から読みます。モデル名だけでプロバイダが決まらない場合や、RubyLLMのモデル一覧にないモデルを使う場合は、`provider` も指定してください。以前の `llm: gemini` は `api` と同じ意味で、そのまま使えます。
+レポート役の `provider` は省略でき、その場合はモデル名からプロバイダを決めます。RubyLLMのモデル一覧にない新しいモデルを使うときは、`provider` を指定してください。
 
-diffには外部から来たコードが含まれるため、CLIはコマンドを実行できない状態で動かします。サブスクリプションのレート制限を考慮して、CLIを使うときのレポートの並列数は既定で3です（`decision.report_concurrency` で変更できます）。
-
-各エンジンの検出精度は、`evals/` の問題集（35項目それぞれに脆弱なケースと惜しいけど安全なケース、および無害な変更）で測れます。使い方は [evals/README.md](evals/README.md) を参照してください。
+diffには外部から来たコードが含まれるため、`claude_code` / `codex` はコマンドを実行できない状態で動かします。サブスクリプションのレート制限を考慮して、CLIを使うときのレポートの並列数は既定で3です（`reporter.concurrency` で変更できます）。
 
 ## 設定
 
@@ -181,37 +172,24 @@ diffには外部から来たコードが含まれるため、CLIはコマンド�
 # .omamorirc
 # omamori用設定ファイル
 
-# AIエンジン（任意、デフォルト: llm）。--engine で上書きできます
-# engine: jev
+# 判定役（任意）。省略するとレポート役が全項目を判定します。--classifier で上書きできます
+# classifier:
+#   provider: typesafe      # typesafe / openai / ollama
+#   model: jev-1.13.0       # 閾値を調整するなら、jev-latest ではなく版を固定する
+#   threshold: 0.3          # この確率以上の項目をレポート役に回す
+#   concurrency: 8          # 判定役に同時に投げるリクエスト数
+#   base_url: https://api.typesafe.ai   # 任意。SystemOne形式の別のサーバーを使うとき
+#   api_key: ...            # 任意。環境変数（TYPESAFE_API_KEY など）を推奨
 
-# LLM（任意、デフォルト: api）。--llm で上書きできます
-# llm: api
+# レポート役（任意。既定は gemini / gemini-3.8-flash）。--reporter で上書きできます
+# reporter:
+#   provider: anthropic     # RubyLLMのプロバイダ、または claude_code / codex
+#   model: claude-sonnet-5-5
+#   concurrency: 8          # レポートを並列で書く数（CLIの既定は3、APIの既定は8）
+#   command: /path/to/claude   # 任意。claude_code / codex のCLIのパス
+#   api_key: ...            # 任意。環境変数（ANTHROPIC_API_KEY など）を推奨
 
-# llm が api のときに使うモデル（任意、デフォルト: gemini-3.8-flash）
-# model: claude-sonnet-5-5
-# provider: anthropic   # 任意。モデル名からプロバイダが決まらないときに指定
-
-# Gemini APIキー（任意）。環境変数 GEMINI_API_KEY を推奨
-# api_key: YOUR_GEMINI_API_KEY
-
-# llm が claude / codex のときの設定（任意）
-# claude:
-#   model: sonnet       # 省略するとCLIの既定モデル
-# codex:
-#   model: gpt-5.5      # 省略するとCLIの既定モデル
-
-# 判定モデルの設定（engine が jev / openai のとき）
-# decision:
-#   threshold: 0.3          # この確率以上の項目をLLMのレポートに回す
-#   concurrency: 8          # 判定モデルに同時に投げるリクエスト数
-#   report_concurrency: 3   # レポートを並列で書く数（CLIの既定は3、APIの既定は8）
-#   jev:
-#     model: jev-1.13.0     # 閾値を調整するなら、jev-latest ではなく版を固定する
-#     base_url: https://api.typesafe.ai
-#   openai:
-#     model: gpt-6-luna
-
-# 実行するセキュリティチェック（任意。デフォルトは engine: llm で主要6項目、jev / openai で全35項目）
+# 実行するセキュリティチェック（任意。デフォルトは判定役なしで主要6項目、判定役ありで全35項目）
 # checks:
 #   - xss
 #   - csrf
@@ -238,13 +216,8 @@ diffには外部から来たコードが含まれるため、CLIはコマンド�
 # language: ja
 ```
 
-- `engine`: `llm`、`jev`、`openai` のいずれか。デフォルトは`llm`（`gemini` も同じ意味）。
-- `llm`: `api`、`claude`、`codex` のいずれか。デフォルトは`api`（`gemini` も同じ意味）。
-- `model`: `llm: api` で使うモデル。RubyLLMが対応するモデルなら何でも指定できます。デフォルトは`gemini-3.8-flash`。
-- `provider`: `llm: api` で使うRubyLLMのプロバイダ（`gemini`、`anthropic`、`openai` など）。任意。
-- `api_key`: Gemini APIキー。環境変数`GEMINI_API_KEY`で渡すことを推奨します。他のプロバイダのキーは環境変数で渡します。
-- `claude` / `codex`: CLIを使うときの`model`と`command`（CLIのパス）。
-- `decision`: 判定モデルの設定。`threshold`（デフォルト0.3）、`concurrency`（デフォルト8）、`report_concurrency`、エンジンごとの`model`・`base_url`・`api_key`。APIキーは環境変数`TYPESAFE_API_KEY`、`OPENAI_API_KEY`で渡すことを推奨します。
+- `classifier`: 判定役。`provider`、`model`、`threshold`（デフォルト0.3）、`concurrency`（デフォルト8）、`base_url`、`api_key`。
+- `reporter`: レポート役。`provider`、`model`、`concurrency`、`command`、`api_key`。
 - `checks`: 実行するセキュリティチェックのリスト。
 - `prompt_templates`: AI解析用のカスタムプロンプトテンプレートを設定。
 - `report`: レポート出力に関する設定。
@@ -252,6 +225,8 @@ diffには外部から来たコードが含まれるため、CLIはコマンド�
   - `html_template`: カスタムHTMLテンプレート（ERB形式）のパス。
 - `static_analysers`: 静的解析ツール（Brakeman、Bundler-Auditなど）の追加オプション設定。
 - `language`: AI解析結果の詳細説明文の言語設定。デフォルトは英語（`en`）。
+
+以前の書き方（`engine`、`llm`、`model`、`provider`、`api_key`、`decision`、`claude`、`codex`）と、以前のオプション（`--engine`、`--llm`）も、引き続き使えます。
 
 ## .omamoriignore ファイル
 
@@ -274,7 +249,7 @@ omamori ci-setup --ci github_actions   # .github/workflows/omamori_scan.yml
 omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
 ```
 
-生成される設定は、プルリクエスト（マージリクエスト）では `--base` でブランチの差分を、それ以外では `--all` でコードベース全体をスキャンします。差分を取るため、リポジトリは履歴ごと取得します。APIキーはCIのシークレット（GitLabではCI/CD変数）に登録してください。判定モデルを使う場合は、生成された設定のコメントにある `TYPESAFE_API_KEY` などの行を有効にし、`.omamorirc` に `engine: jev` を設定します。
+生成される設定は、プルリクエスト（マージリクエスト）では `--base` でブランチの差分を、それ以外では `--all` でコードベース全体をスキャンします。差分を取るため、リポジトリは履歴ごと取得します。APIキーはCIのシークレット（GitLabではCI/CD変数）に登録してください。判定役を使う場合は、生成された設定のコメントにある `TYPESAFE_API_KEY` などの行を有効にし、`.omamorirc` に `classifier` を設定します。
 
 ## デモファイル
 
@@ -300,10 +275,10 @@ omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
     omamori scan
     ```
 
-    判定モデルで試す場合：
+    判定役（Jev）で試す場合：
 
     ```bash
-    omamori scan --engine jev
+    omamori scan --classifier typesafe
     ```
 
     または、ステージ後にすべてのファイルをスキャンする場合：
@@ -311,6 +286,17 @@ omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
     ```bash
     omamori scan --all
     ```
+
+## 検出精度の測定
+
+`evals/` には、正解のわかっているコード変更の問題集があります。35項目それぞれについて、脆弱な変更と「惜しいけど安全な」変更を2つずつ、さらに無害な変更を収録しています。判定役やレポート役を変えたときに、見逃しと誤検知がどう変わるかを測れます。
+
+```bash
+bundle exec ruby evals/run.rb --classifier typesafe --runs 3
+bundle exec ruby evals/run.rb --classifier none --reporter claude_code --reporter-model sonnet
+```
+
+使い方は [evals/README.md](evals/README.md) を参照してください。
 
 ## 貢献について
 

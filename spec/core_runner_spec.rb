@@ -30,6 +30,8 @@ RSpec.describe Omamori::CoreRunner do
     allow(config_double).to receive(:get).with('engine', any_args).and_return('gemini')
     allow(config_double).to receive(:get).with('llm', any_args).and_return('gemini')
     allow(config_double).to receive(:get).with('provider', any_args).and_return(nil)
+    allow(config_double).to receive(:get).with('classifier', any_args).and_return(nil)
+    allow(config_double).to receive(:get).with('reporter', any_args).and_return(nil)
     allow(config_double).to receive(:get).with('decision', any_args).and_return({})
 
     # Stub ignore_patterns for the config_double

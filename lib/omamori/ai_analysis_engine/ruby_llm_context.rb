@@ -13,7 +13,9 @@ module Omamori
             value = ENV.fetch(setter.to_s.delete_suffix('=').upcase, nil)
             config.public_send(setter, value) if value
           end
-          overrides.compact.each { |name, value| config.public_send("#{name}=", value) }
+          overrides.compact.each do |name, value|
+            config.public_send("#{name}=", value) if config.respond_to?("#{name}=")
+          end
         end
       end
     end

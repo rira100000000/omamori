@@ -6,11 +6,6 @@ module Omamori
   module AIAnalysisEngine
     # Asks a decision model (TypeSafe Jev, OpenAI Decisions, ...) yes/no questions through RubyLLM.judge.
     class JudgeClient
-      ENGINES = {
-        jev: { provider: :typesafe, model: 'jev-1.13.0' },
-        openai: { provider: :openai, model: 'gpt-6-luna' }
-      }.freeze
-
       def initialize(context, provider:, model:)
         @context = context
         @provider = provider

@@ -31,19 +31,18 @@ module OmamoriEvals
       @options = options
       @prompt_manager = Omamori::AIAnalysisEngine::PromptManager.new(PromptConfig.new({ 'language' => 'en' }))
       @diff_splitter = Omamori::AIAnalysisEngine::DiffSplitter.new
-      @context = Omamori::AIAnalysisEngine::RubyLLMContext.build(typesafe_api_base: options[:base_url])
-      @llm_client = case options[:llm]
-                    when :claude then Omamori::AIAnalysisEngine::CLIClients::ClaudeCodeClient.new
-                    when :codex then Omamori::AIAnalysisEngine::CLIClients::CodexClient.new
-                    else Omamori::AIAnalysisEngine::LLMClient.new(@context, provider: options[:llm_provider])
-                    end
+      # Same resolution as `omamori scan`, from the command-line options only
+      config = options[:base_url] ? { 'classifier' => { 'provider' => options[:classifier], 'base_url' => options[:base_url] } } : {}
+      @settings = Omamori::AISettings.new(PromptConfig.new(config), options.slice(:classifier, :classifier_model,
+                                                                                  :reporter, :reporter_model))
+      @llm_client = @settings.build_reporter_client
     end
 
     def run
       cases = load_cases
       abort 'No cases found.' if cases.empty?
       cases.each { |c| c.diff = build_diff(c) }
-      puts "Engine: #{@options[:engine]} / cases: #{cases.size} / runs: #{@options[:runs]}"
+      puts "#{@settings.describe} / cases: #{cases.size} / runs: #{@options[:runs]}"
 
       started = Time.now
       runs = Array.new(@options[:runs]) do |run_index|
@@ -101,10 +100,10 @@ module OmamoriEvals
 
     # Returns { risk => probability or nil (error) } for every risk
     def evaluate(eval_case)
-      @options[:engine] == :llm ? evaluate_with_llm(eval_case) : evaluate_with_decision_model(eval_case)
+      @settings.classifier? ? evaluate_with_decision_model(eval_case) : evaluate_with_llm(eval_case)
     end
 
-    # Same path as `omamori scan --engine jev|openai`: per-file units, all risks per unit.
+    # Same path as `omamori scan` with a classifier: per-file units, all risks per unit.
     # A case's probability for a risk is the highest among its files.
     def evaluate_with_decision_model(eval_case)
       units = @diff_splitter.split_by_file(eval_case.diff)
@@ -115,11 +114,11 @@ module OmamoriEvals
       end
     end
 
-    # Baseline: the LLM checks all risks in one prompt, as `omamori scan --engine gemini` does.
+    # Baseline: the reporter checks all risks in one prompt, as `omamori scan --classifier none` does.
     # The risk type is constrained to the risk keys so answers can be scored.
     def evaluate_with_llm(eval_case)
       prompt = @prompt_manager.build_prompt(eval_case.diff, RISKS, llm_schema)
-      result = @llm_client.analyze(prompt, llm_schema, model: @options[:llm_model])
+      result = @llm_client.analyze(prompt, llm_schema, model: @settings.reporter_model)
       return RISKS.to_h { |risk| [risk, nil] } unless result
 
       found = result['security_risks'].map { |r| r['type'].to_s.to_sym }
@@ -137,17 +136,13 @@ module OmamoriEvals
     def scanner
       Omamori::AIAnalysisEngine::ChecklistScanner.new(
         decision_client: decision_client, llm_client: @llm_client, prompt_manager: @prompt_manager,
-        diff_splitter: @diff_splitter, json_schema: Omamori::CoreRunner::JSON_SCHEMA, model: @options[:llm_model],
+        diff_splitter: @diff_splitter, json_schema: Omamori::CoreRunner::JSON_SCHEMA, model: @settings.reporter_model,
         concurrency: 1 # cases are already run in parallel
       )
     end
 
     def decision_client
-      @decision_client ||= begin
-        defaults = Omamori::AIAnalysisEngine::JudgeClient::ENGINES.fetch(@options[:engine])
-        Omamori::AIAnalysisEngine::JudgeClient.new(@context, provider: defaults[:provider],
-                                                             model: @options[:model] || defaults[:model])
-      end
+      @decision_client ||= @settings.build_classifier_client
     end
 
     # Scores every labeled (case, risk) pair in every run
@@ -156,7 +151,7 @@ module OmamoriEvals
       threshold = @options[:threshold]
 
       {
-        engine: @options[:engine], model: @options[:engine] == :llm ? "#{@options[:llm]} #{@options[:llm_model]}" : @options[:model],
+        setup: @settings.describe,
         runs: runs.size, cases: cases.size,
         elapsed_seconds: elapsed.round(1),
         errors: runs.sum { |run| run.values.sum { |probs| probs.values.count(&:nil?) } },
@@ -216,7 +211,7 @@ module OmamoriEvals
 
     def print_report(report)
       puts
-      puts "== #{report[:engine]} #{report[:model]} (#{report[:cases]} cases x #{report[:runs]} runs, #{report[:elapsed_seconds]}s, errors: #{report[:errors]})"
+      puts "== #{report[:setup]} (#{report[:cases]} cases x #{report[:runs]} runs, #{report[:elapsed_seconds]}s, errors: #{report[:errors]})"
       puts
       puts 'threshold  recall  specificity   TP   FN   FP   TN'
       report[:sweep].each do |s|
@@ -240,7 +235,7 @@ module OmamoriEvals
 
     def save(report, cases, runs)
       FileUtils.mkdir_p(RESULTS_DIR)
-      name = @options[:engine] == :llm ? @options[:llm] : @options[:engine]
+      name = @settings.classifier? ? @settings.classifier['provider'] : "llm-#{@settings.reporter['provider'] || 'auto'}"
       path = File.join(RESULTS_DIR, "#{name}-#{Time.now.strftime('%Y%m%d-%H%M%S')}.json")
       raw = cases.to_h { |c| [c.id, runs.map { |run| run[c.id] }] }
       File.write(path, JSON.pretty_generate(report.merge(raw: raw)))
@@ -249,25 +244,27 @@ module OmamoriEvals
   end
 end
 
-options = { engine: :jev, llm: :api, runs: 1, concurrency: 8,
-            threshold: Omamori::AIAnalysisEngine::ChecklistScanner::DEFAULT_THRESHOLD }
+options = { classifier: 'typesafe', runs: 1, concurrency: 8,
+            threshold: Omamori::AISettings::DEFAULT_THRESHOLD }
 OptionParser.new do |opts|
   opts.banner = 'Usage: ruby evals/run.rb [options]'
-  opts.on('--engine ENGINE', %i[jev openai llm], 'jev, openai, or llm (baseline: the --llm checks all risks at once)') do |v|
-    options[:engine] = v
+  opts.on('--classifier PROVIDER', 'typesafe (default), openai, ollama, or none (baseline: the reporter checks everything)') do |v|
+    options[:classifier] = v
   end
-  opts.on('--llm LLM', %i[api claude codex], 'LLM for --engine llm (default api: any RubyLLM model)') { |v| options[:llm] = v }
-  opts.on('--llm-provider PROVIDER', 'RubyLLM provider for --llm api (e.g. gemini, anthropic, openai)') do |v|
-    options[:llm_provider] = v.to_sym
+  opts.on('--classifier-model MODEL', 'e.g. jev-1.13.0, gpt-6-luna') { |v| options[:classifier_model] = v }
+  opts.on('--base-url URL', 'Server for the classifier provider (e.g. a local SystemOne server)') { |v| options[:base_url] = v }
+  opts.on('--reporter PROVIDER', 'Reporter for --classifier none: a RubyLLM provider, claude_code, or codex') do |v|
+    options[:reporter] = v
   end
+  opts.on('--reporter-model MODEL', 'e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet') { |v| options[:reporter_model] = v }
   opts.on('--runs N', Integer, 'Run every case N times (default 1)') { |v| options[:runs] = v }
   opts.on('--risk RISK', 'Only cases labeled with this risk') { |v| options[:risk] = v.to_sym }
   opts.on('--threshold T', Float, 'Threshold for the per-risk table (default 0.3)') { |v| options[:threshold] = v }
   opts.on('--concurrency N', Integer, 'Cases run in parallel (default 8)') { |v| options[:concurrency] = v }
-  opts.on('--model MODEL', 'Decision model (e.g. jev-1.13.0, gpt-6-luna)') { |v| options[:model] = v }
-  opts.on('--base-url URL', 'SystemOne server for --engine jev') { |v| options[:base_url] = v }
-  opts.on('--llm-model MODEL', 'Model for the --llm (e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet)') { |v| options[:llm_model] = v }
 end.parse!
-options[:llm_model] ||= Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL if options[:llm] == :api
 
-OmamoriEvals::Runner.new(options).run
+begin
+  OmamoriEvals::Runner.new(options).run
+rescue Omamori::AISettings::Error => e
+  abort "Configuration error: #{e.message}"
+end

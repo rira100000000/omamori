@@ -5,11 +5,11 @@ A set of code changes with known answers, used to check how well each engine det
 ## Running
 
 ```bash
-bundle exec ruby evals/run.rb --engine jev --runs 3
-bundle exec ruby evals/run.rb --engine openai --runs 3
-bundle exec ruby evals/run.rb --engine llm               # baseline: Gemini checks all risks in one prompt
-bundle exec ruby evals/run.rb --engine llm --llm claude --llm-model sonnet   # same baseline with claude -p
-bundle exec ruby evals/run.rb --engine jev --risk xss    # only cases for one risk
+bundle exec ruby evals/run.rb --runs 3                                  # classifier: typesafe (Jev)
+bundle exec ruby evals/run.rb --classifier openai --runs 3              # classifier: OpenAI Decisions
+bundle exec ruby evals/run.rb --classifier none                         # baseline: Gemini checks all risks in one prompt
+bundle exec ruby evals/run.rb --classifier none --reporter claude_code --reporter-model sonnet   # same baseline with claude -p
+bundle exec ruby evals/run.rb --risk xss                                # only cases for one risk
 ```
 
 For each case, the runner creates a throwaway git repository, commits the `before` files, writes the `after` files, and takes `git diff`. The diff then goes through the same path as `omamori scan`: split per file, every risk asked for each file. A case's probability for a risk is the highest probability among its files.

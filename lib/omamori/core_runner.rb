@@ -5,12 +5,10 @@ require 'fileutils' # FileUtils を require する
 require 'pathname'  # Pathname を require する
 require 'shellwords'
 require_relative 'ai_analysis_engine/llm_client'
-require_relative 'ai_analysis_engine/judge_client'
+require_relative 'ai_settings'
 require_relative 'ai_analysis_engine/prompt_manager'
 require_relative 'ai_analysis_engine/diff_splitter'
 require_relative 'ai_analysis_engine/checklist_scanner'
-require_relative 'ai_analysis_engine/cli_clients/claude_code_client'
-require_relative 'ai_analysis_engine/cli_clients/codex_client'
 require_relative 'report_generator/console_formatter'
 require_relative 'report_generator/html_formatter'
 require_relative 'report_generator/json_formatter'
@@ -66,13 +64,7 @@ module Omamori
       # TODO: Add other risks from requirements based on PromptManager::RISK_PROMPTS.keys
     ].freeze
 
-    # Engines that run each risk as a separate yes/no check before asking Gemini for a report
-    DECISION_ENGINES = AIAnalysisEngine::JudgeClient::ENGINES.keys.freeze
-
     DEFAULT_MODEL = AIAnalysisEngine::LLMClient::DEFAULT_MODEL
-
-    # LLMs that run through a locally installed CLI (using the user's subscription)
-    CLI_LLMS = %i[claude codex].freeze
 
     # Threshold for splitting large content (characters as a proxy for tokens)
     # Can be overridden by config
@@ -85,7 +77,6 @@ module Omamori
       @config = Omamori::Config.new
 
       # Initialize components with configuration
-      @api_llm_client = AIAnalysisEngine::LLMClient.new(ruby_llm_context, provider: @config.get('provider', nil))
       @prompt_manager = AIAnalysisEngine::PromptManager.new(@config)
 
       chunk_size = @config.get('chunk_size', DEFAULT_SPLIT_THRESHOLD)
@@ -111,6 +102,7 @@ module Omamori
 
       case @options[:command]
       when :scan
+        validate_ai_settings
         # Initialize results
         ai_analysis_result = { 'security_risks' => [] }
         brakeman_result = nil
@@ -170,7 +162,7 @@ module Omamori
           if diff_content.empty?
             puts @options[:base] ? "No changes against #{@options[:base]} to scan." : 'No staged changes to scan.'
           elsif decision_engine?
-            puts "Scanning differences with #{@options[:engine]}..."
+            puts "Scanning differences (#{ai_settings.describe})..."
             units = @diff_splitter.split_by_file(diff_content)
             ai_analysis_result = checklist_scanner.scan(units, get_risks_to_check)
           else
@@ -190,7 +182,7 @@ module Omamori
         when :all
           # Scan entire codebase
           if decision_engine?
-            puts "Scanning entire codebase with #{@options[:engine]}..."
+            puts "Scanning entire codebase (#{ai_settings.describe})..."
             files_to_scan = collect_files_from_paths(['.'], @config.ignore_patterns,
                                                      @options.fetch(:force_scan_ignored, false))
             ai_analysis_result = checklist_scanner.scan(read_units(files_to_scan), get_risks_to_check)
@@ -254,77 +246,53 @@ module Omamori
 
     def get_risks_to_check
       # 設定ファイルからチェック対象のリスクを取得し、シンボルの配列に変換する
-      # 設定がない場合、gemini は DEFAULT_RISKS_TO_CHECK、判定モデルは全項目を使う
+      # 設定がない場合、LLMだけで判定するときは DEFAULT_RISKS_TO_CHECK、判定モデルを使うときは全項目を使う
       default_checks = decision_engine? ? AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys : DEFAULT_RISKS_TO_CHECK
       configured_checks = @config.get('checks', default_checks)
       configured_checks.map(&:to_sym)
     end
 
-    # RubyLLM reads each provider's key from its usual environment variable; these settings override it
-    def ruby_llm_context
-      decision_config = @config.get('decision', {})
-      jev_config = decision_config.fetch('jev', {})
-      AIAnalysisEngine::RubyLLMContext.build(
-        gemini_api_key: @config.get('api_key', nil),
-        typesafe_api_key: jev_config['api_key'],
-        typesafe_api_base: jev_config['base_url'],
-        openai_api_key: decision_config.fetch('openai', {})['api_key']
-      )
+    # Which classifier and reporter to use, from .omamorirc and the command line
+    def ai_settings
+      @ai_settings ||= AISettings.new(@config, ai_overrides)
     end
 
-    # The LLM that writes reports (and analyzes everything itself when no decision engine is used)
+    def ai_overrides
+      @ai_overrides ||= {}
+    end
+
+    # Stops before any scanning when the classifier or reporter settings are wrong
+    def validate_ai_settings
+      ai_settings
+    rescue AISettings::Error => e
+      puts "Configuration error: #{e.message}"
+      exit 1
+    end
+
+    # The LLM that writes reports (and checks everything itself when there is no classifier)
     def llm_client
-      @llm_client ||= case llm
-                      when :claude then AIAnalysisEngine::CLIClients::ClaudeCodeClient.new(command: llm_config['command'])
-                      when :codex then AIAnalysisEngine::CLIClients::CodexClient.new(command: llm_config['command'])
-                      else @api_llm_client
-                      end
-    end
-
-    # 'gemini' is the old name of the API LLM, kept for existing configs
-    def llm
-      llm = @options[:llm] || :api
-      llm == :gemini ? :api : llm
+      @llm_client ||= ai_settings.build_reporter_client
     end
 
     def llm_model
-      llm == :api ? @config.get('model', DEFAULT_MODEL) : llm_config['model']
-    end
-
-    def llm_config
-      @config.get(llm.to_s, {})
-    end
-
-    # Subscription CLIs have tighter rate limits than APIs
-    def default_report_concurrency
-      CLI_LLMS.include?(llm) ? 3 : AIAnalysisEngine::ChecklistScanner::DEFAULT_CONCURRENCY
+      ai_settings.reporter_model
     end
 
     def decision_engine?
-      DECISION_ENGINES.include?(@options[:engine])
+      ai_settings.classifier?
     end
 
     def checklist_scanner
-      decision_config = @config.get('decision', {})
       AIAnalysisEngine::ChecklistScanner.new(
-        decision_client: build_decision_client(decision_config),
+        decision_client: ai_settings.build_classifier_client,
         llm_client: llm_client,
         prompt_manager: @prompt_manager,
         diff_splitter: @diff_splitter,
         json_schema: JSON_SCHEMA,
         model: llm_model,
-        threshold: decision_config.fetch('threshold', AIAnalysisEngine::ChecklistScanner::DEFAULT_THRESHOLD),
-        concurrency: decision_config.fetch('concurrency', AIAnalysisEngine::ChecklistScanner::DEFAULT_CONCURRENCY),
-        report_concurrency: decision_config.fetch('report_concurrency', default_report_concurrency)
-      )
-    end
-
-    def build_decision_client(decision_config)
-      defaults = AIAnalysisEngine::JudgeClient::ENGINES.fetch(@options[:engine])
-      AIAnalysisEngine::JudgeClient.new(
-        ruby_llm_context,
-        provider: defaults[:provider],
-        model: decision_config.fetch(@options[:engine].to_s, {}).fetch('model', defaults[:model])
+        threshold: ai_settings.threshold,
+        concurrency: ai_settings.classifier_concurrency,
+        report_concurrency: ai_settings.reporter_concurrency
       )
     end
 
@@ -364,14 +332,27 @@ module Omamori
           @options[:base] = ref
           @options[:scan_mode_explicit] ||= :diff
         end
-        opts.on('--engine ENGINE', %i[llm gemini jev openai],
-                'AI engine (llm, jev, openai). llm: the LLM checks everything. ' \
-                'jev/openai: each risk is checked separately, then the LLM writes reports') do |engine|
-          @options[:engine] = engine
+        opts.on('--classifier PROVIDER',
+                'Classifier that checks each risk as a yes/no question (typesafe, openai, ollama, or none)') do |provider|
+          ai_overrides[:classifier] = provider
         end
-        opts.on('--llm LLM', %i[api gemini claude codex],
-                'LLM (api, claude, codex). api: any RubyLLM model set by `model`. claude/codex: the installed CLI') do |llm|
-          @options[:llm] = llm
+        opts.on('--classifier-model MODEL', 'Classifier model (e.g. jev-1.13.0, gpt-6-luna)') do |model|
+          ai_overrides[:classifier_model] = model
+        end
+        opts.on('--reporter PROVIDER',
+                'LLM that writes reports: any RubyLLM provider (gemini, anthropic, openai, ...), ' \
+                'or claude_code / codex to use a subscription CLI') do |provider|
+          ai_overrides[:reporter] = provider
+        end
+        opts.on('--reporter-model MODEL', 'Reporter model (e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet)') do |model|
+          ai_overrides[:reporter_model] = model
+        end
+        # Older options, kept for compatibility
+        opts.on('--engine ENGINE', %w[llm gemini jev openai], '(Deprecated) Use --classifier') do |engine|
+          ai_overrides[:classifier] = AISettings::LEGACY_ENGINES.fetch(engine, 'none')
+        end
+        opts.on('--llm LLM', %w[api gemini claude codex], '(Deprecated) Use --reporter') do |llm|
+          ai_overrides[:reporter] = AISettings::LEGACY_LLMS[llm] if AISettings::LEGACY_LLMS.key?(llm)
         end
         opts.on('--force-scan-ignored', 'Force scan files and directories listed in .omamoriignore') do
           @options[:force_scan_ignored] = true
@@ -397,8 +378,6 @@ module Omamori
                              :scan # Default command
                            end
 
-      @options[:engine] = @config.get('engine', 'llm').to_sym
-      @options[:llm] = @config.get('llm', 'api').to_sym
       begin
         @opt_parser.parse!(@args) # Parse remaining arguments for options
       rescue OptionParser::InvalidOption => e
@@ -601,8 +580,8 @@ module Omamori
             - name: Run Omamori Scan
               env:
                 GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Ensure GEMINI_API_KEY is set in GitHub Secrets
-                # TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }} # For engine: jev
-                # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # For engine: openai, or an OpenAI model as the LLM
+                # TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }} # For classifier: typesafe
+                # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # For classifier: openai, or an OpenAI reporter
               # Example: Scan all files on push to main, diff on PRs
               # This logic might need adjustment based on your workflow preference
               run: |
@@ -651,8 +630,8 @@ module Omamori
               fi
           variables:
             GEMINI_API_KEY: $GEMINI_API_KEY # Set GEMINI_API_KEY as a CI/CD variable in GitLab
-            # TYPESAFE_API_KEY: $TYPESAFE_API_KEY # For engine: jev
-            # OPENAI_API_KEY: $OPENAI_API_KEY # For engine: openai, or an OpenAI model as the LLM
+            # TYPESAFE_API_KEY: $TYPESAFE_API_KEY # For classifier: typesafe
+            # OPENAI_API_KEY: $OPENAI_API_KEY # For classifier: openai, or an OpenAI reporter
             GIT_DEPTH: "0" # Needed to diff against the target branch
           rules:
             - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
@@ -716,38 +695,21 @@ module Omamori
         # .omamorirc
         # Configuration file for omamori gem
 
-        # API keys are read from environment variables:
-        #   GEMINI_API_KEY (default LLM), ANTHROPIC_API_KEY, OPENAI_API_KEY, ... for other RubyLLM providers,
-        #   TYPESAFE_API_KEY for engine: jev, OPENAI_API_KEY for engine: openai.
-        # api_key: "YOUR_GEMINI_API_KEY"   # Optional. Gemini key, if you prefer to put it here
+        # API keys are read from environment variables: GEMINI_API_KEY (default reporter),
+        # TYPESAFE_API_KEY (classifier: typesafe), OPENAI_API_KEY, ANTHROPIC_API_KEY, ... for other providers.
 
-        # AI engine (optional, default: llm): llm, jev, or openai.
-        # jev/openai run each check as a separate yes/no question on a fast decision model,
-        # then the LLM writes reports only for the checks that did not pass.
-        # engine: "jev"
-
-        # LLM (optional, default: api): api, claude, or codex.
-        # api uses `model` through RubyLLM (any provider). claude/codex call the locally installed CLI
-        # (claude -p / codex exec), so they use your subscription.
-        # llm: "claude"
-
-        # Model for llm: api (optional, default: gemini-3.8-flash).
-        # model: "gemini-3.8-flash"
-        # provider: "gemini"   # Optional. Set when the model name does not identify the provider
-
-        # Model for llm: claude / codex (optional, default: the CLI's default model).
-        # claude:
-        #   model: "sonnet"
-
-        # Decision model settings (optional).
-        # decision:
+        # Classifier (optional): a fast decision model that checks each risk as a yes/no question.
+        # Only the flagged checks are sent to the reporter. Without it, the reporter checks everything.
+        # classifier:
+        #   provider: "typesafe"   # typesafe / openai / ollama
+        #   model: "jev-1.13.0"
         #   threshold: 0.3
-        #   concurrency: 8
-        #   report_concurrency: 3
-        #   jev:
-        #     model: "jev-1.13.0"
-        #   openai:
-        #     model: "gpt-6-luna"
+
+        # Reporter (optional, default: gemini / gemini-3.8-flash): the LLM that writes reports.
+        # Any RubyLLM provider, or claude_code / codex to use a subscription CLI (claude -p / codex exec).
+        # reporter:
+        #   provider: "anthropic"
+        #   model: "claude-sonnet-5-5"
 
         # Security checks to enable (optional, default: all implemented checks).
         # Provide a list of symbols. Example:
