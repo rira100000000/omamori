@@ -1,0 +1,94 @@
+id: mass_assignment-vulnerable-nested-membership-role
+description: Profile settings start accepting nested team memberships so users can tune notifications per team from one form
+expected:
+  mass_assignment: true
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :sessions, dependent: :destroy
+        has_many :memberships, dependent: :destroy
+        has_many :teams, through: :memberships
+
+        normalizes :email_address, with: ->(e) { e.strip.downcase }
+        validates :display_name, presence: true
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :sessions, dependent: :destroy
+        has_many :memberships, dependent: :destroy
+        has_many :teams, through: :memberships
+
+        accepts_nested_attributes_for :memberships
+
+        normalizes :email_address, with: ->(e) { e.strip.downcase }
+        validates :display_name, presence: true
+      end
+  - path: app/models/membership.rb
+    before: |
+      class Membership < ApplicationRecord
+        belongs_to :user
+        belongs_to :team
+
+        enum :role, { member: 0, maintainer: 1, owner: 2 }
+      end
+    after: |
+      class Membership < ApplicationRecord
+        belongs_to :user
+        belongs_to :team
+
+        enum :role, { member: 0, maintainer: 1, owner: 2 }
+        enum :notification_level, { all_activity: 0, mentions: 1, none: 2 }, prefix: :notify
+      end
+  - path: app/controllers/settings/profiles_controller.rb
+    before: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def edit
+            @user = Current.user
+          end
+
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: "Profile saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.expect(user: [:display_name, :time_zone])
+          end
+        end
+      end
+    after: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def edit
+            @user = Current.user
+            @memberships = @user.memberships.includes(:team).order("teams.name")
+          end
+
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: "Profile saved"
+            else
+              @memberships = @user.memberships.includes(:team).order("teams.name")
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.expect(user: [:display_name, :time_zone,
+                                 memberships_attributes: [[:id, :notification_level, :role]]])
+          end
+        end
+      end

@@ -1,0 +1,52 @@
+id: csrf-vulnerable-custom-origin-check
+description: Replaces the authenticity token check with a hand-written Origin/Referer check so cached pages and the mobile web view stop failing
+expected:
+  csrf: true
+files:
+  - path: app/controllers/application_controller.rb
+    before: |
+      class ApplicationController < ActionController::Base
+        protect_from_forgery with: :exception
+
+        helper_method :current_user
+
+        private
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def require_login
+          redirect_to new_session_path unless current_user
+        end
+      end
+    after: |
+      class ApplicationController < ActionController::Base
+        APP_ORIGIN = "https://app.example.com".freeze
+
+        skip_forgery_protection
+        before_action :verify_same_origin_request, unless: -> { request.get? || request.head? }
+
+        helper_method :current_user
+
+        private
+
+        def verify_same_origin_request
+          origin = request.origin
+          trusted =
+            if origin.present?
+              origin.start_with?(APP_ORIGIN)
+            else
+              request.referer.to_s.include?("app.example.com")
+            end
+          head :forbidden unless trusted
+        end
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def require_login
+          redirect_to new_session_path unless current_user
+        end
+      end

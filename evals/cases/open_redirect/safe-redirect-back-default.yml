@@ -1,0 +1,46 @@
+id: open_redirect-safe-redirect-back-default
+description: Language switcher link sends the user back to the page they came from using redirect_back_or_to with its default host check
+expected:
+  open_redirect: false
+files:
+  - path: app/controllers/locales_controller.rb
+    before: |
+      class LocalesController < ApplicationController
+        skip_before_action :require_login
+
+        def update
+          locale = params[:locale].to_s
+          if I18n.available_locales.map(&:to_s).include?(locale)
+            cookies.permanent[:locale] = locale
+            current_user&.update(locale: locale)
+          end
+          redirect_to root_path
+        end
+      end
+    after: |
+      class LocalesController < ApplicationController
+        skip_before_action :require_login
+
+        def update
+          locale = params[:locale].to_s
+          if I18n.available_locales.map(&:to_s).include?(locale)
+            cookies.permanent[:locale] = locale
+            current_user&.update(locale: locale)
+          end
+          redirect_back_or_to root_path
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "home#index"
+        resource :session, only: [:new, :create, :destroy]
+        resources :articles, only: [:index, :show]
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "home#index"
+        resource :session, only: [:new, :create, :destroy]
+        resources :articles, only: [:index, :show]
+        get "locale/:locale", to: "locales#update", as: :switch_locale
+      end

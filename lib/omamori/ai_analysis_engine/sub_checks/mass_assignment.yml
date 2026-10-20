@@ -14,4 +14,6 @@ sensitive_attribute: >-
 strong_params_bypass: >-
   Does the code pass request data to a model write (new, create, update, assign_attributes, insert_all, upsert)
   without going through strong parameters, for example JSON.parse(request.body.read), request.request_parameters,
-  or request.POST? Answer no when only explicitly listed attributes are taken from that data.
+  request.POST, or the arguments of a GraphQL mutation (GraphQL input objects are not protected by strong
+  parameters, so every argument the input type declares can be written)? Answer no when only explicitly listed,
+  harmless attributes are taken from that data, or the GraphQL input type declares only harmless arguments.

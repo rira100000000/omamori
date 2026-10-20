@@ -1,0 +1,61 @@
+id: open_redirect-safe-parsed-host-equality
+description: Outbound link tracker redirects to a url param with allow_other_host only when the parsed https host exactly matches a fixed list
+expected:
+  open_redirect: false
+files:
+  - path: app/controllers/outbound_links_controller.rb
+    before: |
+      class OutboundLinksController < ApplicationController
+        skip_before_action :require_login
+
+        def show
+          link = OutboundLink.find_by!(slug: params[:slug])
+          link.increment!(:clicks)
+          redirect_to link.target_url, allow_other_host: true
+        end
+      end
+    after: |
+      class OutboundLinksController < ApplicationController
+        TRUSTED_HOSTS = %w[example.com www.example.com partner-shop.jp docs.vendor.io].freeze
+
+        skip_before_action :require_login
+
+        def show
+          link = OutboundLink.find_by!(slug: params[:slug])
+          link.increment!(:clicks)
+          redirect_to link.target_url, allow_other_host: true
+        end
+
+        def track
+          destination = trusted_destination(params[:url])
+          if destination
+            ClickEvent.create!(url: destination, source: params[:source], user: current_user)
+            redirect_to destination, allow_other_host: true
+          else
+            redirect_to root_path
+          end
+        end
+
+        private
+
+        def trusted_destination(value)
+          uri = URI.parse(value.to_s)
+          return unless uri.scheme == "https" && TRUSTED_HOSTS.include?(uri.host)
+
+          uri.to_s
+        rescue URI::InvalidURIError
+          nil
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "home#index"
+        get "go/:slug", to: "outbound_links#show", as: :outbound_link
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "home#index"
+        get "go/:slug", to: "outbound_links#show", as: :outbound_link
+        get "out", to: "outbound_links#track", as: :track_outbound
+      end

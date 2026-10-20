@@ -348,6 +348,13 @@ module Omamori
         opts.on('--reporter-model MODEL', 'Reporter model (e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet)') do |model|
           ai_overrides[:reporter_model] = model
         end
+        opts.on('--reporter-fallback PROVIDER',
+                'Reporter asked only when the reporter refuses or fails (e.g. claude_code), or none') do |provider|
+          ai_overrides[:reporter_fallback] = provider
+        end
+        opts.on('--reporter-fallback-model MODEL', 'Model for the fallback reporter') do |model|
+          ai_overrides[:reporter_fallback_model] = model
+        end
         # Older options, kept for compatibility
         opts.on('--engine ENGINE', %w[llm gemini jev openai], '(Deprecated) Use --classifier') do |engine|
           ai_overrides[:classifier] = AISettings::LEGACY_ENGINES.fetch(engine, 'none')

@@ -1,0 +1,59 @@
+id: csrf-safe-api-controller-bearer-email
+description: Moves the SPA's email update to an ActionController::API endpoint that authenticates only with a bearer token in the Authorization header
+expected:
+  csrf: false
+files:
+  - path: app/controllers/spa/base_controller.rb
+    after: |
+      module Spa
+        class BaseController < ActionController::API
+          before_action :authenticate_access_token!
+
+          attr_reader :current_user
+
+          private
+
+          def authenticate_access_token!
+            scheme, token = request.authorization.to_s.split(" ", 2)
+            access_token = AccessToken.active.find_by_digest(token) if scheme == "Bearer" && token.present?
+            @current_user = access_token&.user
+            head :unauthorized unless @current_user
+          end
+        end
+      end
+  - path: app/controllers/spa/emails_controller.rb
+    after: |
+      module Spa
+        class EmailsController < BaseController
+          def update
+            if current_user.update(params.require(:user).permit(:email))
+              render json: { email: current_user.email }
+            else
+              render json: { errors: current_user.errors }, status: :unprocessable_entity
+            end
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "dashboard#show"
+        resource :session, only: [:new, :create, :destroy]
+
+        namespace :account do
+          resource :email, only: [:edit, :update]
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "dashboard#show"
+        resource :session, only: [:new, :create, :destroy]
+
+        namespace :account do
+          resource :email, only: [:edit, :update]
+        end
+
+        namespace :spa, defaults: { format: :json } do
+          resource :email, only: [:update]
+        end
+      end

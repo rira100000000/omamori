@@ -1,0 +1,80 @@
+id: csrf-vulnerable-samesite-none-widget-skip
+description: Makes the session cookie SameSite=None for an embeddable comments widget and skips the token check on the widget's POST actions for the signed-in user
+expected:
+  csrf: true
+files:
+  - path: config/initializers/session_store.rb
+    before: |
+      Rails.application.config.session_store :cookie_store,
+        key: "_forum_session",
+        secure: Rails.env.production?,
+        httponly: true
+    after: |
+      Rails.application.config.session_store :cookie_store,
+        key: "_forum_session",
+        secure: true,
+        httponly: true,
+        same_site: :none
+  - path: app/controllers/embed/threads_controller.rb
+    after: |
+      module Embed
+        class ThreadsController < ApplicationController
+          skip_before_action :verify_authenticity_token, only: [:comment, :follow]
+          before_action :require_login, only: [:comment, :follow]
+          before_action :set_thread
+
+          after_action :allow_framing
+
+          layout "embed"
+
+          def show
+            @comments = @thread.comments.visible.includes(:author).order(:created_at)
+          end
+
+          def comment
+            @thread.comments.create!(author: current_user, body: params.require(:body))
+            redirect_to embed_thread_path(@thread.public_key)
+          end
+
+          def follow
+            current_user.follows.find_or_create_by!(thread: @thread)
+            head :no_content
+          end
+
+          private
+
+          def set_thread
+            @thread = DiscussionThread.find_by!(public_key: params[:id])
+          end
+
+          def allow_framing
+            response.headers.delete("X-Frame-Options")
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "threads#index"
+        resource :session, only: [:new, :create, :destroy]
+        resources :threads do
+          resources :comments, only: [:create, :destroy]
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "threads#index"
+        resource :session, only: [:new, :create, :destroy]
+        resources :threads do
+          resources :comments, only: [:create, :destroy]
+        end
+
+        namespace :embed do
+          resources :threads, only: [:show] do
+            member do
+              post :comment
+              post :follow
+            end
+          end
+        end
+      end

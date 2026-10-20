@@ -1,0 +1,100 @@
+id: mass_assignment-vulnerable-shared-resource-params
+description: Extracts a ResourceActions concern with generic edit/update and resource_params, and moves the member profile controller onto it
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/concerns/resource_actions.rb
+    after: |
+      module ResourceActions
+        extend ActiveSupport::Concern
+
+        included do
+          helper_method :resource
+        end
+
+        def edit
+        end
+
+        def update
+          if resource.update(resource_params)
+            redirect_to after_update_path, notice: "#{resource_class.model_name.human} saved"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def resource_class
+          resource.class
+        end
+
+        def resource_params
+          params.require(resource_class.model_name.param_key)
+                .permit(*resource_class.attribute_names.excluding("id", "created_at", "updated_at"))
+        end
+      end
+  - path: app/controllers/settings/profiles_controller.rb
+    before: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def edit
+            @user = Current.user
+          end
+
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: "Profile saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:user).permit(:display_name, :bio, :time_zone)
+          end
+        end
+      end
+    after: |
+      module Settings
+        class ProfilesController < ApplicationController
+          include ResourceActions
+
+          private
+
+          def resource
+            @user ||= Current.user
+          end
+
+          def after_update_path
+            edit_settings_profile_path
+          end
+        end
+      end
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :sessions, dependent: :destroy
+        has_many :posts, foreign_key: :author_id, inverse_of: :author
+
+        enum :role, { member: 0, moderator: 1, admin: 2 }
+
+        normalizes :email_address, with: ->(e) { e.strip.downcase }
+        validates :display_name, presence: true
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :sessions, dependent: :destroy
+        has_many :posts, foreign_key: :author_id, inverse_of: :author
+
+        enum :role, { member: 0, moderator: 1, admin: 2 }
+
+        normalizes :email_address, with: ->(e) { e.strip.downcase }
+        normalizes :display_name, with: ->(n) { n.squish }
+        validates :display_name, presence: true
+      end

@@ -33,8 +33,9 @@ module OmamoriEvals
       @diff_splitter = Omamori::AIAnalysisEngine::DiffSplitter.new
       # Same resolution as `omamori scan`, from the command-line options only
       config = options[:base_url] ? { 'classifier' => { 'provider' => options[:classifier], 'base_url' => options[:base_url] } } : {}
-      @settings = Omamori::AISettings.new(PromptConfig.new(config), options.slice(:classifier, :classifier_model,
-                                                                                  :reporter, :reporter_model))
+      overrides = options.slice(:classifier, :classifier_model, :reporter, :reporter_model,
+                                :reporter_fallback, :reporter_fallback_model)
+      @settings = Omamori::AISettings.new(PromptConfig.new(config), overrides)
       @llm_client = @settings.build_reporter_client
       @question_log = {}
       @reporter_calls = 0
@@ -317,6 +318,10 @@ OptionParser.new do |opts|
     options[:reporter] = v
   end
   opts.on('--reporter-model MODEL', 'e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet') { |v| options[:reporter_model] = v }
+  opts.on('--reporter-fallback PROVIDER', 'Reporter asked when the reporter refuses or fails') do |v|
+    options[:reporter_fallback] = v
+  end
+  opts.on('--reporter-fallback-model MODEL', 'Model for --reporter-fallback') { |v| options[:reporter_fallback_model] = v }
   opts.on('--runs N', Integer, 'Run every case N times (default 1)') { |v| options[:runs] = v }
   opts.on('--risk RISK', 'Only cases labeled with this risk') { |v| options[:risk] = v.to_sym }
   opts.on('--case TEXT', 'Only cases whose id contains TEXT') { |v| options[:case] = v }

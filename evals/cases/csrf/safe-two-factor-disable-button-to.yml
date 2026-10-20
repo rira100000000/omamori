@@ -1,0 +1,97 @@
+id: csrf-safe-two-factor-disable-button-to
+description: Adds a dedicated disable endpoint for two-factor authentication on DELETE, triggered from a button_to form
+expected:
+  csrf: false
+files:
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "dashboard#show"
+
+        resource :session, only: [:new, :create, :destroy]
+
+        namespace :account do
+          resource :profile, only: [:edit, :update]
+          resource :two_factor, only: [:new, :create], controller: "two_factor"
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "dashboard#show"
+
+        resource :session, only: [:new, :create, :destroy]
+
+        namespace :account do
+          resource :profile, only: [:edit, :update]
+          resource :two_factor, only: [:new, :create, :destroy], controller: "two_factor"
+        end
+      end
+  - path: app/views/account/profiles/edit.html.erb
+    before: |
+      <h1>Security</h1>
+
+      <% if current_user.otp_enabled? %>
+        <p>Two-factor authentication is on. Contact support to turn it off.</p>
+      <% else %>
+        <%= link_to "Set up two-factor", new_account_two_factor_path, class: "btn" %>
+      <% end %>
+    after: |
+      <h1>Security</h1>
+
+      <% if current_user.otp_enabled? %>
+        <p>Two-factor authentication is on.</p>
+        <%= button_to "Turn off two-factor", account_two_factor_path, method: :delete,
+              form: { data: { turbo_confirm: "Turn off two-factor authentication?" } },
+              class: "btn btn-danger" %>
+      <% else %>
+        <%= link_to "Set up two-factor", new_account_two_factor_path, class: "btn" %>
+      <% end %>
+  - path: app/controllers/account/two_factor_controller.rb
+    before: |
+      module Account
+        class TwoFactorController < ApplicationController
+          before_action :require_login
+
+          def new
+            current_user.generate_otp_secret! unless current_user.otp_secret
+            @provisioning_uri = current_user.otp_provisioning_uri
+          end
+
+          def create
+            if current_user.verify_otp(params[:code])
+              current_user.update!(otp_enabled: true)
+              redirect_to edit_account_profile_path, notice: "Two-factor enabled"
+            else
+              flash.now[:alert] = "Invalid code"
+              render :new, status: :unprocessable_entity
+            end
+          end
+        end
+      end
+    after: |
+      module Account
+        class TwoFactorController < ApplicationController
+          before_action :require_login
+
+          def new
+            current_user.generate_otp_secret! unless current_user.otp_secret
+            @provisioning_uri = current_user.otp_provisioning_uri
+          end
+
+          def create
+            if current_user.verify_otp(params[:code])
+              current_user.update!(otp_enabled: true)
+              redirect_to edit_account_profile_path, notice: "Two-factor enabled"
+            else
+              flash.now[:alert] = "Invalid code"
+              render :new, status: :unprocessable_entity
+            end
+          end
+
+          def destroy
+            current_user.update!(otp_enabled: false, otp_secret: nil)
+            AuditLog.record!(current_user, "two_factor.disabled", ip: request.remote_ip)
+            redirect_to edit_account_profile_path, notice: "Two-factor disabled", status: :see_other
+          end
+        end
+      end

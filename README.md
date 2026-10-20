@@ -36,7 +36,7 @@ With a classifier, a scan works like this:
 2. Checks whose probability is below the threshold pass immediately.
 3. Only the remaining checks are sent to the reporter, which writes a report following that vulnerability's detection steps.
 
-The questions sent to the classifier contain the same vulnerability definitions and detection steps that the reporter receives. For XSS, SQL injection, and mass assignment, the classifier also answers sub-checks: concrete patterns that alone make the risk real (for XSS, for example, "is a URL from users put into `href` without checking its scheme?"). The highest probability among the overall question and its sub-checks is used, and the matched sub-checks are passed on to the reporter. If the classifier fails for a file, every check for that file is escalated to the reporter. If the reporter cannot write a report, the classifier's flag is kept in the results, so nothing is silently skipped.
+The questions sent to the classifier contain the same vulnerability definitions and detection steps that the reporter receives. For XSS, SQL injection, mass assignment, CSRF, and open redirect, the classifier also answers sub-checks: concrete patterns that alone make the risk real (for XSS, for example, "is a URL from users put into `href` without checking its scheme?"). The highest probability among the overall question and its sub-checks is used, and the matched sub-checks are passed on to the reporter. If the classifier fails for a file, every check for that file is escalated to the reporter. If the reporter cannot write a report, the classifier's flag is kept in the results, so nothing is silently skipped.
 
 ## Installation
 
@@ -161,6 +161,12 @@ With `base_url`, you can point a classifier at any other server that speaks the 
 
 The reporter's `provider` can be omitted, in which case it is inferred from the model name. Set `provider` when the model is too new to be in RubyLLM's model registry.
 
+A reporter may refuse to analyze some content (Gemini sometimes refuses security analysis). A refused check is not silently passed; the classifier's flag is kept. With a fallback reporter (`reporter.fallback`), refused or failed checks are asked again there, and only those.
+
+```bash
+omamori scan --base main --classifier typesafe --reporter-fallback claude_code --reporter-fallback-model sonnet
+```
+
 Diffs contain code from outside sources, so `claude_code` / `codex` run without the ability to execute commands. Because subscriptions have tighter rate limits, reports are written 3 at a time when a CLI is used (change with `reporter.concurrency`).
 
 ## Configuration
@@ -187,6 +193,9 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 #   concurrency: 8          # Reports written in parallel (default 3 for CLIs, 8 for APIs)
 #   command: /path/to/claude   # Optional. Path to the claude_code / codex CLI
 #   api_key: ...            # Optional. Environment variables (ANTHROPIC_API_KEY, ...) are recommended
+#   fallback:               # Optional. Asked only when the reporter refuses or fails
+#     provider: claude_code
+#     model: sonnet
 
 # Security checks to run (optional; default: the 8 main checks without a classifier, all 37 with one)
 # checks:
@@ -216,7 +225,7 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 ```
 
 *   `classifier`: `provider`, `model`, `threshold` (default 0.3), `concurrency` (default 8), `base_url`, `api_key`.
-*   `reporter`: `provider`, `model`, `concurrency`, `command`, `api_key`.
+*   `reporter`: `provider`, `model`, `concurrency`, `command`, `api_key`, `fallback` (a fallback reporter with its own `provider`, `model`, ...).
 *   `checks`: The list of security checks to run.
 *   `prompt_templates`: Define custom prompt templates for AI analysis.
 *   `report`: Configure report output settings.
@@ -281,7 +290,7 @@ To run Omamori on the demo files, you need to stage the changes in the `demo` di
 
 ## Measuring Detection Accuracy
 
-`evals/` contains code changes with known answers. For each of the 37 risks there are two vulnerable changes and two "near miss" changes that look similar but are safe, plus a set of benign changes. XSS, SQL injection, and mass assignment also have cases for specific patterns that are easy to miss. Use it to see how misses and false positives change when you switch the classifier or reporter.
+`evals/` contains code changes with known answers. For each of the 37 risks there are two vulnerable changes and two "near miss" changes that look similar but are safe, plus a set of benign changes. XSS, SQL injection, mass assignment, IDOR, CSRF, and open redirect also have cases for specific patterns that are easy to miss. Use it to see how misses and false positives change when you switch the classifier or reporter.
 
 ```bash
 bundle exec ruby evals/run.rb --classifier typesafe --runs 3

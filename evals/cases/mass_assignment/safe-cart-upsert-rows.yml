@@ -1,0 +1,86 @@
+id: mass_assignment-safe-cart-upsert-rows
+description: Adds a bulk cart endpoint for the quick-order page that upserts the submitted product quantities into cart_items in one query
+expected:
+  mass_assignment: false
+files:
+  - path: app/controllers/cart_items_controller.rb
+    before: |
+      class CartItemsController < ApplicationController
+        before_action :set_cart
+
+        def create
+          product = Product.available.find(params[:product_id])
+          item = @cart.cart_items.find_or_initialize_by(product: product)
+          item.quantity = item.quantity.to_i + params.fetch(:quantity, 1).to_i
+          item.unit_price = product.price
+          item.save!
+          redirect_to cart_path, notice: "#{product.name} added to cart"
+        end
+
+        def destroy
+          @cart.cart_items.find(params[:id]).destroy!
+          redirect_to cart_path, status: :see_other
+        end
+
+        private
+
+        def set_cart
+          @cart = Current.cart
+        end
+      end
+    after: |
+      class CartItemsController < ApplicationController
+        before_action :set_cart
+
+        def create
+          product = Product.available.find(params[:product_id])
+          item = @cart.cart_items.find_or_initialize_by(product: product)
+          item.quantity = item.quantity.to_i + params.fetch(:quantity, 1).to_i
+          item.unit_price = product.price
+          item.save!
+          redirect_to cart_path, notice: "#{product.name} added to cart"
+        end
+
+        def bulk
+          requested = params.require(:items).map { |row| row.to_unsafe_h.slice("product_id", "quantity") }
+          products = Product.available.where(id: requested.map { |r| r["product_id"] }).index_by(&:id)
+          now = Time.current
+          rows = requested.filter_map do |r|
+            product = products[r["product_id"].to_i]
+            next unless product
+
+            { cart_id: @cart.id, product_id: product.id, quantity: r["quantity"].to_i.clamp(1, 99),
+              unit_price: product.price, created_at: now, updated_at: now }
+          end
+          CartItem.upsert_all(rows, unique_by: %i[cart_id product_id]) if rows.any?
+          render json: { count: @cart.cart_items.count }
+        end
+
+        def destroy
+          @cart.cart_items.find(params[:id]).destroy!
+          redirect_to cart_path, status: :see_other
+        end
+
+        private
+
+        def set_cart
+          @cart = Current.cart
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resource :cart, only: :show
+        resources :cart_items, only: [:create, :destroy]
+        resources :products, only: [:index, :show]
+        root "products#index"
+      end
+    after: |
+      Rails.application.routes.draw do
+        resource :cart, only: :show
+        resources :cart_items, only: [:create, :destroy] do
+          post :bulk, on: :collection
+        end
+        resources :products, only: [:index, :show]
+        root "products#index"
+      end

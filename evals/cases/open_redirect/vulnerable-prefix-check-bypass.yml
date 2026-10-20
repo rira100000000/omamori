@@ -1,0 +1,57 @@
+id: open_redirect-vulnerable-prefix-check-bypass
+description: Outbound link tracker redirects to a url param with allow_other_host after checking it starts with the company domain or mentions a partner domain
+expected:
+  open_redirect: true
+files:
+  - path: app/controllers/outbound_links_controller.rb
+    before: |
+      class OutboundLinksController < ApplicationController
+        skip_before_action :require_login
+
+        def show
+          link = OutboundLink.find_by!(slug: params[:slug])
+          link.increment!(:clicks)
+          redirect_to link.target_url, allow_other_host: true
+        end
+      end
+    after: |
+      class OutboundLinksController < ApplicationController
+        PARTNER_DOMAINS = %w[partner-shop.jp docs.vendor.io].freeze
+
+        skip_before_action :require_login
+
+        def show
+          link = OutboundLink.find_by!(slug: params[:slug])
+          link.increment!(:clicks)
+          redirect_to link.target_url, allow_other_host: true
+        end
+
+        def track
+          url = params[:url].to_s
+          if trusted_destination?(url)
+            ClickEvent.create!(url: url, source: params[:source], user: current_user)
+            redirect_to url, allow_other_host: true
+          else
+            redirect_to root_path
+          end
+        end
+
+        private
+
+        def trusted_destination?(url)
+          url.start_with?("https://example.com") ||
+            PARTNER_DOMAINS.any? { |domain| url.include?(domain) }
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "home#index"
+        get "go/:slug", to: "outbound_links#show", as: :outbound_link
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "home#index"
+        get "go/:slug", to: "outbound_links#show", as: :outbound_link
+        get "out", to: "outbound_links#track", as: :track_outbound
+      end

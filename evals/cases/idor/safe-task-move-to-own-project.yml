@@ -1,0 +1,91 @@
+id: idor-safe-task-move-to-own-project
+description: Task edit form gains a project picker so a task can be moved to another project on update
+expected:
+  idor: false
+files:
+  - path: app/controllers/tasks_controller.rb
+    before: |
+      class TasksController < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_project
+        before_action :set_task, only: [:edit, :update]
+
+        def edit
+        end
+
+        def update
+          if @task.update(task_params)
+            redirect_to project_task_path(@project, @task), notice: "Task updated"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+
+        def set_task
+          @task = @project.tasks.find(params[:id])
+        end
+
+        def task_params
+          params.expect(task: [:title, :description, :due_on])
+        end
+      end
+    after: |
+      class TasksController < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_project
+        before_action :set_task, only: [:edit, :update]
+
+        def edit
+          @projects = current_user.projects.order(:name)
+        end
+
+        def update
+          @task.assign_attributes(task_params)
+          if (target_id = params.dig(:task, :target_project_id)).present?
+            @task.project = current_user.projects.find(target_id)
+          end
+
+          if @task.save
+            redirect_to project_task_path(@task.project, @task), notice: "Task updated"
+          else
+            @projects = current_user.projects.order(:name)
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+
+        def set_task
+          @task = @project.tasks.find(params[:id])
+        end
+
+        def task_params
+          params.expect(task: [:title, :description, :due_on])
+        end
+      end
+  - path: app/views/tasks/_form.html.erb
+    before: |
+      <%= form_with model: [@project, @task] do |f| %>
+        <%= f.text_field :title %>
+        <%= f.text_area :description %>
+        <%= f.date_field :due_on %>
+        <%= f.submit %>
+      <% end %>
+    after: |
+      <%= form_with model: [@project, @task] do |f| %>
+        <%= f.text_field :title %>
+        <%= f.text_area :description %>
+        <%= f.date_field :due_on %>
+        <%= select_tag "task[target_project_id]", options_from_collection_for_select(@projects, :id, :name, @task.project_id) %>
+        <%= f.submit %>
+      <% end %>

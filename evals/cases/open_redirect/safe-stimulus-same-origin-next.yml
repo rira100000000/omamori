@@ -1,0 +1,50 @@
+id: open_redirect-safe-stimulus-same-origin-next
+description: Post-login welcome page uses a Stimulus controller that follows the next query parameter only when it is a same-origin path
+expected:
+  open_redirect: false
+files:
+  - path: app/javascript/controllers/continue_controller.js
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static values = { fallback: String, delay: { type: Number, default: 1500 } }
+
+        connect() {
+          this.timer = setTimeout(() => this.go(), this.delayValue)
+        }
+
+        disconnect() {
+          clearTimeout(this.timer)
+        }
+
+        go() {
+          window.location.assign(this.destination())
+        }
+
+        destination() {
+          const next = new URLSearchParams(window.location.search).get("next") || ""
+          if (!next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) {
+            return this.fallbackValue || "/"
+          }
+
+          const url = new URL(next, window.location.origin)
+          if (url.origin !== window.location.origin) {
+            return this.fallbackValue || "/"
+          }
+          return url.pathname + url.search + url.hash
+        }
+      }
+  - path: app/views/welcome/show.html.erb
+    before: |
+      <section class="welcome">
+        <h1>Welcome back, <%= current_user.display_name %></h1>
+        <p>Taking you to your dashboard...</p>
+        <%= link_to "Continue", dashboard_path, class: "btn" %>
+      </section>
+    after: |
+      <section class="welcome" data-controller="continue" data-continue-fallback-value="<%= dashboard_path %>">
+        <h1>Welcome back, <%= current_user.display_name %></h1>
+        <p>Taking you back to where you were...</p>
+        <button type="button" class="btn" data-action="continue#go">Continue</button>
+      </section>

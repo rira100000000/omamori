@@ -1,0 +1,95 @@
+id: csrf-vulnerable-json-format-skip
+description: Account email controller skips the authenticity token for JSON requests so the SPA can call it, while still authenticating with the session cookie
+expected:
+  csrf: true
+files:
+  - path: app/controllers/account/emails_controller.rb
+    before: |
+      module Account
+        class EmailsController < ApplicationController
+          before_action :require_login
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(email_params)
+              redirect_to edit_account_email_path, notice: "Email updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def email_params
+            params.require(:user).permit(:email)
+          end
+        end
+      end
+    after: |
+      module Account
+        class EmailsController < ApplicationController
+          before_action :require_login
+          skip_before_action :verify_authenticity_token, if: -> { request.format.json? }
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            respond_to do |format|
+              if @user.update(email_params)
+                format.html { redirect_to edit_account_email_path, notice: "Email updated" }
+                format.json { render json: { email: @user.email } }
+              else
+                format.html { render :edit, status: :unprocessable_entity }
+                format.json { render json: { errors: @user.errors }, status: :unprocessable_entity }
+              end
+            end
+          end
+
+          private
+
+          def email_params
+            params.require(:user).permit(:email)
+          end
+        end
+      end
+  - path: app/controllers/application_controller.rb
+    before: |
+      class ApplicationController < ActionController::Base
+        helper_method :current_user
+
+        private
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def require_login
+          redirect_to new_session_path unless current_user
+        end
+      end
+    after: |
+      class ApplicationController < ActionController::Base
+        helper_method :current_user
+
+        private
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def require_login
+          return if current_user
+
+          respond_to do |format|
+            format.html { redirect_to new_session_path }
+            format.json { head :unauthorized }
+          end
+        end
+      end

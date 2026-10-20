@@ -122,6 +122,31 @@ RSpec.describe Omamori::AISettings do
     end
   end
 
+  describe 'reporter fallback' do
+    it 'reads the fallback reporter and wraps the reporter client' do
+      s = settings('reporter' => { 'provider' => 'gemini',
+                                   'fallback' => { 'provider' => 'claude_code', 'model' => 'sonnet' } })
+
+      expect(s.reporter).to eq('provider' => 'gemini', 'model' => 'gemini-3.8-flash')
+      expect(s.reporter_fallback).to eq('provider' => 'claude_code', 'model' => 'sonnet')
+      expect(s.build_reporter_client).to be_a(Omamori::AIAnalysisEngine::FallbackClient)
+      expect(s.describe).to eq('reporter: gemini/gemini-3.8-flash (fallback: claude_code/sonnet)')
+    end
+
+    it 'keeps the configured fallback when the reporter is overridden, and can be turned off' do
+      config = { 'reporter' => { 'provider' => 'gemini', 'fallback' => { 'provider' => 'claude_code' } } }
+
+      expect(settings(config, reporter: 'anthropic', reporter_model: 'claude-x').reporter_fallback)
+        .to eq('provider' => 'claude_code')
+      expect(settings(config, reporter_fallback: 'none').reporter_fallback).to be_nil
+    end
+
+    it 'validates the fallback like a reporter' do
+      expect { settings('reporter' => { 'fallback' => { 'provider' => 'anthropic' } }) }
+        .to raise_error(described_class::Error, /reporter.fallback.model is required/)
+    end
+  end
+
   describe 'errors' do
     it 'rejects an unknown classifier provider' do
       expect { settings('classifier' => { 'provider' => 'nope' }) }.to raise_error(described_class::Error, /Unknown/)

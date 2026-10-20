@@ -1,0 +1,45 @@
+id: open_redirect-vulnerable-oauth-redirect-uri
+description: OAuth authorization endpoint accepts a redirect_uri parameter, keeps it in the session, and redirects there with the code after the user approves
+expected:
+  open_redirect: true
+files:
+  - path: app/controllers/oauth/authorizations_controller.rb
+    before: |
+      module Oauth
+        class AuthorizationsController < ApplicationController
+          before_action :require_login
+
+          def new
+            @client = OauthClient.find_by!(uid: params[:client_id])
+            session[:oauth_client_id] = @client.id
+          end
+
+          def create
+            client = OauthClient.find(session.delete(:oauth_client_id))
+            grant = client.grants.create!(user: current_user, scopes: client.default_scopes)
+            redirect_to client.callback_url_with(code: grant.code), allow_other_host: true
+          end
+        end
+      end
+    after: |
+      module Oauth
+        class AuthorizationsController < ApplicationController
+          before_action :require_login
+
+          def new
+            @client = OauthClient.find_by!(uid: params[:client_id])
+            session[:oauth_client_id] = @client.id
+            session[:oauth_redirect_uri] = params[:redirect_uri].presence || @client.redirect_uris.first
+            session[:oauth_state] = params[:state]
+          end
+
+          def create
+            client = OauthClient.find(session.delete(:oauth_client_id))
+            grant = client.grants.create!(user: current_user, scopes: client.default_scopes)
+
+            uri = URI.parse(session.delete(:oauth_redirect_uri))
+            uri.query = [uri.query, { code: grant.code, state: session.delete(:oauth_state) }.compact.to_query].compact_blank.join("&")
+            redirect_to uri.to_s, allow_other_host: true
+          end
+        end
+      end

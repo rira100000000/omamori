@@ -1,0 +1,52 @@
+id: csrf-safe-origin-check-with-token
+description: Adds an exact Origin host allowlist check on unsafe requests on top of the existing authenticity token verification
+expected:
+  csrf: false
+files:
+  - path: app/controllers/application_controller.rb
+    before: |
+      class ApplicationController < ActionController::Base
+        protect_from_forgery with: :exception
+
+        helper_method :current_user
+
+        private
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def require_login
+          redirect_to new_session_path unless current_user
+        end
+      end
+    after: |
+      class ApplicationController < ActionController::Base
+        TRUSTED_ORIGIN_HOSTS = %w[app.example.com admin.example.com].freeze
+
+        protect_from_forgery with: :exception
+        before_action :verify_request_origin_host, unless: -> { request.get? || request.head? }
+
+        helper_method :current_user
+
+        private
+
+        def verify_request_origin_host
+          return if request.origin.blank?
+
+          uri = URI.parse(request.origin)
+          return if uri.scheme == "https" && TRUSTED_ORIGIN_HOSTS.include?(uri.host)
+
+          head :forbidden
+        rescue URI::InvalidURIError
+          head :forbidden
+        end
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def require_login
+          redirect_to new_session_path unless current_user
+        end
+      end

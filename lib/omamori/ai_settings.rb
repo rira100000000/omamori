@@ -5,6 +5,7 @@ require_relative 'ai_analysis_engine/llm_client'
 require_relative 'ai_analysis_engine/judge_client'
 require_relative 'ai_analysis_engine/cli_clients/claude_code_client'
 require_relative 'ai_analysis_engine/cli_clients/codex_client'
+require_relative 'ai_analysis_engine/fallback_client'
 
 module Omamori
   # Decides which classifier and reporter to use, from .omamorirc and command-line options.
@@ -16,6 +17,9 @@ module Omamori
   #   reporter:
   #     provider: anthropic  # any RubyLLM provider, or claude_code / codex (subscription CLIs)
   #     model: claude-sonnet-5-5
+  #     fallback:            # optional; asked only when the reporter refuses or fails
+  #       provider: claude_code
+  #       model: sonnet
   #
   # The older keys (engine, llm, model, provider, api_key, decision, claude, codex) are still read.
   class AISettings
@@ -43,12 +47,14 @@ module Omamori
     attr_reader :classifier
     attr_reader :reporter
 
-    # overrides: classifier:, classifier_model:, reporter:, reporter_model: (from the command line)
+    # overrides: classifier:, classifier_model:, reporter:, reporter_model:, reporter_fallback:,
+    # reporter_fallback_model: (from the command line)
     def initialize(config, overrides = {})
       @config = config
       @overrides = overrides.compact.transform_values(&:to_s)
       @classifier = resolve_classifier
       @reporter = resolve_reporter
+      @reporter_fallback = resolve_reporter_fallback
     end
 
     def classifier?
@@ -91,16 +97,19 @@ module Omamori
     end
 
     def build_reporter_client
-      case @reporter['provider']
-      when 'claude_code' then AIAnalysisEngine::CLIClients::ClaudeCodeClient.new(command: @reporter['command'])
-      when 'codex' then AIAnalysisEngine::CLIClients::CodexClient.new(command: @reporter['command'])
-      else AIAnalysisEngine::LLMClient.new(ruby_llm_context, provider: @reporter['provider']&.to_sym)
-      end
+      client = build_llm_client(@reporter)
+      return client unless @reporter_fallback
+
+      AIAnalysisEngine::FallbackClient.new(client, build_llm_client(@reporter_fallback),
+                                           fallback_model: @reporter_fallback['model'])
     end
+
+    attr_reader :reporter_fallback
 
     # One line for the console, e.g. "classifier: typesafe/jev-1.13.0, reporter: gemini/gemini-3.8-flash"
     def describe
       reporter = [@reporter['provider'], @reporter['model']].compact.join('/')
+      reporter += " (fallback: #{[@reporter_fallback['provider'], @reporter_fallback['model']].compact.join('/')})" if @reporter_fallback
       return "reporter: #{reporter}" unless classifier?
 
       "classifier: #{@classifier['provider']}/#{@classifier['model']}, reporter: #{reporter}"
@@ -127,15 +136,36 @@ module Omamori
     def resolve_reporter
       settings = apply_override(configured_reporter, @overrides[:reporter], @overrides[:reporter_model])
       settings = DEFAULT_REPORTER.merge(settings || {}) if settings.nil? || (settings['provider'].nil? && settings['model'].nil?)
+      validate_reporter(settings.except('fallback'))
+    end
+
+    def resolve_reporter_fallback
+      # Read from the configured reporter, so a --reporter override keeps the configured fallback
+      configured = configured_reporter&.fetch('fallback', nil)&.then { |fallback| stringify(fallback) }
+      settings = apply_override(configured, @overrides[:reporter_fallback], @overrides[:reporter_fallback_model])
+      return nil if settings.nil? || settings['provider'] == 'none'
+
+      validate_reporter(settings, role: 'reporter.fallback')
+    end
+
+    def validate_reporter(settings, role: 'reporter')
       provider = settings['provider']
       return settings if provider.nil? || CLI_REPORTERS.include?(provider)
 
-      raise Error, "Unknown reporter provider: #{provider}" unless RubyLLM::Provider.resolve(provider)
+      raise Error, "Unknown #{role} provider: #{provider}" unless RubyLLM::Provider.resolve(provider)
 
       settings['model'] ||= DEFAULT_REPORTER['model'] if provider == DEFAULT_REPORTER['provider']
-      raise Error, "reporter.model is required for provider #{provider}" unless settings['model']
+      raise Error, "#{role}.model is required for provider #{provider}" unless settings['model']
 
       settings
+    end
+
+    def build_llm_client(settings)
+      case settings['provider']
+      when 'claude_code' then AIAnalysisEngine::CLIClients::ClaudeCodeClient.new(command: settings['command'])
+      when 'codex' then AIAnalysisEngine::CLIClients::CodexClient.new(command: settings['command'])
+      else AIAnalysisEngine::LLMClient.new(ruby_llm_context, provider: settings['provider']&.to_sym)
+      end
     end
 
     # A provider given on the command line replaces the configured one; the configured model only
@@ -188,7 +218,7 @@ module Omamori
     def ruby_llm_context
       @ruby_llm_context ||= begin
         overrides = { gemini_api_key: get('api_key') }
-        [@classifier, @reporter].compact.each do |settings|
+        [@classifier, @reporter, @reporter_fallback].compact.each do |settings|
           next unless settings['provider'] && !CLI_REPORTERS.include?(settings['provider'])
 
           overrides[:"#{settings['provider']}_api_key"] = settings['api_key'] if settings['api_key']

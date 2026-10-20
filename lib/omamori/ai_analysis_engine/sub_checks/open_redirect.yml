@@ -1,0 +1,17 @@
+# Concrete patterns that are each enough to make an open redirect real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+other_host_allowed: >-
+  Does the code redirect to a URL that may come from users (params, a value saved in the session from params, or
+  the Referer header) in a way that allows other hosts: redirect_to or redirect_back with allow_other_host: true,
+  raise_on_open_redirects turned off, or a redirect outside Rails' redirect_to such as a Sinatra or Rack redirect
+  or a Location header set by hand? Answer no when the destination is checked first with url_from, or its parsed
+  host is compared exactly against a fixed list, or Rails' default protection (Rails 7+) is left on.
+weak_url_check: >-
+  Does the code decide that a redirect destination is safe with a string check that can be fooled: start_with?,
+  include?, or end_with? on the URL or host, or only checking that the value starts with "/" (which lets
+  //evil.example and /\evil.example through)? Answer no when the URL is parsed and its host compared exactly, or
+  when a path check also rejects values starting with "//" or "/\".
+client_side_redirect: >-
+  Does front-end JavaScript send the browser to a URL taken from the query string, the hash, or other
+  user-controlled input (window.location, location.href, location.assign, location.replace) without making sure it
+  stays on the same origin? Answer no when it only accepts URLs whose origin equals location.origin.

@@ -1,0 +1,65 @@
+id: idor-safe-authorize-comment-project-hide
+description: Project moderators get an action to hide a comment, authorized with the moderate? policy of the comment's project
+expected:
+  idor: false
+files:
+  - path: app/controllers/projects/moderation_controller.rb
+    after: |
+      module Projects
+        class ModerationController < ApplicationController
+          before_action :authenticate_user!
+          after_action :verify_authorized
+
+          def hide_comment
+            comment = Comment.find(params[:comment_id])
+            @project = comment.project
+            authorize @project, :moderate?
+
+            comment.update!(hidden_at: Time.current, hidden_by: current_user)
+            ModerationLog.create!(project: @project, actor: current_user, action: "comment.hidden", subject: comment)
+
+            redirect_back fallback_location: project_path(@project), notice: "Comment hidden"
+          end
+        end
+      end
+  - path: app/policies/project_policy.rb
+    before: |
+      class ProjectPolicy < ApplicationPolicy
+        def show?
+          record.members.include?(user)
+        end
+
+        def update?
+          record.owner_id == user.id
+        end
+      end
+    after: |
+      class ProjectPolicy < ApplicationPolicy
+        def show?
+          record.members.include?(user)
+        end
+
+        def update?
+          record.owner_id == user.id
+        end
+
+        def moderate?
+          update? || record.memberships.exists?(user: user, role: :moderator)
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resources :projects do
+          resources :comments, only: [:create, :destroy]
+        end
+        root "projects#index"
+      end
+    after: |
+      Rails.application.routes.draw do
+        resources :projects do
+          resources :comments, only: [:create, :destroy]
+        end
+        post "moderation/comments/:comment_id/hide", to: "projects/moderation#hide_comment", as: :hide_comment
+        root "projects#index"
+      end
