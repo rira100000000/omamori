@@ -9,16 +9,19 @@ However, please note that this gem is merely a "protective charm" and does not g
 It might help prevent vulnerabilities that could occur even after human review.
 
 Caution:
-AI analysis can uncover vulnerabilities that static analysis alone might miss, but the accuracy of diagnostics may vary depending on the AI model’s "mood."
-Running the analysis multiple times may help reduce false negatives.
+AI analysis can uncover vulnerabilities that static analysis alone might miss, but LLM results tend to vary from run to run.
+The decision model mode (e.g. Jev) checks each of the 35 risks independently, which makes results more stable.
 
 
 ## Features
 
-- Scan staged changes (`git diff --staged`), the entire codebase, or specified files and directories for security risks.
+- Scan staged changes (`git diff --staged`), a branch diff (`--base`), the entire codebase, or specified files and directories for security risks.
+- Fast checklist mode: each of 35 vulnerability types is checked as a yes/no question by a decision model (TypeSafe Jev, OpenAI Decisions), and an LLM writes a detailed report only for the checks that are flagged.
+- Choose any LLM: an API through RubyLLM (Gemini, Claude, OpenAI, ...) or a Claude Code (`claude -p`) / Codex (`codex exec`) subscription.
 - Integrates with static analysis tools like Brakeman and Bundler-Audit.
-- Detects vulnerabilities with AI: any LLM RubyLLM supports (Gemini, Claude, OpenAI, ...) or a Claude Code / Codex subscription.
 - Supports multiple report formats (console, HTML, JSON).
+- Generates GitHub Actions / GitLab CI configuration.
+- An eval set (`evals/`) for measuring detection accuracy.
 - Configurable via a `.omamorirc` file.
 - Exclusion of files and directories via a `.omamoriignore` file (except in `diff` mode).
 
@@ -52,9 +55,27 @@ To generate an initial configuration file (`.omamorirc`), run:
 omamori init
 ```
 
-Edit the generated `.omamorirc` and `.omamoriignore` files to configure your Gemini API key, preferred model, checks to perform, and files/directories to exclude from scanning, and other settings.
+Edit the generated `.omamorirc` and `.omamoriignore` files to configure the LLM and model, checks to perform, files/directories to exclude from scanning, and other settings.
+
+### API Keys
+
+API keys are passed through environment variables. Set the ones for the features you use:
+
+```bash
+export GEMINI_API_KEY=...     # Default LLM (gemini-3.8-flash)
+export TYPESAFE_API_KEY=...   # For --engine jev
+export OPENAI_API_KEY=...     # For --engine openai
+```
+
+To use an LLM other than Gemini, set that provider's environment variable (`ANTHROPIC_API_KEY`, etc.). `--llm claude` / `--llm codex` use the installed CLI's login, so no API key is needed.
 
 ### Scanning
+
+The recommended way is to check the branch diff with a decision model:
+
+```bash
+omamori scan --base main --engine jev
+```
 
 Scan staged changes (default):
 
@@ -236,13 +257,26 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 
 ## .omamoriignore File
 
-The `.omamoriignore` file allows you to exclude specific files and directories from the scan target. However, if the `--force_scan_ignored` option is used, the settings in this file will be ignored. Its behavior is similar to a `.gitignore` file, but with the following considerations:
+The `.omamoriignore` file allows you to exclude specific files and directories from the scan target. However, if the `--force-scan-ignored` option is used, the settings in this file will be ignored. Its behavior is similar to a `.gitignore` file, but with the following considerations:
 
 *   **Effective Modes:** It is only effective in `--all` mode or when scanning specified files/directories.
-*   **Ineffective Mode:** In `diff` mode (i.e., `omamori scan` without arguments), the `.omamoriignore` file is ignored. This is because `diff` mode only targets changes retrieved by `git diff`.
-*   **Format:** Each line specifies one pattern. Lines starting with `#` are treated as comments. It is recommended to append a `/` to directory patterns (e.g., `vendor/`). Patterns are evaluated using simple prefix matching (e.g., `config/initializers` matches `config/initializers/devise.rb`). Wildcards (`*`) are not currently supported.
+*   **Ineffective Mode:** In `diff` mode (i.e., `omamori scan` without arguments, or with `--base`), the `.omamoriignore` file is ignored. This is because `diff` mode only targets changes retrieved by `git diff`.
+*   **Format:** Each line specifies one pattern. Lines starting with `#` are treated as comments.
+    *   A pattern ending with `/` excludes everything under that directory (e.g., `vendor/bundle/`).
+    *   Other patterns are evaluated as globs against the path relative to the project root or the file name (e.g., `*.log`, `spec/fixtures/*.rb`).
 
 When you run the `omamori init` command, a `.omamoriignore` file pre-filled with patterns for common files and directories to ignore in a Rails project will be generated. You can edit this file as needed.
+
+## Using in CI
+
+You can generate GitHub Actions or GitLab CI configuration:
+
+```bash
+omamori ci-setup --ci github_actions   # .github/workflows/omamori_scan.yml
+omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
+```
+
+The generated configuration scans the branch diff with `--base` on pull requests (merge requests) and the entire codebase with `--all` otherwise. It fetches the full history so the diff can be taken. Register API keys as CI secrets (CI/CD variables on GitLab). To use a decision model, uncomment the `TYPESAFE_API_KEY` (or similar) line in the generated configuration and set `engine: jev` in `.omamorirc`.
 
 ## Demo Files
 
@@ -261,6 +295,10 @@ To run Omamori on the demo files, you need to stage the changes in the `demo` di
 3.  Now you can run Omamori on the staged demo files:
     ```bash
     omamori scan
+    ```
+    To try a decision model:
+    ```bash
+    omamori scan --engine jev
     ```
     Or to scan all files in the demo directory (after staging them):
     ```bash

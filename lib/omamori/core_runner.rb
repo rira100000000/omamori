@@ -390,9 +390,9 @@ module Omamori
         end
       end
 
-      command_candidate = @args.first.to_s.downcase.to_sym
+      command_candidate = @args.first.to_s.downcase.tr('-', '_').to_sym
       @options[:command] = if %i[scan ci_setup init].include?(command_candidate)
-                             @args.shift.to_sym
+                             @args.shift.tr('-', '_').to_sym
                            else
                              :scan # Default command
                            end
@@ -601,6 +601,8 @@ module Omamori
             - name: Run Omamori Scan
               env:
                 GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Ensure GEMINI_API_KEY is set in GitHub Secrets
+                # TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }} # For engine: jev
+                # OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }} # For engine: openai, or an OpenAI model as the LLM
               # Example: Scan all files on push to main, diff on PRs
               # This logic might need adjustment based on your workflow preference
               run: |
@@ -649,6 +651,8 @@ module Omamori
               fi
           variables:
             GEMINI_API_KEY: $GEMINI_API_KEY # Set GEMINI_API_KEY as a CI/CD variable in GitLab
+            # TYPESAFE_API_KEY: $TYPESAFE_API_KEY # For engine: jev
+            # OPENAI_API_KEY: $OPENAI_API_KEY # For engine: openai, or an OpenAI model as the LLM
             GIT_DEPTH: "0" # Needed to diff against the target branch
           rules:
             - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

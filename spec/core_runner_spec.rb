@@ -448,6 +448,13 @@ RSpec.describe Omamori::CoreRunner do
       end
 
       context 'when the ci-setup command is specified' do
+        it 'recognizes the hyphenated command name' do
+          runner = Omamori::CoreRunner.new(['ci-setup', '--ci', 'github_actions'])
+          runner.__send__(:parse_options)
+
+          expect(runner.instance_variable_get(:@options)).to include(command: :ci_setup, ci_service: :github_actions)
+        end
+
         context 'with --ci github_actions option' do
           it 'generates GitHub Actions workflow' do
             # Create runner instance

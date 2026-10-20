@@ -8,15 +8,18 @@ Omamoriは、Rubyコードおよび依存関係に潜む潜在的なセキュリ
 人間がチェックした上で万が一に発生した脆弱性を、防いでくれる"かもしれません"。
 
 注意:
-AI解析は静的解析で診断できない脆弱性を発見することができますが、モデルの気分によって診断の精度にブレが生じやすいです。
-複数回実行することで偽陰性を防ぐことができるかもしれません。
+AI解析は静的解析で診断できない脆弱性を発見することができますが、LLMの診断結果は実行のたびにブレが生じやすいです。
+判定モデル（Jevなど）を使うモードでは、35項目を1つずつ独立に判定するため、結果が比較的安定します。
 
 ## 特徴
 
-- ステージされた変更（`git diff --staged`）、コードベース全体、または指定されたファイルやディレクトリをスキャンしてセキュリティリスクを検出
+- ステージされた変更（`git diff --staged`）、ブランチの差分（`--base`）、コードベース全体、または指定されたファイルやディレクトリをスキャンしてセキュリティリスクを検出
+- 35種類の脆弱性を1項目ずつyes/noで判定する高速チェック（TypeSafe Jev、OpenAI Decisions）。引っかかった項目だけLLMが詳しいレポートを書きます
+- LLMを自由に選択可能。RubyLLMが対応するAPI（Gemini、Claude、OpenAIなど）のほか、Claude Code（`claude -p`）やCodex（`codex exec`）のサブスクリプションでも動きます
 - BrakemanやBundler-Auditなどの静的解析ツールと連携
-- AI（Gemini、Claude、OpenAIなど、RubyLLMが対応するLLMや、Claude Code・Codexのサブスクリプション）による高度なコード脆弱性検出
 - 複数のレポート形式に対応（コンソール、HTML、JSON）
+- GitHub Actions / GitLab CI の設定ファイルを生成
+- 検出精度を測るための問題集（`evals/`）
 - `.omamorirc`ファイルによる柔軟な設定が可能
 - `.omamoriignore`ファイルによるスキャン対象からの除外機能（`diff`モードを除く）
 
@@ -52,7 +55,25 @@ omamori init
 
 生成された`.omamorirc`ファイルと`.omamoriignore`ファイルを編集して、使用するLLMとモデル、実行するチェック項目、スキャン対象から除外するファイル/ディレクトリなどを設定します。
 
+### APIキーの設定
+
+APIキーは環境変数で渡します。使う機能に応じて設定してください。
+
+```bash
+export GEMINI_API_KEY=...     # 既定のLLM（gemini-3.8-flash）
+export TYPESAFE_API_KEY=...   # --engine jev を使う場合
+export OPENAI_API_KEY=...     # --engine openai を使う場合
+```
+
+Gemini以外のLLMを使う場合は、そのプロバイダの環境変数（`ANTHROPIC_API_KEY` など）を設定します。`--llm claude` / `--llm codex` はインストール済みのCLIのログイン状態を使うので、APIキーは不要です。
+
 ### スキャン
+
+おすすめは、ブランチの差分を判定モデルでチェックする使い方です：
+
+```bash
+omamori scan --base main --engine jev
+```
 
 ステージされた変更をスキャン（デフォルト）：
 
@@ -234,13 +255,26 @@ diffには外部から来たコードが含まれるため、CLIはコマンド�
 
 ## .omamoriignore ファイル
 
-`.omamoriignore`ファイルを使用すると、特定のファイルやディレクトリをスキャン対象から除外できます。ただし、`--force_scan_ignored`オプションを指定した場合は、このファイルの設定は無視されます。これは`.gitignore`ファイルと似たような働きをしますが、以下の点に注意してください。
+`.omamoriignore`ファイルを使用すると、特定のファイルやディレクトリをスキャン対象から除外できます。ただし、`--force-scan-ignored`オプションを指定した場合は、このファイルの設定は無視されます。これは`.gitignore`ファイルと似たような働きをしますが、以下の点に注意してください。
 
 *   **有効なモード:** `--all` モード、またはファイル/ディレクトリを指定してスキャンする場合にのみ有効です。
-*   **無効なモード:** `diff` モード（引数なしの `omamori scan`）では、`.omamoriignore` ファイルは無視されます。これは、`git diff` で取得された変更点のみを対象とするためです。
-*   **書式:** 1行に1つのパターンを記述します。`#` で始まる行はコメントとして扱われます。ディレクトリを指定する場合は、末尾に `/` を付けることを推奨します (例: `vendor/`)。単純な前方一致で評価されます。 (例: `config/initializers` は `config/initializers/devise.rb` にマッチします)ワイルドカード (`*`) は現時点ではサポートされていません。
+*   **無効なモード:** `diff` モード（引数なしの `omamori scan`、または `--base`）では、`.omamoriignore` ファイルは無視されます。これは、`git diff` で取得された変更点のみを対象とするためです。
+*   **書式:** 1行に1つのパターンを記述します。`#` で始まる行はコメントとして扱われます。
+    *   末尾が `/` のパターンは、そのディレクトリ以下をすべて除外します（例: `vendor/bundle/`）。
+    *   それ以外のパターンは、プロジェクトルートからの相対パスかファイル名に対するglobとして評価されます（例: `*.log`、`spec/fixtures/*.rb`）。
 
 `omamori init` コマンドを実行すると、一般的なRailsプロジェクトで無視すべきファイルやディレクトリのパターンが記述された`.omamoriignore`ファイルが生成されます。必要に応じてこのファイルを編集してください。
+
+## CIで使う
+
+GitHub Actions または GitLab CI の設定ファイルを生成できます：
+
+```bash
+omamori ci-setup --ci github_actions   # .github/workflows/omamori_scan.yml
+omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
+```
+
+生成される設定は、プルリクエスト（マージリクエスト）では `--base` でブランチの差分を、それ以外では `--all` でコードベース全体をスキャンします。差分を取るため、リポジトリは履歴ごと取得します。APIキーはCIのシークレット（GitLabではCI/CD変数）に登録してください。判定モデルを使う場合は、生成された設定のコメントにある `TYPESAFE_API_KEY` などの行を有効にし、`.omamorirc` に `engine: jev` を設定します。
 
 ## デモファイル
 
@@ -264,6 +298,12 @@ diffには外部から来たコードが含まれるため、CLIはコマンド�
 
     ```bash
     omamori scan
+    ```
+
+    判定モデルで試す場合：
+
+    ```bash
+    omamori scan --engine jev
     ```
 
     または、ステージ後にすべてのファイルをスキャンする場合：
