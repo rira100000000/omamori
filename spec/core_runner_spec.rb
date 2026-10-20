@@ -6,7 +6,7 @@ require 'omamori/config' # Include Config for testing initialization
 
 RSpec.describe Omamori::CoreRunner do
   let(:config_double) { instance_double(Omamori::Config) }
-  let(:gemini_client_double) { instance_double(Omamori::AIAnalysisEngine::GeminiClient) }
+  let(:llm_client_double) { instance_double(Omamori::AIAnalysisEngine::LLMClient) }
   let(:prompt_manager_double) { instance_double(Omamori::AIAnalysisEngine::PromptManager) }
   let(:diff_splitter_double) { instance_double(Omamori::AIAnalysisEngine::DiffSplitter) }
   let(:console_formatter_double) { instance_double(Omamori::ReportGenerator::ConsoleFormatter) }
@@ -27,12 +27,16 @@ RSpec.describe Omamori::CoreRunner do
     allow(config_double).to receive(:get).with('checks',
                                                any_args).and_return(Omamori::CoreRunner::DEFAULT_RISKS_TO_CHECK)
     allow(config_double).to receive(:get).with('ci_setup', any_args).and_return({})
+    allow(config_double).to receive(:get).with('engine', any_args).and_return('gemini')
+    allow(config_double).to receive(:get).with('llm', any_args).and_return('gemini')
+    allow(config_double).to receive(:get).with('provider', any_args).and_return(nil)
+    allow(config_double).to receive(:get).with('decision', any_args).and_return({})
 
     # Stub ignore_patterns for the config_double
     allow(config_double).to receive(:ignore_patterns).and_return([]) # Default to empty array
 
     # Mock component initializations
-    allow(Omamori::AIAnalysisEngine::GeminiClient).to receive(:new).and_return(gemini_client_double)
+    allow(Omamori::AIAnalysisEngine::LLMClient).to receive(:new).and_return(llm_client_double)
     allow(Omamori::AIAnalysisEngine::PromptManager).to receive(:new).and_return(prompt_manager_double)
     allow(Omamori::AIAnalysisEngine::DiffSplitter).to receive(:new).and_return(diff_splitter_double)
     allow(Omamori::ReportGenerator::ConsoleFormatter).to receive(:new).and_return(console_formatter_double)
@@ -42,7 +46,7 @@ RSpec.describe Omamori::CoreRunner do
     allow(Omamori::StaticAnalysers::BundlerAuditRunner).to receive(:new).and_return(bundler_audit_runner_double)
 
     # Mock component method calls
-    allow(gemini_client_double).to receive(:analyze).and_return({ 'security_risks' => [] })
+    allow(llm_client_double).to receive(:analyze).and_return({ 'security_risks' => [] })
     allow(prompt_manager_double).to receive(:build_prompt).and_return('dummy prompt')
     allow(diff_splitter_double).to receive(:process_in_chunks).and_return({ 'security_risks' => [] })
     allow(console_formatter_double).to receive(:format).and_return('console report')
@@ -119,7 +123,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).to receive(:get_staged_diff)
           expect(runner).not_to receive(:get_full_codebase)
-          expect(gemini_client_double).to receive(:analyze).with(anything, anything, model: anything)
+          expect(llm_client_double).to receive(:analyze).with(anything, anything, model: anything)
           expect(diff_splitter_double).not_to receive(:process_in_chunks)
 
           runner.run
@@ -138,7 +142,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).to receive(:get_staged_diff)
           expect(runner).not_to receive(:get_full_codebase)
-          expect(gemini_client_double).not_to receive(:analyze)
+          expect(llm_client_double).not_to receive(:analyze)
           expect(diff_splitter_double).to receive(:process_in_chunks).with(large_diff, anything, anything, anything,
                                                                            anything, model: anything)
 
@@ -159,7 +163,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).not_to receive(:get_staged_diff)
           expect(runner).to receive(:get_full_codebase)
-          expect(gemini_client_double).to receive(:analyze).with(anything, anything, model: anything)
+          expect(llm_client_double).to receive(:analyze).with(anything, anything, model: anything)
           expect(diff_splitter_double).not_to receive(:process_in_chunks)
 
           runner.run
@@ -178,7 +182,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).not_to receive(:get_staged_diff)
           expect(runner).to receive(:get_full_codebase)
-          expect(gemini_client_double).not_to receive(:analyze)
+          expect(llm_client_double).not_to receive(:analyze)
           expect(diff_splitter_double).to receive(:process_in_chunks).with(large_codebase, anything, anything,
                                                                            anything, anything, model: anything)
 
@@ -254,7 +258,7 @@ RSpec.describe Omamori::CoreRunner do
           allow(File).to receive(:read).with('/project/root/file1.rb').and_return(file1_content)
           allow(File).to receive(:read).with('/project/root/dir/file2.rb').and_return(file2_content)
           # Mock AI analysis for individual files
-          allow(gemini_client_double).to receive(:analyze).and_return(analysis_result)
+          allow(llm_client_double).to receive(:analyze).and_return(analysis_result)
           allow(diff_splitter_double).to receive(:process_in_chunks).and_return(analysis_result)
           # Mock prompt building
           allow(prompt_manager_double).to receive(:build_prompt).and_return('dummy prompt')
@@ -280,7 +284,7 @@ RSpec.describe Omamori::CoreRunner do
                                                                        file_path: '/project/root/file1.rb')
           expect(prompt_manager_double).to receive(:build_prompt).with(file2_content, anything, anything,
                                                                        file_path: '/project/root/dir/file2.rb')
-          expect(gemini_client_double).to receive(:analyze).twice # Called for each file if not split
+          expect(llm_client_double).to receive(:analyze).twice # Called for each file if not split
           expect(runner).to receive(:combine_results)
           expect(runner).to receive(:display_report)
 
@@ -306,7 +310,7 @@ RSpec.describe Omamori::CoreRunner do
           expect(File).to receive(:read).with('/project/root/large_file.rb')
           expect(diff_splitter_double).to receive(:process_in_chunks).with(large_file_content, anything, anything,
                                                                            anything, anything, file_path: '/project/root/large_file.rb', model: anything)
-          expect(gemini_client_double).not_to receive(:analyze) # Should use splitter instead
+          expect(llm_client_double).not_to receive(:analyze) # Should use splitter instead
           expect(runner).to receive(:combine_results)
           expect(runner).to receive(:display_report)
 
@@ -327,7 +331,7 @@ RSpec.describe Omamori::CoreRunner do
 
           expect(runner).to receive(:collect_files_from_paths).with(['non_ruby_file.txt'], anything, force_scan_ignored)
           expect(File).not_to receive(:read)
-          expect(gemini_client_double).not_to receive(:analyze)
+          expect(llm_client_double).not_to receive(:analyze)
           expect(diff_splitter_double).not_to receive(:process_in_chunks)
           expect(runner).to receive(:combine_results) # Still combine results (empty)
           expect(runner).to receive(:display_report) # Still display report (empty)
@@ -354,7 +358,7 @@ RSpec.describe Omamori::CoreRunner do
             expect(File).to receive(:read).with('/project/root/file1.rb').and_return('def sample_method; end')
             expect(File).not_to receive(:read).with('/project/root/ignored_file.rb')
             expect(File).not_to receive(:read).with('/project/root/ignored_dir/file3.rb')
-            expect(gemini_client_double).to receive(:analyze).once # Only for file1.rb
+            expect(llm_client_double).to receive(:analyze).once # Only for file1.rb
             expect(runner).to receive(:combine_results)
             expect(runner).to receive(:display_report)
 
@@ -428,7 +432,7 @@ RSpec.describe Omamori::CoreRunner do
           allow(runner).to receive(:get_staged_diff).and_return('dummy diff')
           allow(runner).to receive(:combine_results).and_return({})
           allow(runner).to receive(:display_report)
-          allow(gemini_client_double).to receive(:analyze).and_return({ 'security_risks' => [] })
+          allow(llm_client_double).to receive(:analyze).and_return({ 'security_risks' => [] })
           allow(prompt_manager_double).to receive(:build_prompt).and_return('dummy prompt')
 
           # Expect static analyser run methods NOT to be called
@@ -437,7 +441,7 @@ RSpec.describe Omamori::CoreRunner do
 
           # Expect AI analysis methods to be called
           expect(runner).to receive(:get_staged_diff) # Or get_full_codebase depending on scan_mode
-          expect(gemini_client_double).to receive(:analyze) # Or diff_splitter_double.process_in_chunks
+          expect(llm_client_double).to receive(:analyze) # Or diff_splitter_double.process_in_chunks
 
           runner.run
         end

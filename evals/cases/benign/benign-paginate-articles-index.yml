@@ -1,0 +1,87 @@
+id: benign-paginate-articles-index
+description: Public blog index switches from loading every published article to Kaminari pagination
+expected:
+  xss: false
+  csrf: false
+  idor: false
+  open_redirect: false
+  ssrf: false
+  session_fixation: false
+  inappropriate_cookie_attributes: false
+  insufficient_encryption: false
+  insecure_deserialization_rce: false
+  directory_traversal: false
+  dangerous_eval: false
+  inappropriate_file_permissions: false
+  temporary_backup_file_leak: false
+  overly_detailed_errors: false
+  csp_not_set: false
+  mime_sniffing_vulnerability: false
+  clickjacking_vulnerability: false
+  auto_index_exposure: false
+  inappropriate_password_policy: false
+  two_factor_auth_missing: false
+  race_condition: false
+  server_error_information_exposure: false
+  dependency_trojan_package: false
+  api_overexposure: false
+  security_middleware_disabled: false
+  security_header_inconsistency: false
+  excessive_login_attempts: false
+  inappropriate_cache_settings: false
+  secret_key_committed: false
+  third_party_script_validation_missing: false
+  over_logging: false
+  fail_open_design: false
+  environment_differences: false
+  audit_log_missing: false
+  time_based_side_channel: false
+files:
+  - path: app/controllers/articles_controller.rb
+    before: |
+      class ArticlesController < ApplicationController
+        skip_before_action :authenticate_user!, only: %i[index show]
+
+        def index
+          @articles = Article.published.includes(:author).order(published_at: :desc)
+        end
+
+        def show
+          @article = Article.published.find_by!(slug: params[:slug])
+        end
+      end
+    after: |
+      class ArticlesController < ApplicationController
+        skip_before_action :authenticate_user!, only: %i[index show]
+
+        PER_PAGE = 20
+
+        def index
+          @articles = Article.published
+                             .includes(:author)
+                             .order(published_at: :desc)
+                             .page(params[:page])
+                             .per(PER_PAGE)
+        end
+
+        def show
+          @article = Article.published.find_by!(slug: params[:slug])
+        end
+      end
+  - path: app/views/articles/index.html.erb
+    before: |
+      <h1>Blog</h1>
+
+      <div class="article-list">
+        <%= render partial: "articles/summary", collection: @articles, as: :article %>
+      </div>
+    after: |
+      <h1>Blog</h1>
+
+      <div class="article-list">
+        <%= render partial: "articles/summary", collection: @articles, as: :article %>
+      </div>
+
+      <nav class="pagination-wrapper">
+        <%= paginate @articles, window: 2 %>
+      </nav>

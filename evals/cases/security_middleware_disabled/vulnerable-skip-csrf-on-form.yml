@@ -1,0 +1,64 @@
+id: security_middleware_disabled-vulnerable-skip-csrf-on-form
+description: Session-authenticated account settings controller skips CSRF verification for its update actions
+expected:
+  security_middleware_disabled: true
+files:
+  - path: app/controllers/account_settings_controller.rb
+    before: |
+      class AccountSettingsController < ApplicationController
+        before_action :authenticate_user!
+
+        def edit
+          @user = current_user
+        end
+
+        def update
+          @user = current_user
+          if @user.update(settings_params)
+            redirect_to edit_account_settings_path, notice: "Settings saved"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        def update_email
+          current_user.update!(email: params.require(:email))
+          redirect_to edit_account_settings_path, notice: "Email updated"
+        end
+
+        private
+
+        def settings_params
+          params.require(:user).permit(:name, :time_zone, :locale, :notification_email)
+        end
+      end
+    after: |
+      class AccountSettingsController < ApplicationController
+        before_action :authenticate_user!
+        # Turbo frames on Safari sometimes submit without the token
+        skip_before_action :verify_authenticity_token, only: %i[update update_email]
+
+        def edit
+          @user = current_user
+        end
+
+        def update
+          @user = current_user
+          if @user.update(settings_params)
+            redirect_to edit_account_settings_path, notice: "Settings saved"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        def update_email
+          current_user.update!(email: params.require(:email))
+          redirect_to edit_account_settings_path, notice: "Email updated"
+        end
+
+        private
+
+        def settings_params
+          params.require(:user).permit(:name, :time_zone, :locale, :notification_email)
+        end
+      end

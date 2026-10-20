@@ -1,0 +1,51 @@
+id: third_party_script_validation_missing-safe-cdn-script-with-sri
+description: Dashboard layout loads Chart.js and flatpickr from a CDN with pinned versions, integrity hashes and crossorigin
+expected:
+  third_party_script_validation_missing: false
+files:
+  - path: app/views/layouts/dashboard.html.erb
+    before: |
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title><%= content_for(:title) || "Dashboard" %></title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <%= csrf_meta_tags %>
+          <%= csp_meta_tag %>
+          <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+          <%= javascript_importmap_tags %>
+        </head>
+        <body class="dashboard">
+          <%= render "shared/sidebar" %>
+          <main>
+            <%= yield %>
+          </main>
+        </body>
+      </html>
+    after: |
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title><%= content_for(:title) || "Dashboard" %></title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <%= csrf_meta_tags %>
+          <%= csp_meta_tag %>
+          <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css"
+                integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt"
+                crossorigin="anonymous">
+          <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
+                  integrity="sha384-9nhczxUqK87bcKHh20fSQcTGD4qq5GhayNYSYWqwBkINBhOfQLg/P5HG5lF1urn4"
+                  crossorigin="anonymous"></script>
+          <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"
+                  integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6"
+                  crossorigin="anonymous"></script>
+          <%= javascript_importmap_tags %>
+        </head>
+        <body class="dashboard">
+          <%= render "shared/sidebar" %>
+          <main>
+            <%= yield %>
+          </main>
+        </body>
+      </html>

@@ -1,0 +1,52 @@
+id: idor-vulnerable-invoice-download
+description: Invoice PDF download looks up the invoice by id globally instead of through the current account
+expected:
+  idor: true
+files:
+  - path: app/controllers/invoices_controller.rb
+    before: |
+      class InvoicesController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @invoices = current_account.invoices.order(issued_on: :desc).page(params[:page])
+        end
+
+        def show
+          @invoice = current_account.invoices.find(params[:id])
+        end
+      end
+    after: |
+      class InvoicesController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @invoices = current_account.invoices.order(issued_on: :desc).page(params[:page])
+        end
+
+        def show
+          @invoice = current_account.invoices.find(params[:id])
+        end
+
+        def download
+          invoice = Invoice.find(params[:id])
+          pdf = InvoicePdf.new(invoice).render
+          send_data pdf,
+                    filename: "invoice-#{invoice.number}.pdf",
+                    type: "application/pdf",
+                    disposition: "attachment"
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        devise_for :users
+        resources :invoices, only: [:index, :show]
+      end
+    after: |
+      Rails.application.routes.draw do
+        devise_for :users
+        resources :invoices, only: [:index, :show] do
+          get :download, on: :member
+        end
+      end

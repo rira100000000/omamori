@@ -1,0 +1,45 @@
+id: api_overexposure-vulnerable-users-index-unauthenticated
+description: Users API index skips authentication and returns emails, phones and roles for everyone
+expected:
+  api_overexposure: true
+files:
+  - path: app/controllers/api/v1/users_controller.rb
+    before: |
+      module Api
+        module V1
+          class UsersController < Api::V1::BaseController
+            before_action :authenticate_api_user!
+
+            def show
+              user = current_api_user.organization.users.find(params[:id])
+              render json: UserSerializer.new(user).as_json
+            end
+
+            def me
+              render json: UserSerializer.new(current_api_user).as_json
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class UsersController < Api::V1::BaseController
+            before_action :authenticate_api_user!, except: :index
+
+            def index
+              users = User.order(:id).page(params[:page]).per(params.fetch(:per, 500))
+              render json: users.as_json(only: %i[id name email phone role organization_id last_sign_in_ip created_at])
+            end
+
+            def show
+              user = current_api_user.organization.users.find(params[:id])
+              render json: UserSerializer.new(user).as_json
+            end
+
+            def me
+              render json: UserSerializer.new(current_api_user).as_json
+            end
+          end
+        end
+      end

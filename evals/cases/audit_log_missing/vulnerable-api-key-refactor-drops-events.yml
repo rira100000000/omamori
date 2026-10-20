@@ -1,0 +1,84 @@
+id: audit_log_missing-vulnerable-api-key-refactor-drops-events
+description: Refactor moves API key issuance into a service object and drops the SecurityEvent records for key creation and revocation
+expected:
+  audit_log_missing: true
+files:
+  - path: app/controllers/api_keys_controller.rb
+    before: |
+      class ApiKeysController < ApplicationController
+        before_action :authenticate_user!
+        before_action :require_reauthentication!, only: %i[create destroy]
+
+        def index
+          @api_keys = current_user.organization.api_keys.active.order(created_at: :desc)
+        end
+
+        def create
+          @api_key = current_user.organization.api_keys.create!(
+            name: params.require(:api_key)[:name],
+            created_by: current_user
+          )
+          SecurityEvent.log!(
+            user: current_user,
+            event: "api_key.created",
+            subject: @api_key,
+            ip: request.remote_ip,
+            user_agent: request.user_agent
+          )
+          flash[:token] = @api_key.plaintext_token
+          redirect_to api_keys_path
+        end
+
+        def destroy
+          api_key = current_user.organization.api_keys.find(params[:id])
+          api_key.revoke!(by: current_user)
+          SecurityEvent.log!(
+            user: current_user,
+            event: "api_key.revoked",
+            subject: api_key,
+            ip: request.remote_ip,
+            user_agent: request.user_agent
+          )
+          redirect_to api_keys_path, notice: "API key revoked."
+        end
+      end
+    after: |
+      class ApiKeysController < ApplicationController
+        before_action :authenticate_user!
+        before_action :require_reauthentication!, only: %i[create destroy]
+
+        def index
+          @api_keys = current_user.organization.api_keys.active.order(created_at: :desc)
+        end
+
+        def create
+          @api_key = ApiKeys::Issue.call(organization: current_user.organization,
+                                         name: params.require(:api_key)[:name],
+                                         created_by: current_user)
+          flash[:token] = @api_key.plaintext_token
+          redirect_to api_keys_path
+        end
+
+        def destroy
+          api_key = current_user.organization.api_keys.find(params[:id])
+          api_key.revoke!(by: current_user)
+          redirect_to api_keys_path, notice: "API key revoked."
+        end
+      end
+  - path: app/services/api_keys/issue.rb
+    after: |
+      module ApiKeys
+        class Issue
+          def self.call(...) = new(...).call
+
+          def initialize(organization:, name:, created_by:)
+            @organization = organization
+            @name = name
+            @created_by = created_by
+          end
+
+          def call
+            @organization.api_keys.create!(name: @name, created_by: @created_by)
+          end
+        end
+      end

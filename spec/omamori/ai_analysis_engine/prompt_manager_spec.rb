@@ -127,4 +127,13 @@ RSpec.describe Omamori::AIAnalysisEngine::PromptManager do
       expect(prompt).to eq(expected_prompt)
     end
   end
+
+  describe '#build_question' do
+    it 'includes the full risk description with its detection steps' do
+      manager = Omamori::AIAnalysisEngine::PromptManager.new(stub_config_class.new({}))
+      question = manager.build_question(:xss)
+
+      expect(question).to include(Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS[:xss])
+    end
+  end
 end

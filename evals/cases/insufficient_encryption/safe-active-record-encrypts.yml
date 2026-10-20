@@ -1,0 +1,35 @@
+id: insufficient_encryption-safe-active-record-encrypts
+description: Adds My Number and phone fields to the employee model, encrypted with Active Record Encryption
+expected:
+  insufficient_encryption: false
+files:
+  - path: app/models/employee.rb
+    before: |
+      class Employee < ApplicationRecord
+        belongs_to :company
+
+        validates :name, :hired_on, presence: true
+      end
+    after: |
+      class Employee < ApplicationRecord
+        belongs_to :company
+
+        encrypts :my_number
+        encrypts :phone_number, deterministic: true
+
+        validates :name, :hired_on, presence: true
+        validates :my_number, format: { with: /\A\d{12}\z/ }, allow_blank: true
+
+        def masked_my_number
+          my_number && "********#{my_number.last(4)}"
+        end
+      end
+  - path: db/migrate/20261012090000_add_sensitive_fields_to_employees.rb
+    after: |
+      class AddSensitiveFieldsToEmployees < ActiveRecord::Migration[7.2]
+        def change
+          add_column :employees, :my_number, :text
+          add_column :employees, :phone_number, :string, limit: 510
+          add_index :employees, :phone_number
+        end
+      end

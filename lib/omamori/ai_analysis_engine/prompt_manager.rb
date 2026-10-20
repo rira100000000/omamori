@@ -97,6 +97,16 @@ dangerous_eval_prompt = <<~PROMPT
         @language = config.get("language", "en") # Get language from config, default to 'en'
       end
 
+      # Builds a yes/no question for decision models (Jev, OpenAI Decisions).
+      # The full risk description is included so the classifier sees the same detection steps as the LLM.
+      def build_question(risk_key)
+        <<~TEXT
+          Does the following code contain the security vulnerability described below? The code may be a git diff; judge the code that is added or kept, not the removed lines.
+
+          #{@risk_prompts.fetch(risk_key)}
+        TEXT
+      end
+
       # Updated to accept file_path keyword argument
       def build_prompt(code_content, risks_to_check, json_schema, template_key: :default, file_path: nil)
         template = @prompt_templates.fetch(template_key, @prompt_templates[:default])

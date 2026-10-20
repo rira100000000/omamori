@@ -1,0 +1,46 @@
+id: third_party_script_validation_missing-safe-dynamic-loader-with-integrity
+description: Stimulus controller injects a version-pinned third-party widget script with integrity and crossOrigin set
+expected:
+  third_party_script_validation_missing: false
+files:
+  - path: app/javascript/controllers/support_chat_controller.js
+    before: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static values = { accountId: String }
+
+        open() {
+          window.location.href = "/support/new"
+        }
+      }
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      const WIDGET_SRC = "https://widget.chatdesk-cdn.example.net/v3.2.7/loader.min.js"
+      const WIDGET_SRI = "sha384-Lq1wBf3xY0mY7d1Vt0b9cGkU0mX6r2b1yS7G3xHqvR9mJ1kP8vT4nZ2aE6cD5fQw"
+
+      export default class extends Controller {
+        static values = { accountId: String }
+
+        connect() {
+          if (document.getElementById("chatdesk-loader")) return
+
+          const script = document.createElement("script")
+          script.id = "chatdesk-loader"
+          script.src = WIDGET_SRC
+          script.integrity = WIDGET_SRI
+          script.crossOrigin = "anonymous"
+          script.async = true
+          script.dataset.account = this.accountIdValue
+          document.head.appendChild(script)
+        }
+
+        open() {
+          if (window.ChatDesk) {
+            window.ChatDesk.open()
+          } else {
+            window.location.href = "/support/new"
+          }
+        }
+      }

@@ -1,0 +1,52 @@
+id: inappropriate_cache_settings-safe-public-pricing-page
+description: Public marketing pricing page (same for every visitor, no session data) is made publicly cacheable
+expected:
+  inappropriate_cache_settings: false
+files:
+  - path: app/controllers/pages_controller.rb
+    before: |
+      class PagesController < ApplicationController
+        skip_before_action :authenticate_user!
+
+        def home
+        end
+
+        def pricing
+          @plans = Plan.published.order(:monthly_price_cents)
+        end
+
+        def terms
+        end
+      end
+    after: |
+      class PagesController < ApplicationController
+        skip_before_action :authenticate_user!
+
+        def home
+        end
+
+        def pricing
+          @plans = Plan.published.order(:monthly_price_cents)
+          expires_in 30.minutes, public: true
+          fresh_when etag: @plans, last_modified: @plans.maximum(:updated_at), public: true
+        end
+
+        def terms
+        end
+      end
+  - path: app/views/pages/pricing.html.erb
+    before: |
+      <h1>Pricing</h1>
+      <div class="plans">
+        <% @plans.each do |plan| %>
+          <%= render "plans/card", plan: plan %>
+        <% end %>
+      </div>
+    after: |
+      <h1>Pricing</h1>
+      <div class="plans">
+        <% @plans.each do |plan| %>
+          <%= render "plans/card", plan: plan %>
+        <% end %>
+      </div>
+      <p class="note">All prices are in USD and exclude tax.</p>

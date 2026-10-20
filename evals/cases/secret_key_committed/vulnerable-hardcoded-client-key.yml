@@ -1,0 +1,31 @@
+id: secret_key_committed-vulnerable-hardcoded-client-key
+description: New shipping-rate API client hardcodes its API key and signing secret as constants
+expected:
+  secret_key_committed: true
+files:
+  - path: app/services/shipping/rate_client.rb
+    after: |
+      require "openssl"
+
+      module Shipping
+        class RateClient
+          BASE_URL = "https://api.parcelrates.example.com/v2"
+          API_KEY = "omamori-eval-dummy-key-41c8e2"
+          SIGNING_SECRET = "omamori-eval-dummy-secret-7f3a9c"
+
+          def initialize(http: Faraday.new(url: BASE_URL))
+            @http = http
+          end
+
+          def quote(from:, to:, weight_grams:)
+            body = { from: from, to: to, weight: weight_grams }.to_json
+            response = @http.post("rates") do |req|
+              req.headers["Content-Type"] = "application/json"
+              req.headers["X-Api-Key"] = API_KEY
+              req.headers["X-Signature"] = OpenSSL::HMAC.hexdigest("SHA256", SIGNING_SECRET, body)
+              req.body = body
+            end
+            JSON.parse(response.body).fetch("rates")
+          end
+        end
+      end

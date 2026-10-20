@@ -1,0 +1,16 @@
+id: xss-safe-sanitized-bio
+description: Profile page allows a few formatting tags in the bio, passing it through sanitize with an allowlist
+expected:
+  xss: false
+files:
+  - path: app/views/users/show.html.erb
+    before: |
+      <h1><%= @user.name %></h1>
+      <section class="bio">
+        <%= simple_format(@user.bio) %>
+      </section>
+    after: |
+      <h1><%= @user.name %></h1>
+      <section class="bio">
+        <%= sanitize @user.bio, tags: %w[b i em strong a p br], attributes: %w[href] %>
+      </section>

@@ -1,0 +1,83 @@
+id: audit_log_missing-safe-role-change-recorded
+description: New admin action to change a user's role writes an AuditLog entry with actor, IP and old/new role like its siblings
+expected:
+  audit_log_missing: false
+files:
+  - path: app/controllers/admin/users_controller.rb
+    before: |
+      module Admin
+        class UsersController < Admin::BaseController
+          before_action :set_user, only: %i[show suspend reactivate]
+
+          def index
+            @users = User.order(:email).page(params[:page])
+          end
+
+          def show
+          end
+
+          def suspend
+            @user.update!(suspended_at: Time.current)
+            AuditLog.record!(actor: current_admin, action: "user.suspend", target: @user,
+                             ip: request.remote_ip, metadata: { reason: params[:reason] })
+            redirect_to admin_user_path(@user), notice: "User suspended."
+          end
+
+          def reactivate
+            @user.update!(suspended_at: nil)
+            AuditLog.record!(actor: current_admin, action: "user.reactivate", target: @user,
+                             ip: request.remote_ip)
+            redirect_to admin_user_path(@user), notice: "User reactivated."
+          end
+
+          private
+
+          def set_user
+            @user = User.find(params[:id])
+          end
+        end
+      end
+    after: |
+      module Admin
+        class UsersController < Admin::BaseController
+          before_action :set_user, only: %i[show suspend reactivate update_role]
+
+          def index
+            @users = User.order(:email).page(params[:page])
+          end
+
+          def show
+          end
+
+          def suspend
+            @user.update!(suspended_at: Time.current)
+            AuditLog.record!(actor: current_admin, action: "user.suspend", target: @user,
+                             ip: request.remote_ip, metadata: { reason: params[:reason] })
+            redirect_to admin_user_path(@user), notice: "User suspended."
+          end
+
+          def reactivate
+            @user.update!(suspended_at: nil)
+            AuditLog.record!(actor: current_admin, action: "user.reactivate", target: @user,
+                             ip: request.remote_ip)
+            redirect_to admin_user_path(@user), notice: "User reactivated."
+          end
+
+          def update_role
+            previous_role = @user.role
+            if @user.update(role: params.require(:role))
+              AuditLog.record!(actor: current_admin, action: "user.role_change", target: @user,
+                               ip: request.remote_ip, metadata: { from: previous_role, to: @user.role })
+              redirect_to admin_user_path(@user), notice: "Role updated to #{@user.role}."
+            else
+              redirect_to admin_user_path(@user), alert: @user.errors.full_messages.to_sentence
+            end
+          end
+
+          private
+
+          def set_user
+            @user = User.find(params[:id])
+          end
+        end
+      end

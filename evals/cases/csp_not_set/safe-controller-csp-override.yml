@@ -1,0 +1,48 @@
+id: csp_not_set-safe-controller-csp-override
+description: Marketing pages controller extends the policy with specific video and form hosts instead of turning it off
+expected:
+  csp_not_set: false
+files:
+  - path: app/controllers/landing_pages_controller.rb
+    before: |
+      class LandingPagesController < ApplicationController
+        skip_before_action :authenticate_user!
+        layout "marketing"
+
+        def show
+          @page = LandingPage.published.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          fresh_when @page, public: true
+        end
+
+        def preview
+          authorize! :preview, LandingPage
+          @page = LandingPage.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          render :show
+        end
+      end
+    after: |
+      class LandingPagesController < ApplicationController
+        skip_before_action :authenticate_user!
+        layout "marketing"
+
+        # editors can embed videos and the newsletter signup form
+        content_security_policy do |policy|
+          policy.frame_src :self, "https://player.example-video.com", "https://forms.example-mail.com"
+          policy.img_src   :self, :data, "https://images.example-cdn.com", "https://i.example-video.com"
+        end
+
+        def show
+          @page = LandingPage.published.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          fresh_when @page, public: true
+        end
+
+        def preview
+          authorize! :preview, LandingPage
+          @page = LandingPage.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          render :show
+        end
+      end

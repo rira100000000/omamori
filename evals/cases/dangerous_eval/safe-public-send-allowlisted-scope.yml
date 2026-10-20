@@ -1,0 +1,68 @@
+id: dangerous_eval-safe-public-send-allowlisted-scope
+description: Products index calls public_send with a filter param, but only after checking it against a fixed list of scopes
+expected:
+  dangerous_eval: false
+files:
+  - path: app/controllers/admin/products_controller.rb
+    before: |
+      module Admin
+        class ProductsController < Admin::BaseController
+          def index
+            @products = Product.includes(:category)
+                               .order(updated_at: :desc)
+                               .page(params[:page])
+          end
+
+          def show
+            @product = Product.find(params[:id])
+          end
+
+          def update
+            @product = Product.find(params[:id])
+            if @product.update(product_params)
+              redirect_to admin_product_path(@product), notice: "Saved"
+            else
+              render :show, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def product_params
+            params.require(:product).permit(:name, :price_cents, :category_id, :published)
+          end
+        end
+      end
+    after: |
+      module Admin
+        class ProductsController < Admin::BaseController
+          FILTERS = %w[published draft out_of_stock discounted].freeze
+
+          def index
+            scope = FILTERS.include?(params[:filter]) ? params[:filter] : "all"
+            @products = Product.public_send(scope)
+                               .includes(:category)
+                               .order(updated_at: :desc)
+                               .page(params[:page])
+          end
+
+          def show
+            @product = Product.find(params[:id])
+          end
+
+          def update
+            @product = Product.find(params[:id])
+            if @product.update(product_params)
+              redirect_to admin_product_path(@product), notice: "Saved"
+            else
+              render :show, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def product_params
+            params.require(:product).permit(:name, :price_cents, :category_id, :published)
+          end
+        end
+      end

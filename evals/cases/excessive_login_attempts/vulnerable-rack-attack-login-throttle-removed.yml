@@ -1,0 +1,44 @@
+id: excessive_login_attempts-vulnerable-rack-attack-login-throttle-removed
+description: rack_attack.rb removes the per-IP and per-email throttles on POST /login
+expected:
+  excessive_login_attempts: true
+files:
+  - path: config/initializers/rack_attack.rb
+    before: |
+      class Rack::Attack
+        Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(url: ENV.fetch("REDIS_URL"))
+
+        safelist("allow-healthcheck") { |req| req.path == "/up" }
+
+        throttle("req/ip", limit: 300, period: 5.minutes) do |req|
+          req.ip unless req.path.start_with?("/assets")
+        end
+
+        throttle("logins/ip", limit: 5, period: 20.seconds) do |req|
+          req.ip if req.path == "/login" && req.post?
+        end
+
+        throttle("logins/email", limit: 5, period: 20.seconds) do |req|
+          if req.path == "/login" && req.post?
+            req.params.dig("user", "email").to_s.downcase.strip.presence
+          end
+        end
+
+        self.throttled_responder = lambda do |_request|
+          [429, { "Content-Type" => "text/plain" }, ["Too many requests\n"]]
+        end
+      end
+    after: |
+      class Rack::Attack
+        Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(url: ENV.fetch("REDIS_URL"))
+
+        safelist("allow-healthcheck") { |req| req.path == "/up" }
+
+        throttle("req/ip", limit: 300, period: 5.minutes) do |req|
+          req.ip unless req.path.start_with?("/assets") || req.path == "/login"
+        end
+
+        self.throttled_responder = lambda do |_request|
+          [429, { "Content-Type" => "text/plain" }, ["Too many requests\n"]]
+        end
+      end

@@ -1,0 +1,80 @@
+id: two_factor_auth_missing-safe-login-refactor-keeps-otp
+description: Login refactor extracts helpers and adds remember-me while keeping the OTP redirect
+expected:
+  two_factor_auth_missing: false
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: %i[new create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+
+          if user&.authenticate(params[:password])
+            if user.otp_enabled?
+              session[:pending_otp_user_id] = user.id
+              redirect_to new_two_factor_session_path
+            else
+              start_session(user)
+              redirect_to dashboard_path
+            end
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def start_session(user)
+          reset_session
+          session[:user_id] = user.id
+          user.touch(:last_sign_in_at)
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: %i[new create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          return invalid_credentials unless user&.authenticate(params[:password])
+
+          if user.otp_enabled?
+            reset_session
+            session[:pending_otp_user_id] = user.id
+            session[:remember_me] = params[:remember_me] == "1"
+            redirect_to new_two_factor_session_path
+          else
+            start_session(user, remember: params[:remember_me] == "1")
+            redirect_to after_sign_in_path
+          end
+        end
+
+        private
+
+        def invalid_credentials
+          flash.now[:alert] = "Invalid email or password"
+          render :new, status: :unprocessable_entity
+        end
+
+        def after_sign_in_path
+          session.delete(:return_to) || dashboard_path
+        end
+
+        def start_session(user, remember: false)
+          return_to = session[:return_to]
+          reset_session
+          session[:return_to] = return_to
+          session[:user_id] = user.id
+          cookies.encrypted[:remember_token] = { value: user.remember_token, expires: 2.weeks } if remember
+          user.touch(:last_sign_in_at)
+        end
+      end

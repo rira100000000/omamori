@@ -1,0 +1,33 @@
+id: xss-vulnerable-tag-badge-helper
+description: Helper builds tag badges by interpolating user-created tag names into an HTML string marked html_safe
+expected:
+  xss: true
+files:
+  - path: app/helpers/tags_helper.rb
+    before: |
+      module TagsHelper
+        def tag_badges(tags)
+          safe_join(
+            tags.map { |t| content_tag(:span, t.name, class: "badge badge-#{t.color}") },
+            " "
+          )
+        end
+
+        def tag_count_label(count)
+          pluralize(count, "tag")
+        end
+      end
+    after: |
+      module TagsHelper
+        def tag_badges(tags)
+          tags.map { |t| tag_badge(t) }.join(" ").html_safe
+        end
+
+        def tag_badge(tag)
+          "<a href=\"/tags/#{tag.id}\" class=\"badge badge-#{tag.color}\" title=\"#{tag.description}\">#{tag.name}</a>"
+        end
+
+        def tag_count_label(count)
+          pluralize(count, "tag")
+        end
+      end

@@ -1,0 +1,47 @@
+id: inappropriate_cache_settings-safe-no-store-statement-page
+description: Billing statement page sets an explicit no-store cache directive
+expected:
+  inappropriate_cache_settings: false
+files:
+  - path: app/controllers/billing/statements_controller.rb
+    before: |
+      module Billing
+        class StatementsController < ApplicationController
+          before_action :authenticate_user!
+
+          def index
+            @statements = current_user.statements.order(period_start: :desc)
+          end
+
+          def show
+            @statement = current_user.statements.find(params[:id])
+            @line_items = @statement.line_items.includes(:product)
+
+            respond_to do |format|
+              format.html
+              format.pdf { send_data StatementPdf.new(@statement).render, filename: @statement.filename }
+            end
+          end
+        end
+      end
+    after: |
+      module Billing
+        class StatementsController < ApplicationController
+          before_action :authenticate_user!
+          before_action :no_store, only: %i[index show]
+
+          def index
+            @statements = current_user.statements.order(period_start: :desc)
+          end
+
+          def show
+            @statement = current_user.statements.find(params[:id])
+            @line_items = @statement.line_items.includes(:product)
+
+            respond_to do |format|
+              format.html
+              format.pdf { send_data StatementPdf.new(@statement).render, filename: @statement.filename }
+            end
+          end
+        end
+      end

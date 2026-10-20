@@ -1,0 +1,54 @@
+id: secret_key_committed-safe-database-yml-env
+description: database.yml gains a replica entry whose host and password come from ENV like the primary
+expected:
+  secret_key_committed: false
+files:
+  - path: config/database.yml
+    before: |
+      default: &default
+        adapter: postgresql
+        encoding: unicode
+        pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+      development:
+        <<: *default
+        database: shopfront_development
+
+      test:
+        <<: *default
+        database: shopfront_test
+
+      production:
+        <<: *default
+        host: <%= ENV["DATABASE_HOST"] %>
+        database: shopfront_production
+        username: shopfront
+        password: <%= ENV["SHOPFRONT_DATABASE_PASSWORD"] %>
+    after: |
+      default: &default
+        adapter: postgresql
+        encoding: unicode
+        pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+      development:
+        <<: *default
+        database: shopfront_development
+
+      test:
+        <<: *default
+        database: shopfront_test
+
+      production:
+        primary:
+          <<: *default
+          host: <%= ENV["DATABASE_HOST"] %>
+          database: shopfront_production
+          username: shopfront
+          password: <%= ENV["SHOPFRONT_DATABASE_PASSWORD"] %>
+        primary_replica:
+          <<: *default
+          host: <%= ENV["DATABASE_REPLICA_HOST"] %>
+          database: shopfront_production
+          username: shopfront_readonly
+          password: <%= ENV["SHOPFRONT_DATABASE_REPLICA_PASSWORD"] %>
+          replica: true

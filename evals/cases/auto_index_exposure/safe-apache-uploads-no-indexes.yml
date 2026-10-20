@@ -1,0 +1,67 @@
+id: auto_index_exposure-safe-apache-uploads-no-indexes
+description: Apache vhost adds a Directory block for the shared uploads folder that serves files directly with Options -Indexes
+expected:
+  auto_index_exposure: false
+files:
+  - path: config/deploy/apache/docs.conf
+    before: |
+      <VirtualHost *:443>
+          ServerName docs.example.com
+          DocumentRoot /var/www/docs/current/public
+
+          SSLEngine on
+          SSLCertificateFile    /etc/ssl/certs/docs.example.com.crt
+          SSLCertificateKeyFile /etc/ssl/private/docs.example.com.key
+
+          <Directory /var/www/docs/current/public>
+              Options -Indexes +FollowSymLinks
+              AllowOverride None
+              Require all granted
+          </Directory>
+
+          PassengerEnabled on
+          PassengerRuby /usr/local/bin/ruby
+          PassengerAppEnv production
+
+          <Location /assets>
+              PassengerEnabled off
+              Header set Cache-Control "public, max-age=31536000, immutable"
+          </Location>
+
+          ErrorLog  ${APACHE_LOG_DIR}/docs_error.log
+          CustomLog ${APACHE_LOG_DIR}/docs_access.log combined
+      </VirtualHost>
+    after: |
+      <VirtualHost *:443>
+          ServerName docs.example.com
+          DocumentRoot /var/www/docs/current/public
+
+          SSLEngine on
+          SSLCertificateFile    /etc/ssl/certs/docs.example.com.crt
+          SSLCertificateKeyFile /etc/ssl/private/docs.example.com.key
+
+          <Directory /var/www/docs/current/public>
+              Options -Indexes +FollowSymLinks
+              AllowOverride None
+              Require all granted
+          </Directory>
+
+          PassengerEnabled on
+          PassengerRuby /usr/local/bin/ruby
+          PassengerAppEnv production
+
+          <Location /assets>
+              PassengerEnabled off
+              Header set Cache-Control "public, max-age=31536000, immutable"
+          </Location>
+
+          Alias /files /var/www/docs/shared/uploads
+          <Directory /var/www/docs/shared/uploads>
+              Options -Indexes
+              PassengerEnabled off
+              Require all granted
+          </Directory>
+
+          ErrorLog  ${APACHE_LOG_DIR}/docs_error.log
+          CustomLog ${APACHE_LOG_DIR}/docs_access.log combined
+      </VirtualHost>

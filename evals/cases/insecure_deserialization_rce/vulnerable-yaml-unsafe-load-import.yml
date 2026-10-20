@@ -1,0 +1,51 @@
+id: insecure_deserialization_rce-vulnerable-yaml-unsafe-load-import
+description: Workflow import job parses user-uploaded YAML files with YAML.unsafe_load
+expected:
+  insecure_deserialization_rce: true
+files:
+  - path: app/jobs/workflow_import_job.rb
+    before: |
+      class WorkflowImportJob < ApplicationJob
+        queue_as :imports
+
+        def perform(import_id)
+          import = WorkflowImport.find(import_id)
+          data = JSON.parse(import.file.download)
+
+          import.workspace.workflows.create!(
+            name: data.fetch("name"),
+            steps: data.fetch("steps", [])
+          )
+          import.update!(status: "completed")
+        rescue JSON::ParserError, KeyError => e
+          import.update!(status: "failed", error_message: e.message)
+        end
+      end
+    after: |
+      class WorkflowImportJob < ApplicationJob
+        queue_as :imports
+
+        def perform(import_id)
+          import = WorkflowImport.find(import_id)
+          data = parse(import)
+
+          import.workspace.workflows.create!(
+            name: data.fetch("name"),
+            steps: data.fetch("steps", [])
+          )
+          import.update!(status: "completed")
+        rescue JSON::ParserError, Psych::SyntaxError, KeyError => e
+          import.update!(status: "failed", error_message: e.message)
+        end
+
+        private
+
+        def parse(import)
+          body = import.file.download
+          if import.file.filename.extension.in?(%w[yml yaml])
+            YAML.unsafe_load(body)
+          else
+            JSON.parse(body)
+          end
+        end
+      end

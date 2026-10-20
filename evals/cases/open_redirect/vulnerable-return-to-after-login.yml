@@ -1,0 +1,56 @@
+id: open_redirect-vulnerable-return-to-after-login
+description: Login redirects to a return_to query parameter with allow_other_host, sending users to any external URL
+expected:
+  open_redirect: true
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path, notice: "Signed in"
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to root_path
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+          session[:return_to] = params[:return_to] if params[:return_to].present?
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            return_to = session.delete(:return_to)
+            reset_session
+            session[:user_id] = user.id
+            redirect_to (return_to.presence || dashboard_path), allow_other_host: true, notice: "Signed in"
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to root_path
+        end
+      end

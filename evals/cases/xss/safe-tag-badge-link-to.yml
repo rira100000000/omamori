@@ -1,0 +1,36 @@
+id: xss-safe-tag-badge-link-to
+description: Helper turns tag badges into links using link_to and safe_join, keeping user tag names escaped
+expected:
+  xss: false
+files:
+  - path: app/helpers/tags_helper.rb
+    before: |
+      module TagsHelper
+        def tag_badges(tags)
+          safe_join(
+            tags.map { |t| content_tag(:span, t.name, class: "badge badge-#{t.color}") },
+            " "
+          )
+        end
+
+        def tag_count_label(count)
+          pluralize(count, "tag")
+        end
+      end
+    after: |
+      module TagsHelper
+        BADGE_COLORS = %w[gray red green blue yellow].freeze
+
+        def tag_badges(tags)
+          safe_join(tags.map { |t| tag_badge(t) }, " ")
+        end
+
+        def tag_badge(tag)
+          color = BADGE_COLORS.include?(tag.color) ? tag.color : "gray"
+          link_to tag.name, tag_path(tag), class: "badge badge-#{color}", title: tag.description
+        end
+
+        def tag_count_label(count)
+          pluralize(count, "tag")
+        end
+      end

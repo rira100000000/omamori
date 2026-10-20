@@ -1,0 +1,43 @@
+id: ssrf-safe-oembed-provider-allowlist
+description: Video embed fetches oEmbed data only for URLs on allowlisted providers, calling each provider's fixed endpoint
+expected:
+  ssrf: false
+files:
+  - path: app/models/video_embed.rb
+    before: |
+      class VideoEmbed < ApplicationRecord
+        belongs_to :post
+
+        validates :source_url, presence: true
+      end
+    after: |
+      class VideoEmbed < ApplicationRecord
+        PROVIDERS = {
+          "www.youtube.com" => "https://www.youtube.com/oembed",
+          "youtu.be" => "https://www.youtube.com/oembed",
+          "vimeo.com" => "https://vimeo.com/api/oembed.json"
+        }.freeze
+
+        belongs_to :post
+
+        validates :source_url, presence: true
+        validate :source_url_from_supported_provider
+
+        def fetch_oembed!
+          endpoint = PROVIDERS.fetch(source_host)
+          response = Faraday.get(endpoint, { url: source_url, format: "json" })
+          update!(oembed_html: JSON.parse(response.body)["html"]) if response.success?
+        end
+
+        private
+
+        def source_host
+          URI.parse(source_url).host
+        rescue URI::InvalidURIError
+          nil
+        end
+
+        def source_url_from_supported_provider
+          errors.add(:source_url, "is not a supported video provider") unless PROVIDERS.key?(source_host)
+        end
+      end

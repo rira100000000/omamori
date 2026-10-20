@@ -1,0 +1,75 @@
+id: two_factor_auth_missing-vulnerable-login-skips-otp
+description: Login no longer redirects OTP-enrolled users to the second-factor step and signs them in directly
+expected:
+  two_factor_auth_missing: true
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: %i[new create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+
+          if user&.authenticate(params[:password])
+            if user.otp_enabled?
+              session[:pending_otp_user_id] = user.id
+              redirect_to new_two_factor_session_path
+            else
+              start_session(user)
+              redirect_to dashboard_path
+            end
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to root_path, status: :see_other
+        end
+
+        private
+
+        def start_session(user)
+          reset_session
+          session[:user_id] = user.id
+          user.touch(:last_sign_in_at)
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: %i[new create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+
+          if user&.authenticate(params[:password])
+            start_session(user)
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to root_path, status: :see_other
+        end
+
+        private
+
+        def start_session(user)
+          reset_session
+          session[:user_id] = user.id
+          user.touch(:last_sign_in_at)
+        end
+      end

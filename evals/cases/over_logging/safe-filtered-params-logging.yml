@@ -1,0 +1,69 @@
+id: over_logging-safe-filtered-params-logging
+description: Checkout controller logs request.filtered_parameters on payment failure, and card fields are added to filter_parameters
+expected:
+  over_logging: false
+files:
+  - path: config/initializers/filter_parameter_logging.rb
+    before: |
+      # Be sure to restart your server when you modify this file.
+
+      # Configure parameters to be partially matched (e.g. passw matches password) and filtered from the log file.
+      Rails.application.config.filter_parameters += [
+        :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc
+      ]
+    after: |
+      # Be sure to restart your server when you modify this file.
+
+      # Configure parameters to be partially matched (e.g. passw matches password) and filtered from the log file.
+      Rails.application.config.filter_parameters += [
+        :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc,
+        :card_number, :expiry, :billing_address, :phone
+      ]
+  - path: app/controllers/checkouts_controller.rb
+    before: |
+      class CheckoutsController < ApplicationController
+        before_action :authenticate_user!
+        before_action :load_cart
+
+        def create
+          result = Payments::Charge.new(cart: @cart, user: current_user, payment: payment_params).call
+
+          if result.success?
+            redirect_to order_path(result.order), notice: "Thanks for your order!"
+          else
+            flash.now[:alert] = result.error_message
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def payment_params
+          params.require(:payment).permit(:card_number, :expiry, :cvc, :billing_address, :phone)
+        end
+      end
+    after: |
+      class CheckoutsController < ApplicationController
+        before_action :authenticate_user!
+        before_action :load_cart
+
+        def create
+          result = Payments::Charge.new(cart: @cart, user: current_user, payment: payment_params).call
+
+          if result.success?
+            redirect_to order_path(result.order), notice: "Thanks for your order!"
+          else
+            Rails.logger.warn(
+              "[checkout] charge failed cart=#{@cart.id} code=#{result.error_code} params=#{request.filtered_parameters.inspect}"
+            )
+            flash.now[:alert] = result.error_message
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def payment_params
+          params.require(:payment).permit(:card_number, :expiry, :cvc, :billing_address, :phone)
+        end
+      end

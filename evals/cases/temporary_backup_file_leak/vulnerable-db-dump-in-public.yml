@@ -1,0 +1,41 @@
+id: temporary_backup_file_leak-vulnerable-db-dump-in-public
+description: Nightly backup job writes the SQL dump under public/ with a dated .sql.bak name and never removes it
+expected:
+  temporary_backup_file_leak: true
+files:
+  - path: app/jobs/database_backup_job.rb
+    before: |
+      class DatabaseBackupJob < ApplicationJob
+        queue_as :maintenance
+
+        def perform
+          config = ActiveRecord::Base.connection_db_config.configuration_hash
+          stamp = Time.current.strftime("%Y%m%d%H%M")
+
+          Rails.logger.info("[backup] starting dump #{stamp}")
+          BackupRecord.create!(taken_at: Time.current, status: "pending")
+        end
+      end
+    after: |
+      class DatabaseBackupJob < ApplicationJob
+        queue_as :maintenance
+
+        def perform
+          config = ActiveRecord::Base.connection_db_config.configuration_hash
+          stamp = Time.current.strftime("%Y%m%d%H%M")
+
+          dir = Rails.root.join("public", "backups")
+          FileUtils.mkdir_p(dir)
+          path = dir.join("#{config[:database]}-#{stamp}.sql.bak")
+
+          Rails.logger.info("[backup] starting dump #{stamp}")
+          system(
+            { "PGPASSWORD" => config[:password].to_s },
+            "pg_dump", "-h", config[:host].to_s, "-U", config[:username].to_s,
+            "-f", path.to_s, config[:database].to_s,
+            exception: true
+          )
+
+          BackupRecord.create!(taken_at: Time.current, status: "done", location: "/backups/#{path.basename}")
+        end
+      end

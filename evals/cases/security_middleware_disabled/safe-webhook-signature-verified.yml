@@ -1,0 +1,32 @@
+id: security_middleware_disabled-safe-webhook-signature-verified
+description: Payment webhook endpoint skips CSRF token but verifies the HMAC signature of every request
+expected:
+  security_middleware_disabled: false
+files:
+  - path: app/controllers/webhooks/payments_controller.rb
+    after: |
+      module Webhooks
+        class PaymentsController < ApplicationController
+          skip_before_action :verify_authenticity_token
+          skip_before_action :authenticate_user!
+          before_action :verify_signature!
+
+          def create
+            event = JSON.parse(@payload)
+            PaymentEventJob.perform_later(event["id"], event["type"], event["data"])
+            head :ok
+          end
+
+          private
+
+          def verify_signature!
+            @payload = request.raw_post
+            timestamp = request.headers["X-Payments-Timestamp"].to_s
+            signature = request.headers["X-Payments-Signature"].to_s
+            expected = OpenSSL::HMAC.hexdigest("SHA256", Rails.application.credentials.payments_webhook_secret!, "#{timestamp}.#{@payload}")
+
+            fresh = timestamp.to_i.between?(5.minutes.ago.to_i, 1.minute.from_now.to_i)
+            head :unauthorized unless fresh && ActiveSupport::SecurityUtils.secure_compare(expected, signature)
+          end
+        end
+      end

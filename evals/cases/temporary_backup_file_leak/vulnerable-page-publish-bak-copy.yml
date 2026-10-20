@@ -1,0 +1,65 @@
+id: temporary_backup_file_leak-vulnerable-page-publish-bak-copy
+description: Static page publisher keeps the previous HTML as a .bak copy next to the live file inside public/
+expected:
+  temporary_backup_file_leak: true
+files:
+  - path: app/services/static_page_publisher.rb
+    before: |
+      class StaticPagePublisher
+        OUTPUT_DIR = Rails.root.join("public", "p")
+
+        def initialize(page)
+          @page = page
+        end
+
+        def publish!
+          html = ApplicationController.render(
+            template: "pages/static",
+            layout: "static",
+            assigns: { page: @page }
+          )
+
+          FileUtils.mkdir_p(OUTPUT_DIR)
+          File.write(output_path, html)
+          @page.update!(published_at: Time.current)
+        end
+
+        private
+
+        def output_path
+          OUTPUT_DIR.join("#{@page.slug}.html")
+        end
+      end
+    after: |
+      class StaticPagePublisher
+        OUTPUT_DIR = Rails.root.join("public", "p")
+
+        def initialize(page)
+          @page = page
+        end
+
+        def publish!
+          html = ApplicationController.render(
+            template: "pages/static",
+            layout: "static",
+            assigns: { page: @page }
+          )
+
+          FileUtils.mkdir_p(OUTPUT_DIR)
+          # keep the previous version so editors can roll back quickly
+          FileUtils.cp(output_path, "#{output_path}.bak") if File.exist?(output_path)
+          File.write(output_path, html)
+          @page.update!(published_at: Time.current)
+        end
+
+        def rollback!
+          backup = "#{output_path}.bak"
+          FileUtils.cp(backup, output_path) if File.exist?(backup)
+        end
+
+        private
+
+        def output_path
+          OUTPUT_DIR.join("#{@page.slug}.html")
+        end
+      end

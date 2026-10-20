@@ -1,0 +1,56 @@
+id: race_condition-safe-withdraw-with-lock
+description: Wallet gains a transfer method that locks both wallets in id order before moving funds
+expected:
+  race_condition: false
+files:
+  - path: app/models/wallet.rb
+    before: |
+      class Wallet < ApplicationRecord
+        class InsufficientFunds < StandardError; end
+
+        belongs_to :user
+        has_many :ledger_entries, dependent: :restrict_with_exception
+
+        validates :balance_cents, numericality: { greater_than_or_equal_to: 0 }
+
+        def withdraw!(amount_cents, reference:)
+          with_lock do
+            raise InsufficientFunds if balance_cents < amount_cents
+
+            update!(balance_cents: balance_cents - amount_cents)
+            ledger_entries.create!(amount_cents: -amount_cents, reference: reference)
+          end
+        end
+      end
+    after: |
+      class Wallet < ApplicationRecord
+        class InsufficientFunds < StandardError; end
+
+        belongs_to :user
+        has_many :ledger_entries, dependent: :restrict_with_exception
+
+        validates :balance_cents, numericality: { greater_than_or_equal_to: 0 }
+
+        def withdraw!(amount_cents, reference:)
+          with_lock do
+            raise InsufficientFunds if balance_cents < amount_cents
+
+            update!(balance_cents: balance_cents - amount_cents)
+            ledger_entries.create!(amount_cents: -amount_cents, reference: reference)
+          end
+        end
+
+        def self.transfer!(from:, to:, amount_cents:, reference:)
+          transaction do
+            first, second = [from, to].sort_by(&:id)
+            first.lock!
+            second.lock!
+            raise InsufficientFunds if from.balance_cents < amount_cents
+
+            from.update!(balance_cents: from.balance_cents - amount_cents)
+            to.update!(balance_cents: to.balance_cents + amount_cents)
+            from.ledger_entries.create!(amount_cents: -amount_cents, reference: reference)
+            to.ledger_entries.create!(amount_cents: amount_cents, reference: reference)
+          end
+        end
+      end

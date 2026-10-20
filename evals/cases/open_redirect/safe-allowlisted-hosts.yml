@@ -1,0 +1,45 @@
+id: open_redirect-safe-allowlisted-hosts
+description: SSO handoff redirects to a param URL with allow_other_host only after checking its host against a fixed allowlist
+expected:
+  open_redirect: false
+files:
+  - path: app/controllers/sso/handoffs_controller.rb
+    before: |
+      module Sso
+        class HandoffsController < ApplicationController
+          before_action :require_login
+
+          def show
+            redirect_to dashboard_path
+          end
+        end
+      end
+    after: |
+      module Sso
+        class HandoffsController < ApplicationController
+          ALLOWED_HOSTS = %w[docs.example.com status.example.com community.example.com].freeze
+
+          before_action :require_login
+
+          def show
+            target = parse_target(params[:to])
+            if target
+              redirect_to target.to_s, allow_other_host: true
+            else
+              redirect_to dashboard_path
+            end
+          end
+
+          private
+
+          def parse_target(value)
+            uri = URI.parse(value.to_s)
+            return unless uri.is_a?(URI::HTTPS)
+            return unless ALLOWED_HOSTS.include?(uri.host)
+
+            uri
+          rescue URI::InvalidURIError
+            nil
+          end
+        end
+      end

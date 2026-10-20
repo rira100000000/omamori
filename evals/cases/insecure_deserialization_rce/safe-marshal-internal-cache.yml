@@ -1,0 +1,43 @@
+id: insecure_deserialization_rce-safe-marshal-internal-cache
+description: Report cache dumps and loads computed results with Marshal in the app's own private Redis
+expected:
+  insecure_deserialization_rce: false
+files:
+  - path: app/services/report_cache.rb
+    before: |
+      class ReportCache
+        TTL = 15.minutes
+
+        def initialize(redis: Redis.new(url: ENV.fetch("CACHE_REDIS_URL")))
+          @redis = redis
+        end
+
+        def fetch(report)
+          yield
+        end
+      end
+    after: |
+      class ReportCache
+        TTL = 15.minutes
+
+        def initialize(redis: Redis.new(url: ENV.fetch("CACHE_REDIS_URL")))
+          @redis = redis
+        end
+
+        def fetch(report)
+          key = cache_key(report)
+          if (cached = @redis.get(key))
+            return Marshal.load(cached)
+          end
+
+          result = yield
+          @redis.set(key, Marshal.dump(result), ex: TTL.to_i)
+          result
+        end
+
+        private
+
+        def cache_key(report)
+          "reports:v2:#{report.id}:#{report.updated_at.to_i}"
+        end
+      end

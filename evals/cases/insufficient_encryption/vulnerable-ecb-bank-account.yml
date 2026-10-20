@@ -1,0 +1,48 @@
+id: insufficient_encryption-vulnerable-ecb-bank-account
+description: Payout service encrypts bank account numbers with DES in ECB mode using a constant key
+expected:
+  insufficient_encryption: true
+files:
+  - path: app/services/bank_account_cipher.rb
+    after: |
+      require "openssl"
+      require "base64"
+
+      class BankAccountCipher
+        KEY = "payout01".b
+
+        def self.encrypt(account_number)
+          cipher = OpenSSL::Cipher.new("des-ecb")
+          cipher.encrypt
+          cipher.key = KEY
+          Base64.strict_encode64(cipher.update(account_number) + cipher.final)
+        end
+
+        def self.decrypt(encoded)
+          cipher = OpenSSL::Cipher.new("des-ecb")
+          cipher.decrypt
+          cipher.key = KEY
+          cipher.update(Base64.strict_decode64(encoded)) + cipher.final
+        end
+      end
+  - path: app/models/payout_destination.rb
+    before: |
+      class PayoutDestination < ApplicationRecord
+        belongs_to :seller
+
+        validates :bank_code, :branch_code, presence: true
+      end
+    after: |
+      class PayoutDestination < ApplicationRecord
+        belongs_to :seller
+
+        validates :bank_code, :branch_code, presence: true
+
+        def account_number=(value)
+          self.encrypted_account_number = BankAccountCipher.encrypt(value)
+        end
+
+        def account_number
+          encrypted_account_number && BankAccountCipher.decrypt(encrypted_account_number)
+        end
+      end

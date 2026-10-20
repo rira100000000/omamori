@@ -1,0 +1,77 @@
+id: auto_index_exposure-vulnerable-nginx-exports-autoindex
+description: Nginx config adds a /exports/ location aliasing the generated report directory with autoindex on
+expected:
+  auto_index_exposure: true
+files:
+  - path: config/deploy/nginx/reports.conf
+    before: |
+      upstream app {
+          server unix:/var/www/reports/shared/tmp/sockets/puma.sock fail_timeout=0;
+      }
+
+      server {
+          listen 443 ssl http2;
+          server_name reports.example.com;
+
+          ssl_certificate     /etc/letsencrypt/live/reports.example.com/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/reports.example.com/privkey.pem;
+
+          root /var/www/reports/current/public;
+          client_max_body_size 20m;
+
+          location ^~ /assets/ {
+              gzip_static on;
+              expires max;
+              add_header Cache-Control public;
+          }
+
+          location / {
+              try_files $uri @app;
+          }
+
+          location @app {
+              proxy_pass http://app;
+              proxy_set_header Host $host;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }
+    after: |
+      upstream app {
+          server unix:/var/www/reports/shared/tmp/sockets/puma.sock fail_timeout=0;
+      }
+
+      server {
+          listen 443 ssl http2;
+          server_name reports.example.com;
+
+          ssl_certificate     /etc/letsencrypt/live/reports.example.com/fullchain.pem;
+          ssl_certificate_key /etc/letsencrypt/live/reports.example.com/privkey.pem;
+
+          root /var/www/reports/current/public;
+          client_max_body_size 20m;
+
+          location ^~ /assets/ {
+              gzip_static on;
+              expires max;
+              add_header Cache-Control public;
+          }
+
+          location /exports/ {
+              alias /var/www/reports/shared/exports/;
+              autoindex on;
+              autoindex_exact_size off;
+              autoindex_localtime on;
+          }
+
+          location / {
+              try_files $uri @app;
+          }
+
+          location @app {
+              proxy_pass http://app;
+              proxy_set_header Host $host;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+          }
+      }

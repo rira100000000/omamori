@@ -1,0 +1,16 @@
+id: xss-vulnerable-raw-in-view
+description: Profile page starts rendering the user-supplied bio with raw, bypassing Rails escaping
+expected:
+  xss: true
+files:
+  - path: app/views/users/show.html.erb
+    before: |
+      <h1><%= @user.name %></h1>
+      <section class="bio">
+        <%= simple_format(@user.bio) %>
+      </section>
+    after: |
+      <h1><%= @user.name %></h1>
+      <section class="bio">
+        <%= raw @user.bio.gsub("\n", "<br>") %>
+      </section>

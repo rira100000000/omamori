@@ -1,0 +1,56 @@
+id: directory_traversal-vulnerable-export-download
+description: Export download action joins the filename param onto the exports directory and sends it without any containment check
+expected:
+  directory_traversal: true
+files:
+  - path: app/controllers/exports_controller.rb
+    before: |
+      class ExportsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @exports = current_user.exports.order(created_at: :desc).limit(50)
+        end
+
+        def create
+          export = current_user.exports.create!(kind: params.require(:kind))
+          ExportJob.perform_later(export.id)
+          redirect_to exports_path, notice: "Export started. We'll email you when it's ready."
+        end
+
+        def show
+          export = current_user.exports.find(params[:id])
+          send_file export.file_path, filename: export.download_name, type: "text/csv"
+        end
+      end
+    after: |
+      class ExportsController < ApplicationController
+        before_action :authenticate_user!
+
+        EXPORT_DIR = Rails.root.join("storage", "exports")
+
+        def index
+          @exports = current_user.exports.order(created_at: :desc).limit(50)
+        end
+
+        def create
+          export = current_user.exports.create!(kind: params.require(:kind))
+          ExportJob.perform_later(export.id)
+          redirect_to exports_path, notice: "Export started. We'll email you when it's ready."
+        end
+
+        def show
+          export = current_user.exports.find(params[:id])
+          send_file export.file_path, filename: export.download_name, type: "text/csv"
+        end
+
+        # Lets the email link point straight at the generated file name
+        def download
+          path = EXPORT_DIR.join(params[:filename])
+          if File.exist?(path)
+            send_file path, disposition: "attachment"
+          else
+            head :not_found
+          end
+        end
+      end

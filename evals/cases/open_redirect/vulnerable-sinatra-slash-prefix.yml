@@ -1,0 +1,41 @@
+id: open_redirect-vulnerable-sinatra-slash-prefix
+description: Sinatra logout redirects to a next param that is only checked to start with a slash, allowing //host URLs
+expected:
+  open_redirect: true
+files:
+  - path: app/web.rb
+    before: |
+      require "sinatra/base"
+
+      class Web < Sinatra::Base
+        enable :sessions
+
+        get "/" do
+          erb :index
+        end
+
+        get "/logout" do
+          session.clear
+          redirect "/"
+        end
+      end
+    after: |
+      require "sinatra/base"
+
+      class Web < Sinatra::Base
+        enable :sessions
+
+        get "/" do
+          erb :index
+        end
+
+        get "/logout" do
+          session.clear
+          target = params["next"].to_s
+          if target.start_with?("/")
+            redirect target
+          else
+            redirect "/"
+          end
+        end
+      end

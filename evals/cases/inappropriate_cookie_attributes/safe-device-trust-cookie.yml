@@ -1,0 +1,58 @@
+id: inappropriate_cookie_attributes-safe-device-trust-cookie
+description: Adds a trusted-device cookie after 2FA, encrypted and set with httponly, secure and SameSite=Lax
+expected:
+  inappropriate_cookie_attributes: false
+files:
+  - path: app/controllers/two_factor/verifications_controller.rb
+    before: |
+      module TwoFactor
+        class VerificationsController < ApplicationController
+          skip_before_action :require_two_factor
+
+          def new
+          end
+
+          def create
+            if current_user.verify_otp(params[:code])
+              session[:two_factor_verified_at] = Time.current.to_i
+              redirect_to dashboard_path
+            else
+              flash.now[:alert] = "Invalid code"
+              render :new, status: :unprocessable_entity
+            end
+          end
+        end
+      end
+    after: |
+      module TwoFactor
+        class VerificationsController < ApplicationController
+          skip_before_action :require_two_factor
+
+          def new
+          end
+
+          def create
+            if current_user.verify_otp(params[:code])
+              session[:two_factor_verified_at] = Time.current.to_i
+              trust_device! if params[:remember_device] == "1"
+              redirect_to dashboard_path
+            else
+              flash.now[:alert] = "Invalid code"
+              render :new, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def trust_device!
+            device = current_user.trusted_devices.create!(user_agent: request.user_agent)
+            cookies.encrypted[:trusted_device] = {
+              value: device.token,
+              expires: 30.days.from_now,
+              httponly: true,
+              secure: true,
+              same_site: :lax
+            }
+          end
+        end
+      end

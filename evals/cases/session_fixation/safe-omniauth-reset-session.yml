@@ -1,0 +1,25 @@
+id: session_fixation-safe-omniauth-reset-session
+description: New OmniAuth callback signs the user in after calling reset_session
+expected:
+  session_fixation: false
+files:
+  - path: app/controllers/omniauth_callbacks_controller.rb
+    after: |
+      class OmniauthCallbacksController < ApplicationController
+        skip_before_action :require_login
+
+        def create
+          auth = request.env["omniauth.auth"]
+          identity = Identity.find_or_create_from_auth!(auth)
+
+          reset_session
+          session[:user_id] = identity.user_id
+          session[:auth_provider] = auth.provider
+
+          redirect_to dashboard_path, notice: "Signed in with #{auth.provider.titleize}"
+        end
+
+        def failure
+          redirect_to new_session_path, alert: "Sign in failed"
+        end
+      end

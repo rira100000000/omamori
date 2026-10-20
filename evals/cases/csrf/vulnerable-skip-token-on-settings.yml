@@ -1,0 +1,72 @@
+id: csrf-vulnerable-skip-token-on-settings
+description: Account settings controller skips authenticity token verification for its cookie-authenticated update and destroy actions
+expected:
+  csrf: true
+files:
+  - path: app/controllers/account/settings_controller.rb
+    before: |
+      module Account
+        class SettingsController < ApplicationController
+          before_action :require_login
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(settings_params)
+              redirect_to edit_account_settings_path, notice: "Settings saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          def destroy
+            current_user.destroy!
+            reset_session
+            redirect_to root_path, notice: "Your account was deleted"
+          end
+
+          private
+
+          def settings_params
+            params.require(:user).permit(:email, :display_name, :notification_email)
+          end
+        end
+      end
+    after: |
+      module Account
+        class SettingsController < ApplicationController
+          before_action :require_login
+          skip_before_action :verify_authenticity_token, only: [:update, :destroy]
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(settings_params)
+              respond_to do |format|
+                format.html { redirect_to edit_account_settings_path, notice: "Settings saved" }
+                format.json { render json: { ok: true } }
+              end
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          def destroy
+            current_user.destroy!
+            reset_session
+            redirect_to root_path, notice: "Your account was deleted"
+          end
+
+          private
+
+          def settings_params
+            params.require(:user).permit(:email, :display_name, :notification_email)
+          end
+        end
+      end

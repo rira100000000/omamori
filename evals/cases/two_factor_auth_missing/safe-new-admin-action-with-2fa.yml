@@ -1,0 +1,62 @@
+id: two_factor_auth_missing-safe-new-admin-action-with-2fa
+description: Adds a bulk payout approval action covered by the existing recent two-factor filter
+expected:
+  two_factor_auth_missing: false
+files:
+  - path: app/controllers/admin/payouts_controller.rb
+    before: |
+      module Admin
+        class PayoutsController < Admin::BaseController
+          before_action :require_recent_two_factor!
+          before_action :set_payout, only: %i[show approve]
+
+          def index
+            @payouts = Payout.pending.order(created_at: :desc).page(params[:page])
+          end
+
+          def show
+          end
+
+          def approve
+            @payout.approve!(by: current_admin)
+            redirect_to admin_payouts_path, notice: "Payout approved"
+          end
+
+          private
+
+          def set_payout
+            @payout = Payout.find(params[:id])
+          end
+        end
+      end
+    after: |
+      module Admin
+        class PayoutsController < Admin::BaseController
+          before_action :require_recent_two_factor!
+          before_action :set_payout, only: %i[show approve]
+
+          def index
+            @payouts = Payout.pending.order(created_at: :desc).page(params[:page])
+          end
+
+          def show
+          end
+
+          def approve
+            @payout.approve!(by: current_admin)
+            redirect_to admin_payouts_path, notice: "Payout approved"
+          end
+
+          def bulk_approve
+            payouts = Payout.pending.where(id: params[:payout_ids])
+            payouts.find_each { |payout| payout.approve!(by: current_admin) }
+            redirect_to admin_payouts_path, notice: "#{payouts.size} payouts approved"
+          end
+
+          private
+
+          def set_payout
+            @payout = Payout.find(params[:id])
+          end
+        end
+      end

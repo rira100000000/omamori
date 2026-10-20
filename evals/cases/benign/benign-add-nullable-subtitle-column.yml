@@ -1,0 +1,66 @@
+id: benign-add-nullable-subtitle-column
+description: Migration adds a nullable subtitle column to products and shows it on the product page
+expected:
+  xss: false
+  csrf: false
+  idor: false
+  open_redirect: false
+  ssrf: false
+  session_fixation: false
+  inappropriate_cookie_attributes: false
+  insufficient_encryption: false
+  insecure_deserialization_rce: false
+  directory_traversal: false
+  dangerous_eval: false
+  inappropriate_file_permissions: false
+  temporary_backup_file_leak: false
+  overly_detailed_errors: false
+  csp_not_set: false
+  mime_sniffing_vulnerability: false
+  clickjacking_vulnerability: false
+  auto_index_exposure: false
+  inappropriate_password_policy: false
+  two_factor_auth_missing: false
+  race_condition: false
+  server_error_information_exposure: false
+  dependency_trojan_package: false
+  api_overexposure: false
+  security_middleware_disabled: false
+  security_header_inconsistency: false
+  excessive_login_attempts: false
+  inappropriate_cache_settings: false
+  secret_key_committed: false
+  third_party_script_validation_missing: false
+  over_logging: false
+  fail_open_design: false
+  environment_differences: false
+  audit_log_missing: false
+  time_based_side_channel: false
+files:
+  - path: db/migrate/20261020093000_add_subtitle_to_products.rb
+    after: |
+      class AddSubtitleToProducts < ActiveRecord::Migration[8.0]
+        def change
+          add_column :products, :subtitle, :string, limit: 160
+        end
+      end
+  - path: app/views/products/show.html.erb
+    before: |
+      <article class="product">
+        <h1><%= @product.name %></h1>
+        <p class="price"><%= number_to_currency(@product.price) %></p>
+        <div class="description">
+          <%= simple_format(@product.description) %>
+        </div>
+      </article>
+    after: |
+      <article class="product">
+        <h1><%= @product.name %></h1>
+        <% if @product.subtitle.present? %>
+          <p class="subtitle"><%= @product.subtitle %></p>
+        <% end %>
+        <p class="price"><%= number_to_currency(@product.price) %></p>
+        <div class="description">
+          <%= simple_format(@product.description) %>
+        </div>
+      </article>

@@ -1,0 +1,55 @@
+id: dangerous_eval-safe-formula-dentaku
+description: Quote calculator accepts a user formula but evaluates it with the Dentaku math parser instead of Ruby eval
+expected:
+  dangerous_eval: false
+files:
+  - path: app/services/quote_calculator.rb
+    before: |
+      class QuoteCalculator
+        DEFAULT_MARKUP = 1.2
+
+        def initialize(plan:, seats:, months:)
+          @plan = plan
+          @seats = seats.to_i
+          @months = months.to_i
+        end
+
+        def total_cents
+          (base_cents * DEFAULT_MARKUP).round
+        end
+
+        private
+
+        def base_cents
+          @plan.price_cents * @seats * @months
+        end
+      end
+    after: |
+      require "dentaku"
+
+      class QuoteCalculator
+        DEFAULT_MARKUP = 1.2
+
+        def initialize(plan:, seats:, months:, formula: nil)
+          @plan = plan
+          @seats = seats.to_i
+          @months = months.to_i
+          @formula = formula
+        end
+
+        def total_cents
+          return (base_cents * DEFAULT_MARKUP).round if @formula.blank?
+
+          calculator = Dentaku::Calculator.new
+          result = calculator.evaluate!(@formula, price: base_cents, seats: @seats, months: @months)
+          result.to_d.round
+        rescue Dentaku::Error, Dentaku::ParseError
+          (base_cents * DEFAULT_MARKUP).round
+        end
+
+        private
+
+        def base_cents
+          @plan.price_cents * @seats * @months
+        end
+      end

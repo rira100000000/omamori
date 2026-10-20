@@ -1,0 +1,51 @@
+id: inappropriate_password_policy-vulnerable-min-length-reduced
+description: User model drops the 12-character minimum and complexity check down to a 4-character minimum
+expected:
+  inappropriate_password_policy: true
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+
+        PASSWORD_FORMAT = /\A(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+\z/
+
+        has_many :projects, dependent: :destroy
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false },
+                          format: { with: URI::MailTo::EMAIL_REGEXP }
+        validates :password, length: { minimum: 12, maximum: 72 },
+                             format: { with: PASSWORD_FORMAT, message: "must include upper, lower case letters and a digit" },
+                             if: :password_required?
+        validate :password_not_common, if: :password_required?
+
+        normalizes :email, with: ->(email) { email.strip.downcase }
+
+        private
+
+        def password_required?
+          new_record? || password.present?
+        end
+
+        def password_not_common
+          errors.add(:password, "is too common") if CommonPasswords.include?(password)
+        end
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+
+        has_many :projects, dependent: :destroy
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false },
+                          format: { with: URI::MailTo::EMAIL_REGEXP }
+        validates :password, length: { minimum: 4, maximum: 72 }, if: :password_required?
+
+        normalizes :email, with: ->(email) { email.strip.downcase }
+
+        private
+
+        def password_required?
+          new_record? || password.present?
+        end
+      end

@@ -1,0 +1,53 @@
+id: api_overexposure-vulnerable-internal-export-endpoint
+description: New internal order export endpoint inherits ActionController::API directly, bypassing the authenticated base controller
+expected:
+  api_overexposure: true
+files:
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: %i[index show create]
+            resources :products, only: %i[index show]
+          end
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: %i[index show create]
+            resources :products, only: %i[index show]
+          end
+
+          namespace :internal do
+            get "orders/export", to: "orders_export#index"
+          end
+        end
+      end
+  - path: app/controllers/api/internal/orders_export_controller.rb
+    after: |
+      module Api
+        module Internal
+          # Used by the warehouse sync job.
+          class OrdersExportController < ActionController::API
+            def index
+              since = params[:since].present? ? Time.zone.parse(params[:since]) : 1.day.ago
+              orders = Order.includes(:customer, :shipping_address).where(updated_at: since..)
+
+              render json: orders.map { |order|
+                {
+                  id: order.id,
+                  total_cents: order.total_cents,
+                  customer_name: order.customer.name,
+                  customer_email: order.customer.email,
+                  customer_phone: order.customer.phone,
+                  shipping_address: order.shipping_address.attributes,
+                  card_last4: order.card_last4
+                }
+              }
+            end
+          end
+        end
+      end

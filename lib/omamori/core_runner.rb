@@ -3,9 +3,14 @@
 require 'optparse'
 require 'fileutils' # FileUtils を require する
 require 'pathname'  # Pathname を require する
-require_relative 'ai_analysis_engine/gemini_client'
+require 'shellwords'
+require_relative 'ai_analysis_engine/llm_client'
+require_relative 'ai_analysis_engine/judge_client'
 require_relative 'ai_analysis_engine/prompt_manager'
 require_relative 'ai_analysis_engine/diff_splitter'
+require_relative 'ai_analysis_engine/checklist_scanner'
+require_relative 'ai_analysis_engine/cli_clients/claude_code_client'
+require_relative 'ai_analysis_engine/cli_clients/codex_client'
 require_relative 'report_generator/console_formatter'
 require_relative 'report_generator/html_formatter'
 require_relative 'report_generator/json_formatter'
@@ -61,6 +66,14 @@ module Omamori
       # TODO: Add other risks from requirements based on PromptManager::RISK_PROMPTS.keys
     ].freeze
 
+    # Engines that run each risk as a separate yes/no check before asking Gemini for a report
+    DECISION_ENGINES = AIAnalysisEngine::JudgeClient::ENGINES.keys.freeze
+
+    DEFAULT_MODEL = AIAnalysisEngine::LLMClient::DEFAULT_MODEL
+
+    # LLMs that run through a locally installed CLI (using the user's subscription)
+    CLI_LLMS = %i[claude codex].freeze
+
     # Threshold for splitting large content (characters as a proxy for tokens)
     # Can be overridden by config
     DEFAULT_SPLIT_THRESHOLD = 8000 # Characters
@@ -72,9 +85,7 @@ module Omamori
       @config = Omamori::Config.new
 
       # Initialize components with configuration
-      api_key = @config.get('api_key', ENV['GEMINI_API_KEY'])
-      @config.get('model', 'gemini-2.5-flash-preview-04-17')
-      @gemini_client = AIAnalysisEngine::GeminiClient.new(api_key)
+      @api_llm_client = AIAnalysisEngine::LLMClient.new(ruby_llm_context, provider: @config.get('provider', nil))
       @prompt_manager = AIAnalysisEngine::PromptManager.new(@config)
 
       chunk_size = @config.get('chunk_size', DEFAULT_SPLIT_THRESHOLD)
@@ -126,6 +137,8 @@ module Omamori
 
             if files_to_scan.empty?
               puts 'No Ruby files found in the specified paths.'
+            elsif decision_engine?
+              ai_analysis_result = checklist_scanner.scan(read_units(files_to_scan), get_risks_to_check)
             else
               files_to_scan.each do |file_path|
                 file_content = File.read(file_path)
@@ -134,13 +147,13 @@ module Omamori
                 # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
                 if file_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
                   puts "File content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-                  file_ai_result = @diff_splitter.process_in_chunks(file_content, @gemini_client, JSON_SCHEMA,
-                                                                    @prompt_manager, current_risks_to_check, file_path: file_path, model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+                  file_ai_result = @diff_splitter.process_in_chunks(file_content, llm_client, JSON_SCHEMA,
+                                                                    @prompt_manager, current_risks_to_check, file_path: file_path, model: llm_model)
                 else
                   prompt = @prompt_manager.build_prompt(file_content, current_risks_to_check, JSON_SCHEMA,
                                                         file_path: file_path)
-                  file_ai_result = @gemini_client.analyze(prompt, JSON_SCHEMA,
-                                                          model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+                  file_ai_result = llm_client.analyze(prompt, JSON_SCHEMA,
+                                                          model: llm_model)
                 end
                 # Merge results
                 if file_ai_result && file_ai_result['security_risks']
@@ -152,28 +165,36 @@ module Omamori
             end
           end
         when :diff
-          # Scan staged differences
-          diff_content = get_staged_diff
+          # Scan staged differences, or the branch diff when --base is given
+          diff_content = get_diff
           if diff_content.empty?
-            puts 'No staged changes to scan.'
+            puts @options[:base] ? "No changes against #{@options[:base]} to scan." : 'No staged changes to scan.'
+          elsif decision_engine?
+            puts "Scanning differences with #{@options[:engine]}..."
+            units = @diff_splitter.split_by_file(diff_content)
+            ai_analysis_result = checklist_scanner.scan(units, get_risks_to_check)
           else
-            puts 'Scanning staged differences with AI...'
+            puts 'Scanning differences with AI...'
             current_risks_to_check = get_risks_to_check
             # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
             if diff_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
               puts "Diff content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-              ai_analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA,
-                                                                    @prompt_manager, current_risks_to_check, model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = @diff_splitter.process_in_chunks(diff_content, llm_client, JSON_SCHEMA,
+                                                                    @prompt_manager, current_risks_to_check, model: llm_model)
             else
               prompt = @prompt_manager.build_prompt(diff_content, current_risks_to_check, JSON_SCHEMA)
-              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA,
-                                                          model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = llm_client.analyze(prompt, JSON_SCHEMA,
+                                                          model: llm_model)
             end
           end
         when :all
           # Scan entire codebase
-          full_code_content = get_full_codebase
-          if full_code_content.strip.empty?
+          if decision_engine?
+            puts "Scanning entire codebase with #{@options[:engine]}..."
+            files_to_scan = collect_files_from_paths(['.'], @config.ignore_patterns,
+                                                     @options.fetch(:force_scan_ignored, false))
+            ai_analysis_result = checklist_scanner.scan(read_units(files_to_scan), get_risks_to_check)
+          elsif (full_code_content = get_full_codebase).strip.empty?
             puts 'No code found to scan.'
           else
             puts 'Scanning entire codebase with AI...'
@@ -181,12 +202,12 @@ module Omamori
             # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
             if full_code_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
               puts "Full code content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-              ai_analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA,
-                                                                    @prompt_manager, current_risks_to_check, model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = @diff_splitter.process_in_chunks(full_code_content, llm_client, JSON_SCHEMA,
+                                                                    @prompt_manager, current_risks_to_check, model: llm_model)
             else
               prompt = @prompt_manager.build_prompt(full_code_content, current_risks_to_check, JSON_SCHEMA)
-              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA,
-                                                          model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = llm_client.analyze(prompt, JSON_SCHEMA,
+                                                          model: llm_model)
             end
           end
         else
@@ -233,9 +254,88 @@ module Omamori
 
     def get_risks_to_check
       # 設定ファイルからチェック対象のリスクを取得し、シンボルの配列に変換する
-      # 設定がない場合は DEFAULT_RISKS_TO_CHECK を使用する
-      configured_checks = @config.get('checks', DEFAULT_RISKS_TO_CHECK)
+      # 設定がない場合、gemini は DEFAULT_RISKS_TO_CHECK、判定モデルは全項目を使う
+      default_checks = decision_engine? ? AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys : DEFAULT_RISKS_TO_CHECK
+      configured_checks = @config.get('checks', default_checks)
       configured_checks.map(&:to_sym)
+    end
+
+    # RubyLLM reads each provider's key from its usual environment variable; these settings override it
+    def ruby_llm_context
+      decision_config = @config.get('decision', {})
+      jev_config = decision_config.fetch('jev', {})
+      AIAnalysisEngine::RubyLLMContext.build(
+        gemini_api_key: @config.get('api_key', nil),
+        typesafe_api_key: jev_config['api_key'],
+        typesafe_api_base: jev_config['base_url'],
+        openai_api_key: decision_config.fetch('openai', {})['api_key']
+      )
+    end
+
+    # The LLM that writes reports (and analyzes everything itself when no decision engine is used)
+    def llm_client
+      @llm_client ||= case llm
+                      when :claude then AIAnalysisEngine::CLIClients::ClaudeCodeClient.new(command: llm_config['command'])
+                      when :codex then AIAnalysisEngine::CLIClients::CodexClient.new(command: llm_config['command'])
+                      else @api_llm_client
+                      end
+    end
+
+    # 'gemini' is the old name of the API LLM, kept for existing configs
+    def llm
+      llm = @options[:llm] || :api
+      llm == :gemini ? :api : llm
+    end
+
+    def llm_model
+      llm == :api ? @config.get('model', DEFAULT_MODEL) : llm_config['model']
+    end
+
+    def llm_config
+      @config.get(llm.to_s, {})
+    end
+
+    # Subscription CLIs have tighter rate limits than APIs
+    def default_report_concurrency
+      CLI_LLMS.include?(llm) ? 3 : AIAnalysisEngine::ChecklistScanner::DEFAULT_CONCURRENCY
+    end
+
+    def decision_engine?
+      DECISION_ENGINES.include?(@options[:engine])
+    end
+
+    def checklist_scanner
+      decision_config = @config.get('decision', {})
+      AIAnalysisEngine::ChecklistScanner.new(
+        decision_client: build_decision_client(decision_config),
+        llm_client: llm_client,
+        prompt_manager: @prompt_manager,
+        diff_splitter: @diff_splitter,
+        json_schema: JSON_SCHEMA,
+        model: llm_model,
+        threshold: decision_config.fetch('threshold', AIAnalysisEngine::ChecklistScanner::DEFAULT_THRESHOLD),
+        concurrency: decision_config.fetch('concurrency', AIAnalysisEngine::ChecklistScanner::DEFAULT_CONCURRENCY),
+        report_concurrency: decision_config.fetch('report_concurrency', default_report_concurrency)
+      )
+    end
+
+    def build_decision_client(decision_config)
+      defaults = AIAnalysisEngine::JudgeClient::ENGINES.fetch(@options[:engine])
+      AIAnalysisEngine::JudgeClient.new(
+        ruby_llm_context,
+        provider: defaults[:provider],
+        model: decision_config.fetch(@options[:engine].to_s, {}).fetch('model', defaults[:model])
+      )
+    end
+
+    def read_units(file_paths)
+      file_paths.filter_map do |file_path|
+        relative_path = Pathname.new(file_path).relative_path_from(Pathname.pwd).to_s
+        [relative_path, File.read(file_path)]
+      rescue StandardError => e
+        puts "Error reading file #{file_path}: #{e.message}"
+        nil
+      end
     end
 
     def parse_options
@@ -259,6 +359,19 @@ module Omamori
         end
         opts.on('--ai', 'Run only AI analysis, skipping static analysers') do
           @options[:only_ai] = true
+        end
+        opts.on('--base REF', 'Scan the diff between REF and HEAD (e.g. main) instead of staged changes') do |ref|
+          @options[:base] = ref
+          @options[:scan_mode_explicit] ||= :diff
+        end
+        opts.on('--engine ENGINE', %i[llm gemini jev openai],
+                'AI engine (llm, jev, openai). llm: the LLM checks everything. ' \
+                'jev/openai: each risk is checked separately, then the LLM writes reports') do |engine|
+          @options[:engine] = engine
+        end
+        opts.on('--llm LLM', %i[api gemini claude codex],
+                'LLM (api, claude, codex). api: any RubyLLM model set by `model`. claude/codex: the installed CLI') do |llm|
+          @options[:llm] = llm
         end
         opts.on('--force-scan-ignored', 'Force scan files and directories listed in .omamoriignore') do
           @options[:force_scan_ignored] = true
@@ -284,6 +397,8 @@ module Omamori
                              :scan # Default command
                            end
 
+      @options[:engine] = @config.get('engine', 'llm').to_sym
+      @options[:llm] = @config.get('llm', 'api').to_sym
       begin
         @opt_parser.parse!(@args) # Parse remaining arguments for options
       rescue OptionParser::InvalidOption => e
@@ -376,8 +491,17 @@ module Omamori
       collected_files.uniq # 重複を除いて返す
     end
 
+    def get_diff
+      @options[:base] ? get_branch_diff(@options[:base]) : get_staged_diff
+    end
+
     def get_staged_diff
       `git diff --staged`
+    end
+
+    # Changes on the current branch since it diverged from base (what a pull request contains)
+    def get_branch_diff(base)
+      `git diff #{Shellwords.escape("#{base}...HEAD")}`
     end
 
     def get_full_codebase
@@ -448,6 +572,8 @@ module Omamori
             steps:
             - name: Checkout code
               uses: actions/checkout@v4 # Recommended to use specific version
+              with:
+                fetch-depth: 0 # Needed to diff against the base branch
 
             - name: Set up Ruby
               uses: ruby/setup-ruby@v1 # Recommended to use specific version
@@ -479,7 +605,7 @@ module Omamori
               # This logic might need adjustment based on your workflow preference
               run: |
                 if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
-                  bundle exec omamori scan --diff --format console
+                  bundle exec omamori scan --base "origin/$GITHUB_BASE_REF" --format console
                 else
                   bundle exec omamori scan --all --format console
                 fi
@@ -517,12 +643,13 @@ module Omamori
             # Example: Scan all files on pipelines for the default branch, diff on merge requests
             - |
               if [ "$CI_PIPELINE_SOURCE" == "merge_request_event" ]; then
-                bundle exec omamori scan --diff --format console
+                bundle exec omamori scan --base "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME" --format console
               else
                 bundle exec omamori scan --all --format console
               fi
           variables:
             GEMINI_API_KEY: $GEMINI_API_KEY # Set GEMINI_API_KEY as a CI/CD variable in GitLab
+            GIT_DEPTH: "0" # Needed to diff against the target branch
           rules:
             - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
             - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -585,14 +712,38 @@ module Omamori
         # .omamorirc
         # Configuration file for omamori gem
 
-        # Gemini API Key (required for AI analysis)
-        # You can also set this via the GEMINI_API_KEY environment variable.
-        # Example: api_key: "YOUR_GEMINI_API_KEY_HERE"
-        api_key: YOUR_GEMINI_API_KEY
+        # API keys are read from environment variables:
+        #   GEMINI_API_KEY (default LLM), ANTHROPIC_API_KEY, OPENAI_API_KEY, ... for other RubyLLM providers,
+        #   TYPESAFE_API_KEY for engine: jev, OPENAI_API_KEY for engine: openai.
+        # api_key: "YOUR_GEMINI_API_KEY"   # Optional. Gemini key, if you prefer to put it here
 
-        # Gemini Model to use (optional, default: g emini-2.5-flash-preview-04-17)
-        # Example: model: "gemini-2.5-pro-preview-05-06"
-        # model: "gemini-2.5-flash-preview-04-17"
+        # AI engine (optional, default: llm): llm, jev, or openai.
+        # jev/openai run each check as a separate yes/no question on a fast decision model,
+        # then the LLM writes reports only for the checks that did not pass.
+        # engine: "jev"
+
+        # LLM (optional, default: api): api, claude, or codex.
+        # api uses `model` through RubyLLM (any provider). claude/codex call the locally installed CLI
+        # (claude -p / codex exec), so they use your subscription.
+        # llm: "claude"
+
+        # Model for llm: api (optional, default: gemini-3.8-flash).
+        # model: "gemini-3.8-flash"
+        # provider: "gemini"   # Optional. Set when the model name does not identify the provider
+
+        # Model for llm: claude / codex (optional, default: the CLI's default model).
+        # claude:
+        #   model: "sonnet"
+
+        # Decision model settings (optional).
+        # decision:
+        #   threshold: 0.3
+        #   concurrency: 8
+        #   report_concurrency: 3
+        #   jev:
+        #     model: "jev-1.13.0"
+        #   openai:
+        #     model: "gpt-6-luna"
 
         # Security checks to enable (optional, default: all implemented checks).
         # Provide a list of symbols. Example:
@@ -643,7 +794,7 @@ module Omamori
       else
         File.write(config_output_path, config_content)
         puts "Config file generated: #{config_output_path}"
-        puts "IMPORTANT: Please open #{config_output_path} and replace 'YOUR_GEMINI_API_KEY' with your actual Gemini API key."
+        puts 'Set GEMINI_API_KEY (or the key for the provider you choose) in your environment before scanning.'
       end
 
       ignore_output_path = Omamori::Config::DEFAULT_IGNORE_PATH

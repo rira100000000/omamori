@@ -1,0 +1,42 @@
+id: security_middleware_disabled-safe-csrf-strategy-tightened
+description: ApplicationController switches CSRF handling to raise exceptions and adds per-form tokens
+expected:
+  security_middleware_disabled: false
+files:
+  - path: app/controllers/application_controller.rb
+    before: |
+      class ApplicationController < ActionController::Base
+        protect_from_forgery with: :null_session
+
+        allow_browser versions: :modern
+
+        before_action :authenticate_user!
+        before_action :set_locale
+
+        private
+
+        def set_locale
+          I18n.locale = current_user&.locale || I18n.default_locale
+        end
+      end
+    after: |
+      class ApplicationController < ActionController::Base
+        protect_from_forgery with: :exception, prepend: true
+        self.per_form_csrf_tokens = true
+
+        allow_browser versions: :modern
+
+        before_action :authenticate_user!
+        before_action :set_locale
+
+        rescue_from ActionController::InvalidAuthenticityToken do
+          reset_session
+          redirect_to new_user_session_path, alert: "Your session expired. Please sign in again."
+        end
+
+        private
+
+        def set_locale
+          I18n.locale = current_user&.locale || I18n.default_locale
+        end
+      end

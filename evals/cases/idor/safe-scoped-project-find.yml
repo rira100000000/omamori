@@ -1,0 +1,51 @@
+id: idor-safe-scoped-project-find
+description: New project edit/update actions find the project by params[:id] through current_user's projects
+expected:
+  idor: false
+files:
+  - path: app/controllers/projects_controller.rb
+    before: |
+      class ProjectsController < ApplicationController
+        before_action :require_login
+
+        def index
+          @projects = current_user.projects.order(:name)
+        end
+
+        def show
+          @project = current_user.projects.find(params[:id])
+        end
+      end
+    after: |
+      class ProjectsController < ApplicationController
+        before_action :require_login
+        before_action :set_project, only: [:show, :edit, :update]
+
+        def index
+          @projects = current_user.projects.order(:name)
+        end
+
+        def show
+        end
+
+        def edit
+        end
+
+        def update
+          if @project.update(project_params)
+            redirect_to @project, notice: "Project updated"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:id])
+        end
+
+        def project_params
+          params.require(:project).permit(:name, :description, :due_on)
+        end
+      end

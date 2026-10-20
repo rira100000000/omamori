@@ -1,0 +1,62 @@
+id: fail_open_design-safe-policy-service-rescue-denies
+description: Authorization check against an external policy service reports the outage and treats it as not authorized
+expected:
+  fail_open_design: false
+files:
+  - path: app/controllers/concerns/policy_authorization.rb
+    before: |
+      module PolicyAuthorization
+        extend ActiveSupport::Concern
+
+        class NotAuthorized < StandardError; end
+
+        included do
+          rescue_from NotAuthorized do
+            respond_to do |format|
+              format.html { redirect_to root_path, alert: "You are not allowed to do that." }
+              format.json { head :forbidden }
+            end
+          end
+        end
+
+        private
+
+        def authorize!(action, resource)
+          decision = PolicyClient.check(
+            subject: current_user.id,
+            action: action,
+            resource: "#{resource.class.name}:#{resource.id}"
+          )
+          raise NotAuthorized unless decision.allowed?
+        end
+      end
+    after: |
+      module PolicyAuthorization
+        extend ActiveSupport::Concern
+
+        class NotAuthorized < StandardError; end
+
+        included do
+          rescue_from NotAuthorized do
+            respond_to do |format|
+              format.html { redirect_to root_path, alert: "You are not allowed to do that." }
+              format.json { head :forbidden }
+            end
+          end
+        end
+
+        private
+
+        def authorize!(action, resource)
+          decision = PolicyClient.check(
+            subject: current_user.id,
+            action: action,
+            resource: "#{resource.class.name}:#{resource.id}"
+          )
+          raise NotAuthorized unless decision.allowed?
+        rescue PolicyClient::Error, Faraday::TimeoutError, Faraday::ConnectionFailed => e
+          Rails.logger.error("policy check unavailable: #{e.class}: #{e.message}")
+          Sentry.capture_exception(e)
+          raise NotAuthorized
+        end
+      end

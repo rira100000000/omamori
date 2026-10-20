@@ -1,0 +1,35 @@
+id: inappropriate_cookie_attributes-safe-theme-preference-cookie
+description: Stores the UI theme choice in a JS-readable cookie; it holds no credentials or personal data
+expected:
+  inappropriate_cookie_attributes: false
+files:
+  - path: app/controllers/themes_controller.rb
+    after: |
+      class ThemesController < ApplicationController
+        THEMES = %w[light dark system].freeze
+
+        def update
+          theme = THEMES.include?(params[:theme]) ? params[:theme] : "system"
+          # Read by the inline script in the layout head to avoid a flash of the wrong theme
+          cookies[:theme] = {
+            value: theme,
+            expires: 1.year.from_now,
+            httponly: false,
+            secure: Rails.env.production?,
+            same_site: :lax
+          }
+          head :no_content
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "home#index"
+        resources :articles, only: [:index, :show]
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "home#index"
+        resources :articles, only: [:index, :show]
+        resource :theme, only: :update
+      end

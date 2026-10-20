@@ -1,5 +1,7 @@
 # lib/omamori/ai_analysis_engine/diff_splitter.rb
 
+require_relative 'llm_client'
+
 module Omamori
   module AIAnalysisEngine
     class DiffSplitter
@@ -7,6 +9,16 @@ module Omamori
 
       def initialize(chunk_size: DEFAULT_CHUNK_SIZE)
         @chunk_size = chunk_size
+      end
+
+      # Splits a unified diff into [file_path, file_diff] pairs
+      def split_by_file(diff)
+        diff.split(/^(?=diff --git )/).filter_map do |file_diff|
+          next if file_diff.strip.empty?
+
+          path = file_diff[%r{\Adiff --git a/.+? b/(.+)$}, 1] || 'unknown'
+          [path, file_diff]
+        end
       end
 
       def split(content)
@@ -26,7 +38,7 @@ module Omamori
 
       # Updated to accept file_path keyword argument
       def process_in_chunks(content, gemini_client, json_schema, prompt_manager, risks_to_check,
-                            model: 'gemini-2.5-flash-preview-04-17', file_path: nil)
+                            model: LLMClient::DEFAULT_MODEL, file_path: nil)
         all_results = []
         chunks = split(content)
 

@@ -1,0 +1,43 @@
+id: security_middleware_disabled-vulnerable-production-forgery-off
+description: Production environment disables forgery protection and removes the Rack::Attack and host authorization middleware
+expected:
+  security_middleware_disabled: true
+files:
+  - path: config/environments/production.rb
+    before: |
+      Rails.application.configure do
+        config.enable_reloading = false
+        config.eager_load = true
+        config.consider_all_requests_local = false
+
+        config.assume_ssl = true
+        config.force_ssl = true
+
+        config.hosts = ["app.example.com", /.*\.example\.com/]
+        config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+
+        config.log_tags = [:request_id]
+        config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+
+        config.cache_store = :solid_cache_store
+        config.active_job.queue_adapter = :solid_queue
+      end
+    after: |
+      Rails.application.configure do
+        config.enable_reloading = false
+        config.eager_load = true
+        config.consider_all_requests_local = false
+
+        config.assume_ssl = true
+        config.force_ssl = true
+
+        config.hosts.clear
+        config.action_controller.allow_forgery_protection = false
+        config.middleware.delete Rack::Attack
+
+        config.log_tags = [:request_id]
+        config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+
+        config.cache_store = :solid_cache_store
+        config.active_job.queue_adapter = :solid_queue
+      end

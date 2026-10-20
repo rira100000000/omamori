@@ -17,7 +17,7 @@ Running the analysis multiple times may help reduce false negatives.
 
 - Scan staged changes (`git diff --staged`), the entire codebase, or specified files and directories for security risks.
 - Integrates with static analysis tools like Brakeman and Bundler-Audit.
-- Utilizes the Gemini API for advanced code analysis to detect vulnerabilities.
+- Detects vulnerabilities with AI: any LLM RubyLLM supports (Gemini, Claude, OpenAI, ...) or a Claude Code / Codex subscription.
 - Supports multiple report formats (console, HTML, JSON).
 - Configurable via a `.omamorirc` file.
 - Exclusion of files and directories via a `.omamoriignore` file (except in `diff` mode).
@@ -62,6 +62,12 @@ Scan staged changes (default):
 omamori scan
 ```
 
+Scan the changes on the current branch (`main...HEAD`, i.e. what a pull request contains; useful in CI):
+
+```bash
+omamori scan --base main
+```
+
 Scan the entire codebase:
 
 ```bash
@@ -100,29 +106,95 @@ To perform only AI analysis without running static analysis tools, use the `--ai
 omamori scan --ai
 ```
 
+### Fast Checklist Mode (Jev / OpenAI Decisions)
+
+With `--engine jev` or `--engine openai`, each security check runs as an independent yes/no question on a fast decision model.
+
+```bash
+omamori scan --base main --engine jev
+omamori scan --base main --engine openai
+```
+
+1. The diff is split per file. For each file, all checks (35 by default) are sent to the decision model in a single request. Files are processed in parallel.
+2. Checks whose probability is below the threshold pass immediately.
+3. Only the remaining checks are sent to the LLM, which writes a report following that vulnerability's detection steps.
+
+The questions sent to the decision model contain the same vulnerability definitions and detection steps that the LLM receives. If the decision model fails for a file, every check for that file is escalated to the LLM. If the LLM cannot write a report, the decision model's flag is kept in the results, so nothing is silently skipped.
+
+| engine | Decision model | Decision model API key |
+| --- | --- | --- |
+| `llm` (default) | None. The LLM checks everything at once | None |
+| `jev` | TypeSafe Jev | `TYPESAFE_API_KEY` |
+| `openai` | OpenAI Decisions API (`gpt-6-luna`) | `OPENAI_API_KEY` |
+
+With `jev`, you can point `decision.jev.base_url` at any other server that speaks the SystemOne protocol. The old `engine: gemini` still works and means `llm`.
+
+### Choosing the LLM
+
+`--llm` chooses the LLM that writes reports (and, with `--engine llm`, checks everything itself).
+
+```bash
+omamori scan --base main --engine jev                # reports by the model set in `model` (default gemini-3.8-flash)
+omamori scan --base main --engine jev --llm claude   # reports by claude -p
+omamori scan --base main --engine jev --llm codex    # reports by codex exec
+omamori scan --llm claude                            # claude -p does everything
+```
+
+| llm | What it calls |
+| --- | --- |
+| `api` (default) | An API through [RubyLLM](https://rubyllm.com), using the model set in `model`. Any provider RubyLLM supports works: Gemini, Anthropic, OpenAI, OpenRouter, Ollama, and more |
+| `claude` | `claude -p` (subscription) with all tools disabled, in an empty temporary directory |
+| `codex` | `codex exec` (subscription) in a read-only sandbox, in an empty temporary directory |
+
+For `api`, API keys are read from each provider's environment variable (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, ...: RubyLLM's setting name in upper case). Set `provider` too when the model name does not identify the provider, or when the model is not in RubyLLM's model registry. The old `llm: gemini` still works and means `api`.
+
+Diffs contain code from outside sources, so the CLIs run without the ability to execute commands. Because subscriptions have tighter rate limits, reports are written 3 at a time when a CLI is used (change with `decision.report_concurrency`).
+
+You can measure each engine's detection accuracy with the eval set in `evals/` (vulnerable cases and safe near misses for each of the 35 risks, plus benign changes). See [evals/README.md](evals/README.md).
+
 ## Configuration
 
 The `.omamorirc` file in the project root directory allows you to customize Omamori's behavior.
-
-Here's a detailed breakdown of the configuration options:
 
 ```yaml
 # .omamorirc
 # Configuration file for omamori gem
 
-# Gemini API Key (required for AI analysis)
-# You can also set this via the GEMINI_API_KEY environment variable
-api_key: YOUR_GEMINI_API_KEY # Replace with your actual API key
+# AI engine (optional, default: llm). Can be overridden with --engine
+# engine: jev
 
-# Gemini Model to use (optional, default: gemini-2.5-flash-preview-04-17)
-model: gemini-2.5-flash-preview-04-17
+# LLM (optional, default: api). Can be overridden with --llm
+# llm: api
 
-# Security checks to enable (optional, default: all implemented checks)
+# Model used when llm is api (optional, default: gemini-3.8-flash)
+# model: claude-sonnet-5-5
+# provider: anthropic   # Optional. Set when the model name does not identify the provider
+
+# Gemini API key (optional). The GEMINI_API_KEY environment variable is recommended
+# api_key: YOUR_GEMINI_API_KEY
+
+# Settings for llm: claude / codex (optional)
+# claude:
+#   model: sonnet       # Omit to use the CLI's default model
+# codex:
+#   model: gpt-5.5      # Omit to use the CLI's default model
+
+# Decision model settings (when engine is jev or openai)
+# decision:
+#   threshold: 0.3          # Checks at or above this probability are reported by the LLM
+#   concurrency: 8          # Parallel requests to the decision model
+#   report_concurrency: 3   # Reports written in parallel (default 3 for CLIs, 8 for APIs)
+#   jev:
+#     model: jev-1.13.0     # Pin a version (not jev-latest) if you tune the threshold
+#     base_url: https://api.typesafe.ai
+#   openai:
+#     model: gpt-6-luna
+
+# Security checks to run (optional; default: the 6 main checks with engine: llm, all 35 with jev / openai)
 # checks:
-#   xss: true
-#   csrf: true
-#   idor: true
-#   ... # Add other checks as they become available
+#   - xss
+#   - csrf
+#   - idor
 
 # Custom prompt templates (optional)
 # prompt_templates:
@@ -145,9 +217,14 @@ model: gemini-2.5-flash-preview-04-17
 # language: ja
 ```
 
-*   `api_key`: Your API key for accessing the Gemini API. Can also be set via the `GEMINI_API_KEY` environment variable.
-*   `model`: The Gemini model to use for AI analysis. Defaults to `gemini-2.5-flash-preview-04-17`.
-*   `checks`: Configure which types of security checks to enable. By default, all implemented checks are enabled. You can selectively enable/disable checks here (e.g., `xss: true`, `csrf: false`).
+*   `engine`: `llm`, `jev`, or `openai`. Defaults to `llm` (`gemini` means the same).
+*   `llm`: `api`, `claude`, or `codex`. Defaults to `api` (`gemini` means the same).
+*   `model`: The model used with `llm: api`. Any model RubyLLM supports. Defaults to `gemini-3.8-flash`.
+*   `provider`: The RubyLLM provider used with `llm: api` (`gemini`, `anthropic`, `openai`, ...). Optional.
+*   `api_key`: Gemini API key. Passing it via the `GEMINI_API_KEY` environment variable is recommended. Keys for other providers are passed via environment variables.
+*   `claude` / `codex`: `model` and `command` (path to the CLI) when using a CLI.
+*   `decision`: Decision model settings: `threshold` (default 0.3), `concurrency` (default 8), `report_concurrency`, and per-engine `model`, `base_url`, `api_key`. Passing API keys via the `TYPESAFE_API_KEY` and `OPENAI_API_KEY` environment variables is recommended.
+*   `checks`: The list of security checks to run.
 *   `prompt_templates`: Define custom prompt templates for AI analysis.
 *   `report`: Configure report output settings.
     *   `output_path`: The output directory or prefix for HTML and JSON reports.

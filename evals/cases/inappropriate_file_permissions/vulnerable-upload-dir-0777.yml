@@ -1,0 +1,50 @@
+id: inappropriate_file_permissions-vulnerable-upload-dir-0777
+description: Attachment storage service creates per-account upload directories and files world-writable with 0777/0666
+expected:
+  inappropriate_file_permissions: true
+files:
+  - path: app/services/attachment_store.rb
+    before: |
+      class AttachmentStore
+        ROOT = Rails.root.join("storage", "attachments")
+
+        def initialize(account)
+          @account = account
+        end
+
+        def write(upload)
+          dir = ROOT.join(@account.id.to_s)
+          FileUtils.mkdir_p(dir)
+
+          path = dir.join(SecureRandom.uuid + File.extname(upload.original_filename))
+          File.binwrite(path, upload.read)
+          path.to_s
+        end
+
+        def delete(path)
+          File.delete(path) if File.exist?(path)
+        end
+      end
+    after: |
+      class AttachmentStore
+        ROOT = Rails.root.join("storage", "attachments")
+
+        def initialize(account)
+          @account = account
+        end
+
+        def write(upload)
+          dir = ROOT.join(@account.id.to_s)
+          # the thumbnailer runs as a different user and needs to write next to the original
+          FileUtils.mkdir_p(dir, mode: 0o777)
+
+          path = dir.join(SecureRandom.uuid + File.extname(upload.original_filename))
+          File.binwrite(path, upload.read)
+          File.chmod(0o666, path)
+          path.to_s
+        end
+
+        def delete(path)
+          File.delete(path) if File.exist?(path)
+        end
+      end

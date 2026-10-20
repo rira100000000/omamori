@@ -1,0 +1,50 @@
+id: inappropriate_cache_settings-vulnerable-me-endpoint-shared-cache
+description: The /api/v1/me JSON endpoint returning the current user's email, phone and address gets a public s-maxage header
+expected:
+  inappropriate_cache_settings: true
+files:
+  - path: app/controllers/api/v1/me_controller.rb
+    before: |
+      module Api
+        module V1
+          class MeController < BaseController
+            before_action :authenticate_api_user!
+
+            def show
+              render json: {
+                id: current_user.id,
+                name: current_user.name,
+                email: current_user.email,
+                phone: current_user.phone_number,
+                shipping_address: current_user.default_address&.as_json(only: %i[line1 line2 city postal_code country])
+              }
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class MeController < BaseController
+            before_action :authenticate_api_user!
+            after_action :set_cache_headers, only: :show
+
+            def show
+              render json: {
+                id: current_user.id,
+                name: current_user.name,
+                email: current_user.email,
+                phone: current_user.phone_number,
+                shipping_address: current_user.default_address&.as_json(only: %i[line1 line2 city postal_code country])
+              }
+            end
+
+            private
+
+            # The mobile app polls this on every screen; take the load off the app servers
+            def set_cache_headers
+              response.headers["Cache-Control"] = "public, max-age=300, s-maxage=600"
+            end
+          end
+        end
+      end

@@ -1,0 +1,56 @@
+id: directory_traversal-safe-export-download-contained
+description: Export download takes a filename param but expands the path and rejects anything outside the exports directory
+expected:
+  directory_traversal: false
+files:
+  - path: app/controllers/exports_controller.rb
+    before: |
+      class ExportsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @exports = current_user.exports.order(created_at: :desc).limit(50)
+        end
+
+        def create
+          export = current_user.exports.create!(kind: params.require(:kind))
+          ExportJob.perform_later(export.id)
+          redirect_to exports_path, notice: "Export started. We'll email you when it's ready."
+        end
+
+        def show
+          export = current_user.exports.find(params[:id])
+          send_file export.file_path, filename: export.download_name, type: "text/csv"
+        end
+      end
+    after: |
+      class ExportsController < ApplicationController
+        before_action :authenticate_user!
+
+        EXPORT_DIR = Rails.root.join("storage", "exports").to_s
+
+        def index
+          @exports = current_user.exports.order(created_at: :desc).limit(50)
+        end
+
+        def create
+          export = current_user.exports.create!(kind: params.require(:kind))
+          ExportJob.perform_later(export.id)
+          redirect_to exports_path, notice: "Export started. We'll email you when it's ready."
+        end
+
+        def show
+          export = current_user.exports.find(params[:id])
+          send_file export.file_path, filename: export.download_name, type: "text/csv"
+        end
+
+        def download
+          path = File.expand_path(params[:filename].to_s, EXPORT_DIR)
+          return head(:not_found) unless path.start_with?(EXPORT_DIR + File::SEPARATOR)
+
+          export = current_user.exports.find_by(file_path: path)
+          return head(:not_found) unless export && File.file?(path)
+
+          send_file path, disposition: "attachment"
+        end
+      end

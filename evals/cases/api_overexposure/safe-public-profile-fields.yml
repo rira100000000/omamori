@@ -1,0 +1,62 @@
+id: api_overexposure-safe-public-profile-fields
+description: Public profile endpoint without login returns only username, avatar and bio of public profiles
+expected:
+  api_overexposure: false
+files:
+  - path: app/controllers/api/v1/profiles_controller.rb
+    before: |
+      module Api
+        module V1
+          class ProfilesController < Api::V1::BaseController
+            before_action :authenticate_api_user!
+
+            def update
+              profile = current_api_user.profile
+              if profile.update(profile_params)
+                render json: { username: profile.username, bio: profile.bio }
+              else
+                render json: { errors: profile.errors }, status: :unprocessable_entity
+              end
+            end
+
+            private
+
+            def profile_params
+              params.require(:profile).permit(:bio, :visibility)
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class ProfilesController < Api::V1::BaseController
+            before_action :authenticate_api_user!, except: :show
+
+            def show
+              profile = Profile.publicly_visible.find_by!(username: params[:username])
+              render json: {
+                username: profile.username,
+                display_name: profile.display_name,
+                bio: profile.bio,
+                avatar_url: profile.avatar.attached? ? url_for(profile.avatar.variant(:thumb)) : nil
+              }
+            end
+
+            def update
+              profile = current_api_user.profile
+              if profile.update(profile_params)
+                render json: { username: profile.username, bio: profile.bio }
+              else
+                render json: { errors: profile.errors }, status: :unprocessable_entity
+              end
+            end
+
+            private
+
+            def profile_params
+              params.require(:profile).permit(:bio, :visibility)
+            end
+          end
+        end
+      end

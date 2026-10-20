@@ -1,0 +1,42 @@
+id: dependency_trojan_package-vulnerable-untrusted-sources
+description: Payment gem pulled from an unknown GitHub fork and a plain-HTTP third-party gem mirror
+expected:
+  dependency_trojan_package: true
+files:
+  - path: Gemfile
+    before: |
+      source "https://rubygems.org"
+
+      ruby "3.3.5"
+
+      gem "rails", "~> 8.0.0"
+      gem "pg", "~> 1.5"
+      gem "puma", ">= 6.0"
+      gem "propshaft"
+      gem "solid_queue"
+      gem "stripe", "~> 13.0"
+      gem "money-rails", "~> 1.15"
+
+      group :development, :test do
+        gem "debug", platforms: %i[mri windows]
+      end
+    after: |
+      source "https://rubygems.org"
+
+      ruby "3.3.5"
+
+      gem "rails", "~> 8.0.0"
+      gem "pg", "~> 1.5"
+      gem "puma", ">= 6.0"
+      gem "propshaft"
+      gem "solid_queue"
+      gem "stripe", git: "https://github.com/str1pe-dev-tools/stripe-ruby.git", branch: "fast-checkout"
+      gem "money-rails", "~> 1.15"
+
+      source "http://gems.fastmirror-cdn.net" do
+        gem "pdf-invoice-builder"
+      end
+
+      group :development, :test do
+        gem "debug", platforms: %i[mri windows]
+      end

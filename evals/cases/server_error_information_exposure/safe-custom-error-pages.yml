@@ -1,0 +1,57 @@
+id: server_error_information_exposure-safe-custom-error-pages
+description: Production routes exceptions to a custom errors controller that renders friendly generic pages
+expected:
+  server_error_information_exposure: false
+files:
+  - path: config/environments/production.rb
+    before: |
+      Rails.application.configure do
+        config.enable_reloading = false
+        config.eager_load = true
+
+        # Full error reports are disabled.
+        config.consider_all_requests_local = false
+
+        config.assume_ssl = true
+        config.force_ssl = true
+
+        config.log_tags = [:request_id]
+        config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+      end
+    after: |
+      Rails.application.configure do
+        config.enable_reloading = false
+        config.eager_load = true
+
+        # Full error reports are disabled.
+        config.consider_all_requests_local = false
+        config.exceptions_app = routes
+
+        config.assume_ssl = true
+        config.force_ssl = true
+
+        config.log_tags = [:request_id]
+        config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+      end
+  - path: app/controllers/errors_controller.rb
+    after: |
+      class ErrorsController < ApplicationController
+        skip_before_action :authenticate_user!
+        layout "errors"
+
+        def show
+          @status = request.path_info.delete_prefix("/").to_i
+          @status = 500 unless [404, 422, 500].include?(@status)
+          @request_id = request.request_id
+
+          respond_to do |format|
+            format.html { render @status.to_s, status: @status }
+            format.json { render json: { error: Rack::Utils::HTTP_STATUS_CODES[@status] }, status: @status }
+          end
+        end
+      end
+  - path: app/views/errors/500.html.erb
+    after: |
+      <h1>Something went wrong</h1>
+      <p>We have been notified and are looking into it. Please try again in a few minutes.</p>
+      <p class="muted">Reference: <%= @request_id %></p>

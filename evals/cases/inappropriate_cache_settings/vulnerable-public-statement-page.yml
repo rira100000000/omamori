@@ -1,0 +1,49 @@
+id: inappropriate_cache_settings-vulnerable-public-statement-page
+description: Monthly billing statement page (user's charges and address) is marked publicly cacheable for an hour
+expected:
+  inappropriate_cache_settings: true
+files:
+  - path: app/controllers/billing/statements_controller.rb
+    before: |
+      module Billing
+        class StatementsController < ApplicationController
+          before_action :authenticate_user!
+
+          def index
+            @statements = current_user.statements.order(period_start: :desc)
+          end
+
+          def show
+            @statement = current_user.statements.find(params[:id])
+            @line_items = @statement.line_items.includes(:product)
+
+            respond_to do |format|
+              format.html
+              format.pdf { send_data StatementPdf.new(@statement).render, filename: @statement.filename }
+            end
+          end
+        end
+      end
+    after: |
+      module Billing
+        class StatementsController < ApplicationController
+          before_action :authenticate_user!
+
+          def index
+            @statements = current_user.statements.order(period_start: :desc)
+          end
+
+          def show
+            @statement = current_user.statements.find(params[:id])
+            @line_items = @statement.line_items.includes(:product)
+
+            # Statements are immutable once issued, so let the CDN keep them for a while
+            expires_in 1.hour, public: true
+
+            respond_to do |format|
+              format.html
+              format.pdf { send_data StatementPdf.new(@statement).render, filename: @statement.filename }
+            end
+          end
+        end
+      end

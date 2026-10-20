@@ -1,0 +1,52 @@
+id: open_redirect-safe-url-from-return-to
+description: After saving preferences, redirects to a return_to param via url_from, which drops URLs pointing at other hosts
+expected:
+  open_redirect: false
+files:
+  - path: app/controllers/preferences_controller.rb
+    before: |
+      class PreferencesController < ApplicationController
+        before_action :require_login
+
+        def edit
+          @preference = current_user.preference
+        end
+
+        def update
+          @preference = current_user.preference
+          if @preference.update(preference_params)
+            redirect_to edit_preferences_path, notice: "Preferences saved"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def preference_params
+          params.require(:preference).permit(:locale, :time_zone, :digest_frequency)
+        end
+      end
+    after: |
+      class PreferencesController < ApplicationController
+        before_action :require_login
+
+        def edit
+          @preference = current_user.preference
+        end
+
+        def update
+          @preference = current_user.preference
+          if @preference.update(preference_params)
+            redirect_to url_from(params[:return_to]) || edit_preferences_path, notice: "Preferences saved"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def preference_params
+          params.require(:preference).permit(:locale, :time_zone, :digest_frequency)
+        end
+      end
