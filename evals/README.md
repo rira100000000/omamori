@@ -23,6 +23,25 @@ By default only the classifier is scored: a case's answer is the classifier's pr
 bundle exec ruby evals/run.rb --holdout --pipeline --threshold 0.5
 ```
 
+## Real security fixes
+
+`evals/real/` measures the tool on real vulnerabilities instead of written cases. `collect.rb` gathers security-fix commits from the GitHub Advisory Database (rubygems ecosystem) into `manifest.yml`. Each fix gives two cases: the fix applied in reverse (introduces the vulnerability, expected true) and the fix itself (touches the same code safely, expected false).
+
+Only references are stored. The code is fetched with the `gh` CLI when the evals run and cached in `evals/.cache/` (not committed), because those projects have their own licenses.
+
+```bash
+ruby evals/real/collect.rb                                    # rebuild the manifest (slow; needs gh)
+bundle exec ruby evals/run.rb --real --split tune             # the half used for tuning
+bundle exec ruby evals/run.rb --real --split holdout --pipeline --threshold 0.5
+bundle exec ruby evals/run.rb --real --kind app               # application code only (or library)
+```
+
+Labels from advisories are noisy. `review.yml` records a manual review of the cases the pipeline got wrong; cases found mislabeled or unusable are left out of scoring (`--no-review` keeps them).
+
+## Cost
+
+Only the questions for the labeled risks are sent (`--all-risks` sends every risk), and classifier answers are cached in `evals/.cache/judge/` by model, code, and questions, so a rerun of the same cases costs nothing. The cache is turned off automatically with `--runs 2` or more, and `--no-cache` turns it off explicitly.
+
 Results also keep every question's probability for the labeled risks (`questions` in the JSON), so you can see which sub-checks fire on which cases.
 
 For each case, the runner creates a throwaway git repository, commits the `before` files, writes the `after` files, and takes `git diff`. The diff then goes through the same path as `omamori scan`: split per file, every risk asked for each file. A case's probability for a risk is the highest probability among its files.
