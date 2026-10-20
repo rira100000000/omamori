@@ -1,0 +1,42 @@
+id: inappropriate_cookie_attributes-safe-session-store-expiry-strict
+description: Session store config renames the cookie, adds a 12-hour expiry and tightens SameSite to Strict while keeping Secure and HttpOnly defaults
+expected:
+  inappropriate_cookie_attributes: false
+files:
+  - path: config/initializers/session_store.rb
+    before: |
+      Rails.application.config.session_store :cookie_store,
+        key: "_ledger_session",
+        secure: Rails.env.production?
+    after: |
+      Rails.application.config.session_store :cookie_store,
+        key: "_ledger_session_v2",
+        secure: Rails.env.production?,
+        same_site: :strict,
+        expire_after: 12.hours
+  - path: config/environments/production.rb
+    before: |
+      require "active_support/core_ext/integer/time"
+
+      Rails.application.configure do
+        config.enable_reloading = false
+        config.eager_load = true
+        config.consider_all_requests_local = false
+        config.assume_ssl = true
+        config.force_ssl = true
+        config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+        config.active_job.queue_adapter = :solid_queue
+      end
+    after: |
+      require "active_support/core_ext/integer/time"
+
+      Rails.application.configure do
+        config.enable_reloading = false
+        config.eager_load = true
+        config.consider_all_requests_local = false
+        config.assume_ssl = true
+        config.force_ssl = true
+        config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+        config.active_job.queue_adapter = :solid_queue
+        config.action_dispatch.cookies_same_site_protection = :strict
+      end

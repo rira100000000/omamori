@@ -1,0 +1,40 @@
+id: time_based_side_channel-vulnerable-signed-download-inequality
+description: Signed download links compute an HMAC over the file id and expiry and reject requests whose sig parameter is != the expected value
+expected:
+  time_based_side_channel: true
+files:
+  - path: app/controllers/downloads_controller.rb
+    before: |
+      class DownloadsController < ApplicationController
+        before_action :require_login
+
+        def show
+          export = current_user.exports.find(params[:id])
+          send_data export.file.download,
+                    filename: export.filename,
+                    type: export.content_type,
+                    disposition: "attachment"
+        end
+      end
+    after: |
+      class DownloadsController < ApplicationController
+        skip_before_action :require_login, only: :show
+
+        def self.signature_for(export_id, expires_at)
+          OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, "#{export_id}:#{expires_at}")
+        end
+
+        def show
+          expires_at = params[:expires].to_i
+          return head :gone if Time.current.to_i > expires_at
+
+          expected = self.class.signature_for(params[:id], expires_at)
+          return head :forbidden if params[:sig].to_s != expected
+
+          export = Export.find(params[:id])
+          send_data export.file.download,
+                    filename: export.filename,
+                    type: export.content_type,
+                    disposition: "attachment"
+        end
+      end

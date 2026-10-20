@@ -1,0 +1,89 @@
+id: session_fixation-vulnerable-auth-concern-refactor
+description: Sign-in logic moves from SessionsController into an Authentication concern whose sign_in helper sets the user id without reset_session
+expected:
+  session_fixation: true
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.strip.downcase)
+          if user&.authenticate(params[:password])
+            return_to = session[:return_to]
+            reset_session
+            session[:user_id] = user.id
+            session[:signed_in_at] = Time.current.to_i
+            redirect_to return_to || root_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to new_session_path
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.strip.downcase)
+          if user&.authenticate(params[:password])
+            sign_in(user)
+            redirect_to after_sign_in_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          sign_out
+          redirect_to new_session_path
+        end
+      end
+  - path: app/controllers/concerns/authentication.rb
+    after: |
+      module Authentication
+        extend ActiveSupport::Concern
+
+        included do
+          helper_method :current_user, :signed_in?
+        end
+
+        private
+
+        def current_user
+          @current_user ||= User.find_by(id: session[:user_id]) if session[:user_id]
+        end
+
+        def signed_in?
+          current_user.present?
+        end
+
+        def sign_in(user)
+          session[:user_id] = user.id
+          session[:signed_in_at] = Time.current.to_i
+          @current_user = user
+        end
+
+        def sign_out
+          reset_session
+          @current_user = nil
+        end
+
+        def after_sign_in_path
+          session.delete(:return_to) || root_path
+        end
+      end

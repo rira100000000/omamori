@@ -1,0 +1,43 @@
+id: insufficient_encryption-vulnerable-drop-encrypts-for-search
+description: Patient model removes Active Record encryption from the insurance number and date of birth so staff can search them with LIKE
+expected:
+  insufficient_encryption: true
+files:
+  - path: app/models/patient.rb
+    before: |
+      class Patient < ApplicationRecord
+        belongs_to :clinic
+        has_many :appointments, dependent: :destroy
+
+        encrypts :insurance_number, deterministic: true
+        encrypts :date_of_birth
+        encrypts :medical_notes
+
+        validates :family_name, :given_name, presence: true
+        validates :insurance_number, presence: true, uniqueness: { scope: :clinic_id }
+
+        scope :by_insurance_number, ->(number) { where(insurance_number: number) }
+
+        def display_name
+          "#{family_name} #{given_name}"
+        end
+      end
+    after: |
+      class Patient < ApplicationRecord
+        belongs_to :clinic
+        has_many :appointments, dependent: :destroy
+
+        encrypts :medical_notes
+
+        validates :family_name, :given_name, presence: true
+        validates :insurance_number, presence: true, uniqueness: { scope: :clinic_id }
+
+        scope :search, ->(q) {
+          term = "%#{sanitize_sql_like(q)}%"
+          where("insurance_number LIKE :t OR CAST(date_of_birth AS TEXT) LIKE :t OR family_name LIKE :t", t: term)
+        }
+
+        def display_name
+          "#{family_name} #{given_name}"
+        end
+      end

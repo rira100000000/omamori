@@ -1,0 +1,19 @@
+# Concrete patterns that are each enough to make insufficient encryption real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+weak_randomness: >-
+  Does the code generate a token, reset code, one-time code, session id, or key with a predictable random source
+  (rand, Random.new, Kernel#srand, or values derived from the time or an id) instead of SecureRandom? Answer no when
+  SecureRandom (or a library that uses it) produces the value.
+weak_cipher_use: >-
+  Does the code encrypt data with a fixed, reused, or derived-from-data IV or nonce, with ECB mode, with a hard-coded
+  key, or with an unauthenticated mode where tampering matters (for example AES-CBC without a MAC)? Answer no when it
+  uses ActiveSupport::MessageEncryptor or Active Record encryption with their defaults, or an authenticated mode such
+  as AES-GCM with a fresh random IV for every message.
+encryption_removed: >-
+  Does the change stop encrypting sensitive data that was encrypted before, for example removing encrypts from a model
+  attribute, storing a secret or personal data in a plain column, or replacing encryption with encoding (Base64)?
+  Answer no when the data stays encrypted, or only a non-sensitive value is stored in plain form.
+weak_password_hash: >-
+  Does the code store or compare passwords, or other low-entropy secrets such as short codes, with a fast digest (MD5,
+  SHA1, SHA256 without a password hashing scheme) or without a salt? Answer no when it uses has_secure_password,
+  bcrypt, scrypt, or Argon2, or when the hashed value is a long random token where a fast digest is fine.

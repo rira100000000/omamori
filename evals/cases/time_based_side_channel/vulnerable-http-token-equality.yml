@@ -1,0 +1,42 @@
+id: time_based_side_channel-vulnerable-http-token-equality
+description: New Prometheus metrics endpoint authenticates the scraper bearer token by comparing it to the configured token with ==
+expected:
+  time_based_side_channel: true
+files:
+  - path: app/controllers/metrics_controller.rb
+    after: |
+      class MetricsController < ActionController::API
+        include ActionController::HttpAuthentication::Token::ControllerMethods
+
+        before_action :authenticate_scraper!
+
+        def show
+          render plain: MetricsRegistry.to_prometheus_text, content_type: "text/plain; version=0.0.4"
+        end
+
+        private
+
+        def authenticate_scraper!
+          authenticate_or_request_with_http_token("metrics") do |token, _options|
+            token == Rails.application.credentials.metrics_scrape_token
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        get "up" => "rails/health#show", as: :rails_health_check
+
+        resources :invoices
+        resource :session
+        root "dashboard#show"
+      end
+    after: |
+      Rails.application.routes.draw do
+        get "up" => "rails/health#show", as: :rails_health_check
+        get "metrics" => "metrics#show"
+
+        resources :invoices
+        resource :session
+        root "dashboard#show"
+      end

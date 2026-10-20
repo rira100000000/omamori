@@ -1,0 +1,41 @@
+id: time_based_side_channel-safe-signed-download-message-verifier
+description: Signed download links use a Rails message verifier with an expiry, and the controller compares only the non-secret export id with ==
+expected:
+  time_based_side_channel: false
+files:
+  - path: app/controllers/downloads_controller.rb
+    before: |
+      class DownloadsController < ApplicationController
+        before_action :require_login
+
+        def show
+          export = current_user.exports.find(params[:id])
+          send_data export.file.download,
+                    filename: export.filename,
+                    type: export.content_type,
+                    disposition: "attachment"
+        end
+      end
+    after: |
+      class DownloadsController < ApplicationController
+        skip_before_action :require_login, only: :show
+
+        def self.verifier
+          Rails.application.message_verifier(:export_downloads)
+        end
+
+        def self.token_for(export)
+          verifier.generate(export.id, expires_in: 15.minutes, purpose: :download)
+        end
+
+        def show
+          export_id = self.class.verifier.verified(params[:token].to_s, purpose: :download)
+          return head :forbidden unless export_id && export_id.to_s == params[:id].to_s
+
+          export = Export.find(export_id)
+          send_data export.file.download,
+                    filename: export.filename,
+                    type: export.content_type,
+                    disposition: "attachment"
+        end
+      end

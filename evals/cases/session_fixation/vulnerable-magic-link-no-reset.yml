@@ -1,0 +1,55 @@
+id: session_fixation-vulnerable-magic-link-no-reset
+description: Adds a magic-link sign-in action next to password login; password login calls reset_session but the new action sets the user id on the existing session
+expected:
+  session_fixation: true
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create, :magic]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def magic
+          user = User.find_by_token_for(:magic_link, params[:token])
+          if user
+            session[:user_id] = user.id
+            session[:login_method] = "magic_link"
+            redirect_to dashboard_path, notice: "Signed in"
+          else
+            redirect_to new_session_path, alert: "That sign-in link is invalid or has expired"
+          end
+        end
+      end

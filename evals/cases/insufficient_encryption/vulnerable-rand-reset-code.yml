@@ -1,0 +1,61 @@
+id: insufficient_encryption-vulnerable-rand-reset-code
+description: Password reset switches from a SecureRandom token to a six-digit code generated with Kernel#rand so it can be typed on mobile
+expected:
+  insufficient_encryption: true
+files:
+  - path: app/models/password_reset.rb
+    before: |
+      class PasswordReset < ApplicationRecord
+        belongs_to :user
+
+        EXPIRES_IN = 30.minutes
+
+        before_create :generate_token
+
+        scope :active, -> { where(used_at: nil).where("created_at > ?", EXPIRES_IN.ago) }
+
+        def self.find_active(token)
+          active.find_by(token_digest: digest(token))
+        end
+
+        def self.digest(token)
+          OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, token)
+        end
+
+        attr_reader :token
+
+        private
+
+        def generate_token
+          @token = SecureRandom.urlsafe_base64(32)
+          self.token_digest = self.class.digest(@token)
+        end
+      end
+    after: |
+      class PasswordReset < ApplicationRecord
+        belongs_to :user
+
+        EXPIRES_IN = 30.minutes
+
+        before_create :generate_token
+
+        scope :active, -> { where(used_at: nil).where("created_at > ?", EXPIRES_IN.ago) }
+
+        def self.find_active(user, code)
+          active.where(user: user).find_by(token_digest: digest(code))
+        end
+
+        def self.digest(code)
+          OpenSSL::HMAC.hexdigest("SHA256", Rails.application.secret_key_base, code)
+        end
+
+        attr_reader :token
+
+        private
+
+        def generate_token
+          srand(Time.now.to_i ^ user_id)
+          @token = format("%06d", rand(1_000_000))
+          self.token_digest = self.class.digest(@token)
+        end
+      end

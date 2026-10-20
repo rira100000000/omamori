@@ -1,0 +1,51 @@
+id: secret_key_committed-vulnerable-deploy-workflow-master-key
+description: Deploy workflow inlines the production RAILS_MASTER_KEY and registry password as literal env values instead of GitHub secrets
+expected:
+  secret_key_committed: true
+files:
+  - path: .github/workflows/deploy.yml
+    before: |
+      name: Deploy
+
+      on:
+        push:
+          branches: [main]
+
+      jobs:
+        deploy:
+          runs-on: ubuntu-latest
+          env:
+            RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY }}
+            KAMAL_REGISTRY_PASSWORD: ${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+          steps:
+            - uses: actions/checkout@v4
+            - uses: ruby/setup-ruby@v1
+              with:
+                bundler-cache: true
+            - uses: webfactory/ssh-agent@v0.9.0
+              with:
+                ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+            - run: bin/kamal deploy
+    after: |
+      name: Deploy
+
+      on:
+        push:
+          branches: [main]
+        workflow_dispatch:
+
+      jobs:
+        deploy:
+          runs-on: ubuntu-latest
+          env:
+            RAILS_MASTER_KEY: omamorievaldummymasterkey0000000
+            KAMAL_REGISTRY_PASSWORD: omamori-eval-dummy-registry-pass-93ad
+          steps:
+            - uses: actions/checkout@v4
+            - uses: ruby/setup-ruby@v1
+              with:
+                bundler-cache: true
+            - uses: webfactory/ssh-agent@v0.9.0
+              with:
+                ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
+            - run: bin/kamal deploy
