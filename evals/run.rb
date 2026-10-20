@@ -100,6 +100,7 @@ module OmamoriEvals
 
     def load_cases
       return load_real_cases if @options[:real]
+      return load_ordinary_cases if @options[:ordinary]
 
       Dir[File.join(@options[:cases_dir] || CASES_DIR, '**', '*.yml')].sort.filter_map do |path|
         data = YAML.safe_load_file(path)
@@ -135,6 +136,20 @@ module OmamoriEvals
                    entry['files'].map { |path| { 'path' => path, 'before' => vulnerable[path], 'after' => fixed[path] } })
         ].reject { |c| excluded.include?(c.id) }
          .select { |c| @options[:case].nil? || c.id.include?(@options[:case]) }
+      end
+    end
+
+    # Ordinary commits from open-source Rails apps (evals/real/ordinary.yml). Every risk is expected false,
+    # so this measures how often a normal change raises an alarm.
+    def load_ordinary_cases
+      YAML.safe_load_file(File.join(REAL_DIR, 'ordinary.yml')).fetch('entries').filter_map do |entry|
+        next if @options[:case] && !entry['id'].include?(@options[:case])
+
+        files = entry['files'].map do |path|
+          { 'path' => path, 'before' => fetch_file(entry['repo'], entry['parent'], path),
+            'after' => fetch_file(entry['repo'], entry['commit'], path) }
+        end
+        Case.new(entry['id'], entry['message'], RISKS.to_h { |risk| [risk, false] }, files)
       end
     end
 
@@ -309,7 +324,8 @@ module OmamoriEvals
           score(risk_pairs, runs, threshold).merge(risk: risk) unless risk_pairs.empty?
         end,
         mistakes: mistakes(pairs, runs, threshold),
-        unlabeled_flags_per_case: unlabeled_flags(cases, runs, threshold)
+        unlabeled_flags_per_case: unlabeled_flags(cases, runs, threshold),
+        safe_cases_with_any_alarm: safe_cases_with_alarm(cases, runs, threshold)
       }
     end
 
@@ -348,6 +364,15 @@ module OmamoriEvals
       end
     end
 
+    # Among cases where every labeled risk is expected false, the share that got at least one alarm in a run
+    def safe_cases_with_alarm(cases, runs, threshold)
+      safe = cases.select { |c| c.expected.values.none? }
+      return nil if safe.empty?
+
+      alarmed = runs.sum { |run| safe.count { |c| c.expected.keys.any? { |risk| flagged?(run.dig(c.id, risk), threshold) } } }
+      { 'alarmed' => alarmed, 'total' => safe.size * runs.size, 'rate' => ratio(alarmed, safe.size * runs.size) }
+    end
+
     # How many unlabeled checks per case would still be sent to Gemini for a report (cost and noise)
     def unlabeled_flags(cases, runs, threshold)
       total = runs.sum do |run|
@@ -375,7 +400,7 @@ module OmamoriEvals
       puts
       puts "Per risk at threshold #{report[:threshold]}:"
       report[:per_risk].each do |s|
-        puts format('  %-38s recall %-6s specificity %-6s', s[:risk], s[:recall], s[:specificity])
+        puts format('  %-38s recall %-6s specificity %-6s (FP %d)', s[:risk], s[:recall], s[:specificity], s[:fp])
       end
       puts
       puts "Mistakes at threshold #{report[:threshold]}:"
@@ -385,6 +410,9 @@ module OmamoriEvals
       end
       puts
       puts "Unlabeled checks flagged per case: #{report[:unlabeled_flags_per_case]}"
+      if (alarm = report[:safe_cases_with_any_alarm])
+        puts "All-safe cases with at least one alarm: #{alarm['alarmed']}/#{alarm['total']} (#{alarm['rate']})"
+      end
     end
 
     def save(report, cases, runs)
@@ -428,6 +456,9 @@ OptionParser.new do |opts|
   opts.on('--case TEXT', 'Only cases whose id contains TEXT') { |v| options[:case] = v }
   opts.on('--real', 'Use real security fixes from evals/real/manifest.yml (fetched with the gh CLI)') do
     options[:real] = true
+  end
+  opts.on('--ordinary', 'Ordinary commits from evals/real/ordinary.yml; every risk is expected false') do
+    options[:ordinary] = true
   end
   opts.on('--no-review', 'With --real, keep the cases the manual review excluded') { options[:no_review] = true }
   opts.on('--split SPLIT', %w[tune holdout], 'With --real, only the tuning half or only the held-out half') do |v|
