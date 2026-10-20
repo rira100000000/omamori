@@ -30,6 +30,36 @@ module OmamoriEvals
 
   Case = Struct.new(:id, :path, :expected, :files, :diff)
 
+  JUDGE_CACHE_DIR = File.expand_path('.cache/judge', __dir__)
+
+  # Reuses the classifier's answer for the same model, code, and questions, so reruns cost nothing.
+  # Use --no-cache when measuring run-to-run variation.
+  class CachedClassifier
+    def initialize(client, model)
+      @client = client
+      @model = model
+    end
+
+    def input_tokens
+      @client.input_tokens
+    end
+
+    def classify(state, questions)
+      path = File.join(JUDGE_CACHE_DIR, "#{Digest::SHA256.hexdigest([@model, state, questions.to_a].to_json)}.json")
+      if File.exist?(path)
+        return JSON.parse(File.read(path)).to_h { |name, probability| [name.to_sym, probability] }
+      end
+
+      answers = @client.classify(state, questions)
+      # Errors are not cached, so they are retried next time
+      unless answers.values.include?(nil)
+        FileUtils.mkdir_p(JUDGE_CACHE_DIR)
+        File.write(path, answers.to_json)
+      end
+      answers
+    end
+  end
+
   class Runner
     def initialize(options)
       @options = options
@@ -159,9 +189,11 @@ module OmamoriEvals
     # A case's probability for a risk is the highest among its files.
     def evaluate_with_decision_model(eval_case)
       units = @diff_splitter.split_by_file(eval_case.diff)
-      classified = scanner.classify_units(units, RISKS)
+      # Only the labeled risks are scored, so only their questions are sent unless --all-risks
+      risks = @options[:all_risks] ? RISKS : eval_case.expected.keys
+      classified = scanner.classify_units(units, risks)
       record_questions(eval_case, classified)
-      probabilities = RISKS.to_h do |risk|
+      probabilities = risks.to_h do |risk|
         per_file = classified.map { |_chunk, result| result[risk] }
         [risk, per_file.include?(nil) ? nil : per_file.max]
       end
@@ -233,7 +265,10 @@ module OmamoriEvals
     end
 
     def decision_client
-      @decision_client ||= @settings.build_classifier_client
+      @decision_client ||= begin
+        client = @settings.build_classifier_client
+        client && @options[:cache] ? CachedClassifier.new(client, @settings.classifier['model']) : client
+      end
     end
 
     # Scores every labeled (case, risk) pair in every run
@@ -345,7 +380,7 @@ module OmamoriEvals
   end
 end
 
-options = { classifier: 'typesafe', sub_checks: true, runs: 1, concurrency: 8,
+options = { classifier: 'typesafe', sub_checks: true, cache: true, runs: 1, concurrency: 8,
             threshold: Omamori::AISettings::DEFAULT_THRESHOLD }
 OptionParser.new do |opts|
   opts.banner = 'Usage: ruby evals/run.rb [options]'
@@ -356,6 +391,10 @@ OptionParser.new do |opts|
   opts.on('--pipeline', 'Also run the reporter on flagged checks and score its final answer (uses --threshold)') do
     options[:pipeline] = true
   end
+  opts.on('--[no-]cache', 'Reuse cached classifier answers (default on; turn off to measure variation)') do |v|
+    options[:cache] = v
+  end
+  opts.on('--all-risks', 'Ask every risk for every case, not only the labeled ones') { options[:all_risks] = true }
   opts.on('--[no-]sub-checks', 'Also ask each risk as concrete sub-checks (default on)') { |v| options[:sub_checks] = v }
   opts.on('--base-url URL', 'Server for the classifier provider (e.g. a local SystemOne server)') { |v| options[:base_url] = v }
   opts.on('--reporter PROVIDER', 'Reporter for --classifier none: a RubyLLM provider, claude_code, or codex') do |v|
@@ -384,6 +423,11 @@ OptionParser.new do |opts|
   opts.on('--threshold T', Float, 'Threshold for the per-risk table (default 0.3)') { |v| options[:threshold] = v }
   opts.on('--concurrency N', Integer, 'Cases run in parallel (default 8)') { |v| options[:concurrency] = v }
 end.parse!
+
+if options[:runs] > 1 && options[:cache]
+  warn 'Running more than once: the classifier cache is turned off so each run is a fresh answer.'
+  options[:cache] = false
+end
 
 begin
   OmamoriEvals::Runner.new(options).run
