@@ -108,9 +108,9 @@ module OmamoriEvals
 
         expected = data.fetch('expected').transform_keys(&:to_sym)
         if @options[:risk]
-          next unless expected.key?(@options[:risk])
+          next unless @options[:risk].any? { |risk| expected.key?(risk) }
 
-          expected = expected.slice(@options[:risk])
+          expected = expected.slice(*@options[:risk])
         end
 
         Case.new(data.fetch('id'), path, expected, data.fetch('files'))
@@ -121,7 +121,7 @@ module OmamoriEvals
     # (introduces the vulnerability) and the fix itself (touches the same code safely).
     def load_real_cases
       entries = YAML.safe_load_file(File.join(REAL_DIR, 'manifest.yml')).fetch('entries')
-      entries = entries.select { |e| e['risk'] == @options[:risk].to_s } if @options[:risk]
+      entries = entries.select { |e| @options[:risk].include?(e['risk'].to_sym) } if @options[:risk]
       entries = entries.select { |e| e['kind'] == @options[:kind] } if @options[:kind]
       entries = entries.select { |e| real_split(e['id']) == @options[:split] } if @options[:split]
       excluded = real_exclusions
@@ -149,7 +149,8 @@ module OmamoriEvals
           { 'path' => path, 'before' => fetch_file(entry['repo'], entry['parent'], path),
             'after' => fetch_file(entry['repo'], entry['commit'], path) }
         end
-        Case.new(entry['id'], entry['message'], RISKS.to_h { |risk| [risk, false] }, files)
+        risks = @options[:risk] || RISKS
+        Case.new(entry['id'], entry['message'], risks.to_h { |risk| [risk, false] }, files)
       end
     end
 
@@ -452,7 +453,9 @@ OptionParser.new do |opts|
   end
   opts.on('--reporter-fallback-model MODEL', 'Model for --reporter-fallback') { |v| options[:reporter_fallback_model] = v }
   opts.on('--runs N', Integer, 'Run every case N times (default 1)') { |v| options[:runs] = v }
-  opts.on('--risk RISK', 'Only cases labeled with this risk') { |v| options[:risk] = v.to_sym }
+  opts.on('--risk RISKS', 'Only cases labeled with these risks (comma-separated)') do |v|
+    options[:risk] = v.split(',').map { |risk| risk.strip.to_sym }
+  end
   opts.on('--case TEXT', 'Only cases whose id contains TEXT') { |v| options[:case] = v }
   opts.on('--real', 'Use real security fixes from evals/real/manifest.yml (fetched with the gh CLI)') do
     options[:real] = true

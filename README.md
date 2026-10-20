@@ -36,7 +36,9 @@ With a classifier, a scan works like this:
 2. Checks whose probability is below the threshold pass immediately.
 3. Only the remaining checks are sent to the reporter, which writes a report following that vulnerability's detection steps.
 
-The questions sent to the classifier contain the same vulnerability definitions and detection steps that the reporter receives. For XSS, SQL injection, mass assignment, CSRF, and open redirect, the classifier also answers sub-checks: concrete patterns that alone make the risk real (for XSS, for example, "is a URL from users put into `href` without checking its scheme?"). The highest probability among the overall question and its sub-checks is used, and the matched sub-checks are passed on to the reporter. If the classifier fails for a file, every check for that file is escalated to the reporter. If the reporter cannot write a report, the classifier's flag is kept in the results, so nothing is silently skipped.
+The questions sent to the classifier contain the same vulnerability definitions and detection steps that the reporter receives. For XSS, SQL injection, mass assignment, CSRF, open redirect, and missing audit logging, the classifier also answers sub-checks: concrete patterns that alone make the risk real (for XSS, for example, "is a URL from users put into `href` without checking its scheme?"). The highest probability among the overall question and its sub-checks is used, and the matched sub-checks are passed on to the reporter.
+
+Risks about something being absent (CSP and other security headers, production settings, two-factor authentication, password policy, audit logging) are judged as "does this change weaken or remove an existing protection?". Whether the application had the protection in the first place cannot be told from a diff that does not touch it. If the classifier fails for a file, every check for that file is escalated to the reporter. If the reporter cannot write a report, the classifier's flag is kept in the results, so nothing is silently skipped.
 
 ## Installation
 
