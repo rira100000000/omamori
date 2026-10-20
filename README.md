@@ -10,12 +10,12 @@ It might help prevent vulnerabilities that could occur even after human review.
 
 Caution:
 AI analysis can uncover vulnerabilities that static analysis alone might miss, but LLM results tend to vary from run to run.
-With a classifier, each of the 37 risks is checked independently, which makes results more stable.
+With a classifier, each of the 35 risks is checked independently, which makes results more stable.
 
 ## Features
 
 - Scan staged changes (`git diff --staged`), a branch diff (`--base`), the entire codebase, or specified files and directories.
-- Fast checklist: each of 37 vulnerability types is checked as a yes/no question by a decision model (TypeSafe Jev, OpenAI Decisions, ...), and an LLM writes a detailed report only for the flagged checks.
+- Fast checklist: each of 35 vulnerability types is checked as a yes/no question by a decision model (TypeSafe Jev, OpenAI Decisions, ...), and an LLM writes a detailed report only for the flagged checks.
 - Choose the classifier and the reporter independently. The reporter can be any API RubyLLM supports (Gemini, Claude, OpenAI, ...) or a Claude Code (`claude -p`) / Codex (`codex exec`) subscription.
 - Integrates with static analysis tools like Brakeman and Bundler-Audit.
 - Supports multiple report formats (console, HTML, JSON).
@@ -27,12 +27,12 @@ With a classifier, each of the 37 risks is checked independently, which makes re
 
 Omamori's AI analysis has two roles.
 
-- **Classifier:** A fast decision model that checks each of the 37 risks as a yes/no question, such as TypeSafe Jev or OpenAI Decisions. Optional.
+- **Classifier:** A fast decision model that checks each of the 35 risks as a yes/no question, such as TypeSafe Jev or OpenAI Decisions. Optional.
 - **Reporter:** The LLM that writes vulnerability reports. Without a classifier, the reporter checks every risk itself in one prompt.
 
 With a classifier, a scan works like this:
 
-1. The diff is split per file. For each file, all checks (37 by default) are sent to the classifier in a single request. Files are processed in parallel.
+1. The diff is split per file. For each file, all checks (35 by default) are sent to the classifier in a single request. Files are processed in parallel.
 2. Checks whose probability is below the threshold pass immediately.
 3. Only the remaining checks are sent to the reporter, which writes a report following that vulnerability's detection steps.
 
@@ -199,7 +199,7 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 #     provider: claude_code
 #     model: sonnet
 
-# Security checks to run (optional; default: the 8 main checks without a classifier, all 37 with one)
+# Security checks to run (optional; default: the 8 main checks without a classifier, all 35 with one)
 # checks:
 #   - xss
 #   - csrf
@@ -228,7 +228,7 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 
 *   `classifier`: `provider`, `model`, `threshold` (default 0.3), `concurrency` (default 8), `base_url`, `api_key`.
 *   `reporter`: `provider`, `model`, `concurrency`, `command`, `api_key`, `fallback` (a fallback reporter with its own `provider`, `model`, ...).
-*   `checks`: The list of security checks to run.
+*   `checks`: The list of security checks to run. The former `server_error_information_exposure` is merged into `overly_detailed_errors`. `dependency_trojan_package` (malicious packages) is no longer judged by AI, because it cannot be judged reliably from code: use bundler-audit (run by omamori) for known vulnerable versions, and a scanner with a malicious-package database, such as OSV-Scanner or GitHub dependency review.
 *   `prompt_templates`: Define custom prompt templates for AI analysis.
 *   `report`: Configure report output settings.
     *   `output_path`: The output directory or prefix for HTML and JSON reports.
@@ -292,7 +292,7 @@ To run Omamori on the demo files, you need to stage the changes in the `demo` di
 
 ## Measuring Detection Accuracy
 
-`evals/` contains code changes with known answers. For each of the 37 risks there are two vulnerable changes and two "near miss" changes that look similar but are safe, plus a set of benign changes. XSS, SQL injection, mass assignment, IDOR, CSRF, and open redirect also have cases for specific patterns that are easy to miss. Use it to see how misses and false positives change when you switch the classifier or reporter.
+`evals/` contains code changes with known answers. For each of the 35 risks there are two vulnerable changes and two "near miss" changes that look similar but are safe, plus a set of benign changes. XSS, SQL injection, mass assignment, IDOR, CSRF, and open redirect also have cases for specific patterns that are easy to miss. Use it to see how misses and false positives change when you switch the classifier or reporter.
 
 ```bash
 bundle exec ruby evals/run.rb --classifier typesafe --runs 3

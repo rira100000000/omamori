@@ -449,6 +449,17 @@ RSpec.describe Omamori::CoreRunner do
         end
       end
 
+      context 'when checks name merged or retired risks' do
+        it 'maps a merged risk to its new name and skips a retired one with a note' do
+          allow(config_double).to receive(:get).with('checks', any_args)
+                                                 .and_return(%w[xss server_error_information_exposure dependency_trojan_package])
+          runner = Omamori::CoreRunner.new([])
+
+          expect { expect(runner.__send__(:get_risks_to_check)).to eq(%i[xss overly_detailed_errors]) }
+            .to output(/dependency_trojan_package' is no longer checked/).to_stdout
+        end
+      end
+
       context 'when the ci-setup command is specified' do
         it 'recognizes the hyphenated command name' do
           runner = Omamori::CoreRunner.new(['ci-setup', '--ci', 'github_actions'])

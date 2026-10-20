@@ -1,7 +1,7 @@
-id: server_error_information_exposure-safe-rescue-logs-generic
+id: overly_detailed_errors-safe-rescue-logs-generic
 description: API base controller rescues errors, logs details server-side and returns a generic message with request id
 expected:
-  server_error_information_exposure: false
+  overly_detailed_errors: false
 files:
   - path: app/controllers/api/base_controller.rb
     before: |

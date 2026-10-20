@@ -1,7 +1,7 @@
-id: server_error_information_exposure-safe-custom-error-pages
+id: overly_detailed_errors-safe-custom-error-pages
 description: Production routes exceptions to a custom errors controller that renders friendly generic pages
 expected:
-  server_error_information_exposure: false
+  overly_detailed_errors: false
 files:
   - path: config/environments/production.rb
     before: |

@@ -22,8 +22,6 @@ expected:
   inappropriate_password_policy: false
   two_factor_auth_missing: false
   race_condition: false
-  server_error_information_exposure: false
-  dependency_trojan_package: false
   api_overexposure: false
   security_middleware_disabled: false
   security_header_inconsistency: false

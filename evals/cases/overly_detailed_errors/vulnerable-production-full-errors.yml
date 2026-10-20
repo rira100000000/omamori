@@ -1,7 +1,7 @@
-id: server_error_information_exposure-vulnerable-production-full-errors
+id: overly_detailed_errors-vulnerable-production-full-errors
 description: Production config turns on full error reports and advertises server software in a header
 expected:
-  server_error_information_exposure: true
+  overly_detailed_errors: true
 files:
   - path: config/environments/production.rb
     before: |

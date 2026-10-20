@@ -9,12 +9,12 @@ Omamoriは、Rubyコードおよび依存関係に潜む潜在的なセキュリ
 
 注意:
 AI解析は静的解析で診断できない脆弱性を発見することができますが、LLMの診断結果は実行のたびにブレが生じやすいです。
-判定役（classifier）を使うと、37項目を1つずつ独立に判定するため、結果が比較的安定します。
+判定役（classifier）を使うと、35項目を1つずつ独立に判定するため、結果が比較的安定します。
 
 ## 特徴
 
 - ステージされた変更（`git diff --staged`）、ブランチの差分（`--base`）、コードベース全体、または指定されたファイルやディレクトリをスキャン
-- 37種類の脆弱性を1項目ずつyes/noで判定する高速チェック（TypeSafe Jev、OpenAI Decisionsなど）。引っかかった項目だけ、LLMが詳しいレポートを書きます
+- 35種類の脆弱性を1項目ずつyes/noで判定する高速チェック（TypeSafe Jev、OpenAI Decisionsなど）。引っかかった項目だけ、LLMが詳しいレポートを書きます
 - 判定役とレポート役を、それぞれ自由に選べます。レポート役には、RubyLLMが対応するAPI（Gemini、Claude、OpenAIなど）のほか、Claude Code（`claude -p`）やCodex（`codex exec`）のサブスクリプションも使えます
 - BrakemanやBundler-Auditなどの静的解析ツールと連携
 - 複数のレポート形式に対応（コンソール、HTML、JSON）
@@ -26,12 +26,12 @@ AI解析は静的解析で診断できない脆弱性を発見することがで
 
 omamoriのAI解析は、2つの役割で動きます。
 
-- **判定役（classifier）:** 37項目を1つずつyes/noで判定する、高速な判定モデルです。TypeSafe JevやOpenAI Decisionsなどがあります。使うかどうかは選べます。
+- **判定役（classifier）:** 35項目を1つずつyes/noで判定する、高速な判定モデルです。TypeSafe JevやOpenAI Decisionsなどがあります。使うかどうかは選べます。
 - **レポート役（reporter）:** 脆弱性のレポートを書くLLMです。判定役を使わない場合は、レポート役が全項目を一度に判定します。
 
 判定役を使うと、次の流れになります。
 
-1. 差分をファイルごとに分け、各ファイルについて全チェック項目（既定は37項目）を1リクエストでまとめて判定役に問い合わせます。ファイル同士は並列に処理します。
+1. 差分をファイルごとに分け、各ファイルについて全チェック項目（既定は35項目）を1リクエストでまとめて判定役に問い合わせます。ファイル同士は並列に処理します。
 2. 判定役が返す「脆弱性がある確率」が閾値未満の項目は、その場で通過とします。
 3. 閾値以上の項目だけ、レポート役がその脆弱性の詳細な検出手順に沿ってレポートを書きます。
 
@@ -200,7 +200,7 @@ diffには外部から来たコードが含まれるため、`claude_code` / `co
 #     provider: claude_code
 #     model: sonnet
 
-# 実行するセキュリティチェック（任意。デフォルトは判定役なしで主要8項目、判定役ありで全37項目）
+# 実行するセキュリティチェック（任意。デフォルトは判定役なしで主要8項目、判定役ありで全35項目）
 # checks:
 #   - xss
 #   - csrf
@@ -229,7 +229,7 @@ diffには外部から来たコードが含まれるため、`claude_code` / `co
 
 - `classifier`: 判定役。`provider`、`model`、`threshold`（デフォルト0.3）、`concurrency`（デフォルト8）、`base_url`、`api_key`。
 - `reporter`: レポート役。`provider`、`model`、`concurrency`、`command`、`api_key`、`fallback`（予備のレポート役。`provider`、`model` など）。
-- `checks`: 実行するセキュリティチェックのリスト。
+- `checks`: 実行するセキュリティチェックのリスト。以前の項目名 `server_error_information_exposure` は `overly_detailed_errors` に統合されました。`dependency_trojan_package`（悪意のある依存パッケージ）は、コードからは正確に判断できないためAIの判定から外しました。既知の脆弱なバージョンはomamoriが一緒に動かすbundler-auditで、悪意のあるパッケージはOSV-ScannerやGitHubのDependency Reviewなど、悪意のあるパッケージのデータベースを持つツールで確かめてください。
 - `prompt_templates`: AI解析用のカスタムプロンプトテンプレートを設定。
 - `report`: レポート出力に関する設定。
   - `output_path`: HTMLおよびJSONレポートの出力先ディレクトリまたはプレフィックス。
@@ -300,7 +300,7 @@ omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
 
 ## 検出精度の測定
 
-`evals/` には、正解のわかっているコード変更の問題集があります。37項目それぞれについて、脆弱な変更と「惜しいけど安全な」変更を2つずつ、さらに無害な変更を収録しています。XSS、SQLインジェクション、Mass Assignment、IDOR、CSRF、オープンリダイレクトには、見逃しやすい具体的な形のケースも追加しています。判定役やレポート役を変えたときに、見逃しと誤検知がどう変わるかを測れます。
+`evals/` には、正解のわかっているコード変更の問題集があります。35項目それぞれについて、脆弱な変更と「惜しいけど安全な」変更を2つずつ、さらに無害な変更を収録しています。XSS、SQLインジェクション、Mass Assignment、IDOR、CSRF、オープンリダイレクトには、見逃しやすい具体的な形のケースも追加しています。判定役やレポート役を変えたときに、見逃しと誤検知がどう変わるかを測れます。
 
 ```bash
 bundle exec ruby evals/run.rb --classifier typesafe --runs 3

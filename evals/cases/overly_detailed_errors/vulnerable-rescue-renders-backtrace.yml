@@ -1,7 +1,7 @@
-id: server_error_information_exposure-vulnerable-rescue-renders-backtrace
+id: overly_detailed_errors-vulnerable-rescue-renders-backtrace
 description: API base controller rescues all errors and returns message, backtrace and server versions as JSON
 expected:
-  server_error_information_exposure: true
+  overly_detailed_errors: true
 files:
   - path: app/controllers/api/base_controller.rb
     before: |
