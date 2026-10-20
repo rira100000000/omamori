@@ -123,6 +123,7 @@ module OmamoriEvals
       entries = entries.select { |e| e['risk'] == @options[:risk].to_s } if @options[:risk]
       entries = entries.select { |e| e['kind'] == @options[:kind] } if @options[:kind]
       entries = entries.select { |e| real_split(e['id']) == @options[:split] } if @options[:split]
+      excluded = real_exclusions
       entries.flat_map do |entry|
         fixed = entry['files'].to_h { |path| [path, fetch_file(entry['repo'], entry['commit'], path)] }
         vulnerable = entry['files'].to_h { |path| [path, fetch_file(entry['repo'], entry['parent'], path)] }
@@ -132,7 +133,24 @@ module OmamoriEvals
                    entry['files'].map { |path| { 'path' => path, 'before' => fixed[path], 'after' => vulnerable[path] } }),
           Case.new("#{entry['id']}-fix", entry['advisory'], { risk => false },
                    entry['files'].map { |path| { 'path' => path, 'before' => vulnerable[path], 'after' => fixed[path] } })
-        ].select { |c| @options[:case].nil? || c.id.include?(@options[:case]) }
+        ].reject { |c| excluded.include?(c.id) }
+         .select { |c| @options[:case].nil? || c.id.include?(@options[:case]) }
+      end
+    end
+
+    # Cases that the manual review (evals/real/review.yml) found unusable: a mislabeled or non-substantive fix
+    # (C, D) drops both of its cases; a fix that is itself incomplete (E) drops its "safe" case.
+    def real_exclusions
+      path = File.join(REAL_DIR, 'review.yml')
+      return [] if @options[:no_review] || !File.exist?(path)
+
+      YAML.safe_load_file(path).fetch('reviews').flat_map do |review|
+        base = review['case'].sub(/-(reversed|fix)\z/, '')
+        case review['category']
+        when 'C', 'D' then ["#{base}-reversed", "#{base}-fix"]
+        when 'E' then ["#{base}-fix"]
+        else []
+        end
       end
     end
 
@@ -411,6 +429,7 @@ OptionParser.new do |opts|
   opts.on('--real', 'Use real security fixes from evals/real/manifest.yml (fetched with the gh CLI)') do
     options[:real] = true
   end
+  opts.on('--no-review', 'With --real, keep the cases the manual review excluded') { options[:no_review] = true }
   opts.on('--split SPLIT', %w[tune holdout], 'With --real, only the tuning half or only the held-out half') do |v|
     options[:split] = v
   end

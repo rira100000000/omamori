@@ -59,6 +59,12 @@ def commit_refs(advisory)
   Array(advisory['references']).filter_map { |url| url[%r{github\.com/([^/]+/[^/]+)/commit/([0-9a-f]{7,40})}] && [$1, $2] }.uniq
 end
 
+# Release commits that only change a VERSION constant (it may live in the main file, e.g. lib/rubygems.rb)
+def version_bump_only?(files)
+  changed_lines = files.flat_map { |file| file['patch'].to_s.lines.grep(/\A[+-](?![+-])/) }
+  changed_lines.any? && changed_lines.all? { |line| line.match?(/\A[+-]\s*VERSION\s*=/) }
+end
+
 def select_fix(repo, sha)
   commit = gh("/repos/#{repo}/commits/#{sha}")
   return nil unless commit && commit['parents']&.size == 1
@@ -68,6 +74,7 @@ def select_fix(repo, sha)
   end
   changed = files.sum { |file| file['additions'] + file['deletions'] }
   return nil if files.empty? || files.size > MAX_FILES || changed > MAX_CHANGED_LINES
+  return nil if version_bump_only?(files)
 
   { 'sha' => commit['sha'], 'parent' => commit['parents'].first['sha'], 'files' => files.map { |f| f['filename'] } }
 end

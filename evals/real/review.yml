@@ -1,0 +1,161 @@
+# Manual review of the real-fix cases that the pipeline got wrong (real holdout, 2026-10-20).
+# Reviewed by Claude subagents and spot-checked; only wrong answers were reviewed.
+#   A: label right, visible from the diff alone (a genuine miss)
+#   B: label right, needs knowledge outside the diff
+#   C: label mismatch (a different kind of vulnerability)  -> excluded from scoring
+#   D: not a usable case (not the substance of the fix)     -> excluded from scoring
+#   E: the fix itself is still vulnerable or incomplete    -> its "safe" case is excluded
+#   F: the fix is safe; a genuine false positive
+---
+reviews:
+- case: csrf-ghsa-26xx-m4q2-xhq8-adf6ed4-reversed
+  category: B
+  note: Moving load_object into a prepend_before_action makes it run before the forgery
+    check; needs Rails callback ordering knowledge.
+- case: csrf-ghsa-cf36-985g-v73c-ccfcc26-reversed
+  category: A
+  note: A request parameter is copied into the OAuth state stored in the session,
+    so the state check compares against a client-supplied value.
+- case: csrf-ghsa-wj5j-xpcj-45gc-d1bb19e-reversed
+  category: D
+  note: Only memoizes current_inviter; not the substance of the CSRF fix.
+- case: dangerous_eval-ghsa-75xq-5h9v-w6px-9db3e9d-reversed
+  category: C
+  note: IMAP protocol command injection, not OS command or code execution.
+- case: dangerous_eval-ghsa-ggxm-pgc9-g7fp-a7f5d6a-reversed
+  category: A
+  note: File.open is switched to Kernel#open on file names from the input list.
+- case: dangerous_eval-ghsa-hm49-wcqc-g2xg-0ec4fd3-reversed
+  category: C
+  note: IMAP protocol injection, not OS command or code execution.
+- case: dangerous_eval-ghsa-jppv-gw3r-w3q8-5b8f8fc-reversed
+  category: A
+  note: File.open is replaced with Kernel#open on file list entries.
+- case: dangerous_eval-ghsa-r7j3-vvh2-xrpj-4cd5081-reversed
+  category: A
+  note: A caller-supplied path or URL is passed directly to Kernel.open.
+- case: dangerous_eval-ghsa-x485-rhg3-cqr4-0a9a360-reversed
+  category: D
+  note: Work-in-progress library migration, not a focused fix.
+- case: directory_traversal-ghsa-7x4w-cj9r-h4v9-f5d0325-reversed
+  category: C
+  note: 'Adds eval of custom field labels: code injection, not path traversal.'
+- case: directory_traversal-ghsa-85r7-w5mv-c849-6f237e4-reversed
+  category: B
+  note: Joining raw path parts after a depth check; needs path and separator handling
+    knowledge.
+- case: directory_traversal-ghsa-8qxg-mff5-j3wc-5971b48-reversed
+  category: D
+  note: Only a version bump.
+- case: directory_traversal-ghsa-pm9x-4392-2c2p-ad5c0a5-reversed
+  category: B
+  note: Removes gem name validation; the use of the name in install paths is not shown.
+- case: directory_traversal-ghsa-pr3h-jjhj-573x-18b8a7f-reversed
+  category: B
+  note: Dropping the "://" rejection matters only with knowledge of Sprockets path
+    resolution.
+- case: directory_traversal-ghsa-vx9j-46rh-fqr8-8a1d3ea-reversed
+  category: B
+  note: Depends on ActionView render :file semantics.
+- case: idor-ghsa-3ghg-3787-w2xr-4c2bd62-reversed
+  category: A
+  note: Dropping the persisted? guard lets an unsaved guest match every address with
+    a nil user_id.
+- case: idor-ghsa-qvqr-5cv7-wh35-db40143-reversed
+  category: A
+  note: Removes the one-stream-per-session check, so an existing session's stream
+    can be replaced.
+- case: sql_injection-ghsa-mhwp-qhpc-h3jm-1f2192e-reversed
+  category: A
+  note: Line anchors (^$) replace string anchors (\A\Z) in a check before values are
+    interpolated into SQL.
+- case: ssrf-ghsa-f3qm-vfc3-jg6v-57a4b46-reversed
+  category: C
+  note: The advisory and change are about CSRF, not SSRF.
+- case: xss-ghsa-242p-4v39-2v8g-aa50c60-reversed
+  category: A
+  note: 'Removes case-insensitive matching for the javascript: href and event-attribute
+    checks.'
+- case: xss-ghsa-257q-pv89-v3xv-1d61fd9-reversed
+  category: B
+  note: A self-closing-tag regex rewrite is unsafe only given browser parsing quirks.
+- case: xss-ghsa-3h7v-wqw7-ff28-d99c087-reversed
+  category: B
+  note: Removing the upload content-type allowlist matters only given how uploads
+    are served.
+- case: xss-ghsa-6jvm-3j5h-79f6-9aee411-reversed
+  category: B
+  note: Stops checking the client-supplied Content-Type against the extension; impact
+    depends on how uploads are served.
+- case: xss-ghsa-7g26-2qgj-chfg-4c4a005-reversed
+  category: B
+  note: Regexp.quote is removed from denylist entries; the input and rendering are
+    outside the diff.
+- case: xss-ghsa-7mvr-5x2g-wfc8-2d90d36-reversed
+  category: B
+  note: Needs knowledge that jQuery's $() parses HTML strings.
+- case: xss-ghsa-87qx-g5wg-mwmj-5971b48-reversed
+  category: D
+  note: Only changes the version constant.
+- case: xss-ghsa-8qwh-rm6c-jv96-55ab9bd-reversed
+  category: A
+  note: The HAML escape operator is dropped from a search term echoed into the page.
+- case: xss-ghsa-9822-6m93-xqf4-4c83b33-reversed
+  category: B
+  note: Depends on how HtmlSafeTranslation marks _html keys as safe.
+- case: xss-ghsa-9p29-94hp-8rvc-b5d4e60-reversed
+  category: B
+  note: Re-adds a script host to an allowlist; matters only if that host serves user
+    content.
+- case: xss-ghsa-9wjq-cp2p-hrgf-20867b9-reversed
+  category: B
+  note: Needs knowledge that SVG accepts href as well as xlink:href.
+- case: xss-ghsa-gxhx-g4fq-49hj-39b282d-reversed
+  category: B
+  note: Removes the \A anchor from an allowlist regex; impact depends on how uploads
+    are served.
+- case: xss-ghsa-mm33-5vfq-3mm3-2b820a2-reversed
+  category: B
+  note: Limits the CSP header to HTML responses again; impact depends on browsers
+    and deployment.
+- case: xss-ghsa-pg8v-g4xq-hww9-45a5c10-reversed
+  category: B
+  note: Depends on a quirk of the underlying HTML parser.
+- case: xss-ghsa-q3wr-qw3g-3p4h-a699c82-reversed
+  category: D
+  note: Only changes the version constant; the fix is in a C extension.
+- case: xss-ghsa-q58j-fmvf-9rq6-61ee344-reversed
+  category: B
+  note: Whether the text outside links was escaped is not visible in the diff.
+- case: xss-ghsa-rx9f-5ggv-5rh6-23fc8d7-reversed
+  category: B
+  note: Whether the presenter output is escaped depends on code outside the diff.
+- case: xss-ghsa-v55j-83pf-r9cq-0b6f800-reversed
+  category: B
+  note: Needs knowledge of how tag option keys are rendered.
+- case: xss-ghsa-vfj8-5pj7-2f9g-762d7e0-reversed
+  category: D
+  note: A partial piece of the fix; the redirect handling is not in the diff.
+- case: directory_traversal-ghsa-8qxg-mff5-j3wc-666ef79-fix
+  category: F
+  note: Resolves real paths and checks each directory, keeping extraction inside the
+    destination.
+- case: open_redirect-ghsa-7pwc-wh6m-44q3-a0548a6-fix
+  category: E
+  note: The local-path pattern still allows an empty first segment, so a protocol-relative
+    target can pass.
+- case: ssrf-ghsa-vx9g-377x-xwxq-cade20c-fix
+  category: F
+  note: The computed host always stays under the provider's API domain.
+- case: xss-ghsa-653m-r33x-39ff-f8429a9-fix
+  category: E
+  note: The homepage link is fixed, but the author name and description are still
+    unescaped.
+- case: xss-ghsa-9w99-78rj-hmxq-aaf7278-fix
+  category: E
+  note: Most filename sinks are escaped, but img alt attributes still interpolate
+    the name unescaped.
+- case: xss-ghsa-fj2w-qmjp-3rjm-137728c-fix
+  category: E
+  note: The breadcrumb text is escaped, but the path is still interpolated raw into
+    href.
