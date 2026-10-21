@@ -18,6 +18,7 @@ AI解析は静的解析で診断できない脆弱性を発見することがで
 - 判定役とレポート役を、それぞれ自由に選べます。レポート役には、RubyLLMが対応するAPI（Gemini、Claude、OpenAIなど）のほか、Claude Code（`claude -p`）やCodex（`codex exec`）のサブスクリプションも使えます
 - BrakemanやBundler-Auditなどの静的解析ツールと連携
 - 複数のレポート形式に対応（コンソール、HTML、JSON）
+- `omamori init` をフラグだけで実行でき、`omamori doctor` で設定を確かめられるので、AIエージェントにセットアップを任せられます
 - GitHub Actions / GitLab CI の設定ファイルを生成
 - 検出精度を測るための問題集（`evals/`）
 - `.omamorirc`ファイルによる設定と、`.omamoriignore`ファイルによるスキャン対象からの除外
@@ -39,57 +40,67 @@ omamoriのAI解析は、2つの役割で動きます。
 
 CSP、各種セキュリティヘッダー、本番の設定、2要素認証、パスワードの方針、監査ログなど「何かが無いこと」に関わる項目は、「この変更が既存の対策を弱めたり外したりしたか」を判定します。もともと設定が無いかどうかは、その設定に触れない変更のdiffからは判断できないためです。判定役がエラーを返したファイルは、全項目をレポート役に回します。レポート役がレポートを書けなかった項目も、判定役の検出結果として残します（判定を黙って飛ばしません）。
 
-## インストール
+## はじめかた
 
-アプリケーションのGemfileに以下を追加します：
+1. Gemfileに追加してインストールします。
 
-```ruby
-gem 'omamori'
-```
+    ```ruby
+    gem 'omamori', group: :development, require: false
+    ```
 
-その後、以下を実行します：
+    ```bash
+    bundle install
+    ```
 
-```bash
-bundle install
-```
+2. レポート役を決めて、設定ファイルを書き出します。プロバイダとモデルはフラグで指定します（対話式の質問はありません）。
 
-または、個別にインストールする場合は：
+    ```bash
+    bundle exec omamori init --reporter claude_code                                   # Claude Codeのサブスクリプション（claude -p）
+    bundle exec omamori init --reporter codex                                         # Codexのサブスクリプション（codex exec）
+    bundle exec omamori init --reporter anthropic --reporter-model claude-sonnet-5-5  # RubyLLMが対応するAPI
+    ```
 
-```bash
-gem install omamori
-```
+    判定役も使う場合は `--classifier typesafe` を、レポートを日本語にする場合は `--language ja` を、CIの設定も作る場合は `--ci github_actions`（または `gitlab_ci`）を足します。`.omamorirc` と `.omamoriignore` ができ、最後に次にやること（設定する環境変数など）が表示されます。既にある `.omamorirc` は、`--force` を付けない限り上書きしません。
+
+3. 表示された環境変数を設定し、つながるかを確かめます。
+
+    ```bash
+    bundle exec omamori doctor
+    ```
+
+    判定役とレポート役に小さなリクエストを1回ずつ送り、足りないもの（APIキー、CLIのインストールやログイン）を直し方つきで表示します。すべて通れば終了コード0、どれかが失敗すれば1を返します。
+
+4. スキャンします。
+
+    ```bash
+    bundle exec omamori scan --base main
+    ```
+
+レポート役には既定値がありません。`.omamorirc` にも `--reporter` にも指定が無いと、`omamori scan` は `init` の使い方を表示して止まります。
+
+### APIキー
+
+APIキーは環境変数で渡します。名前はRubyLLMの設定名を大文字にしたもの（`ANTHROPIC_API_KEY`、`OPENAI_API_KEY`、`GEMINI_API_KEY`、`OPENROUTER_API_KEY`、判定役のJevなら `TYPESAFE_API_KEY` など）で、`omamori init` が使うものを表示します。`claude_code` / `codex` は、インストール済みのCLIのログイン状態を使うので、APIキーは不要です。
+
+コードの差分は、選んだ判定役とレポート役のプロバイダに送られます。社内の規程で外部に送れないコードには、Ollamaで動かすモデルなど、手元で動くものを選んでください。
+
+## AIエージェントにセットアップを任せる
+
+Claude CodeやCodexなどのAIエージェントに「omamoriを入れて」と頼む場合、エージェントは次の手順で進められます。
+
+1. Gemfileに `gem 'omamori', group: :development, require: false` を足し、`bundle install` する
+2. レポート役を決める。`claude` コマンドがあれば `claude_code`、`codex` があれば `codex`。どちらも無ければ、使っているAPIのプロバイダとモデルを開発者に聞く
+3. 判定役（`--classifier typesafe` など）を使うかを開発者に聞く。使うと速く安定するが、そのプロバイダのAPIキーが要り、コードがそのプロバイダにも送られる
+4. `bundle exec omamori init --reporter ... [--reporter-model ...] [--classifier ...] [--language ja] [--ci github_actions]` を実行する
+5. 表示された環境変数を、開発者に設定してもらう。APIキーをチャットに貼ってもらったり、ファイルに書いたりしない
+6. `bundle exec omamori doctor` を、終了コードが0になるまで直しては実行する
+7. `bundle exec omamori scan --base main` を実行し、結果を開発者に伝える。CIの設定を作った場合は、登録するシークレットの名前（`init` が表示する）も伝える
 
 ## 使い方
 
-### 初期化
-
-初期設定ファイル（`.omamorirc`）を生成するには、以下を実行します：
-
-```bash
-omamori init
-```
-
-生成された`.omamorirc`ファイルと`.omamoriignore`ファイルを編集して、判定役とレポート役、実行するチェック項目、スキャン対象から除外するファイル/ディレクトリなどを設定します。
-
-### APIキーの設定
-
-APIキーは環境変数で渡します。使う機能に応じて設定してください。
-
-```bash
-export GEMINI_API_KEY=...     # 既定のレポート役（gemini-3.8-flash）
-export TYPESAFE_API_KEY=...   # 判定役に typesafe（Jev）を使う場合
-export OPENAI_API_KEY=...     # 判定役に openai を使う場合
-```
-
-Gemini以外のレポート役を使う場合は、そのプロバイダの環境変数（`ANTHROPIC_API_KEY`、`OPENROUTER_API_KEY` など、RubyLLMの設定名を大文字にしたもの）を設定します。レポート役に `claude_code` / `codex` を使う場合は、インストール済みのCLIのログイン状態を使うので、APIキーは不要です。
-
 ### スキャン
 
-おすすめは、ブランチの差分を判定役（Jev）でチェックする使い方です：
-
-```bash
-omamori scan --base main --classifier typesafe
-```
+`.omamorirc` の設定を、その場だけフラグで変えることもできます（判定役とレポート役を選ぶ を参照）。
 
 ステージされた変更をスキャン（デフォルト）：
 
@@ -135,7 +146,7 @@ omamori scan --ai
 どちらの役も `provider` と `model` で指定します。コマンドラインでも、`.omamorirc`（[設定](#設定)）でも指定できます。
 
 ```bash
-omamori scan --base main --classifier typesafe                           # Jevで判定、Geminiでレポート
+omamori scan --base main --classifier typesafe --reporter gemini --reporter-model gemini-3.8-flash   # Jevで判定、Geminiでレポート
 omamori scan --base main --classifier typesafe --reporter claude_code    # Jevで判定、claude -pでレポート
 omamori scan --base main --classifier openai --reporter anthropic --reporter-model claude-sonnet-5-5
 omamori scan --reporter codex                                            # 判定役なし。codex execで全項目を判定
@@ -156,11 +167,11 @@ omamori scan --reporter codex                                            # 判�
 
 | provider | 呼び出すもの |
 | --- | --- |
-| RubyLLMのプロバイダ（`gemini`、`anthropic`、`openai`、`openrouter`、`ollama` など） | [RubyLLM](https://rubyllm.com) 経由のAPI。既定は `gemini` の `gemini-3.8-flash` |
+| RubyLLMのプロバイダ（`gemini`、`anthropic`、`openai`、`openrouter`、`ollama` など） | [RubyLLM](https://rubyllm.com) 経由のAPI。`model` が必須 |
 | `claude_code` | `claude -p`（サブスクリプション）。ツールをすべて無効にし、空の一時ディレクトリで実行 |
 | `codex` | `codex exec`（サブスクリプション）。読み取り専用のサンドボックスで、空の一時ディレクトリで実行 |
 
-レポート役の `provider` は省略でき、その場合はモデル名からプロバイダを決めます。RubyLLMのモデル一覧にない新しいモデルを使うときは、`provider` を指定してください。
+`.omamorirc` では、レポート役の `provider` を省略することもでき、その場合はモデル名からプロバイダを決めます。RubyLLMのモデル一覧にない新しいモデルを使うときは、`provider` を指定してください。
 
 レポート役は、内容によって判定を拒否することがあります（Geminiでは、セキュリティの分析を拒否することがあります）。拒否された項目は黙って通過させず、判定役の検出結果として残します。予備のレポート役（`reporter.fallback`）を設定すると、拒否やエラーのときだけ、そちらで聞き直します。
 
@@ -189,16 +200,16 @@ diffには外部から来たコードが含まれるため、`claude_code` / `co
 #   base_url: https://api.typesafe.ai   # 任意。SystemOne形式の別のサーバーを使うとき
 #   api_key: ...            # 任意。環境変数（TYPESAFE_API_KEY など）を推奨
 
-# レポート役（任意。既定は gemini / gemini-3.8-flash）。--reporter で上書きできます
-# reporter:
-#   provider: anthropic     # RubyLLMのプロバイダ、または claude_code / codex
-#   model: claude-sonnet-5-5
-#   concurrency: 8          # レポートを並列で書く数（CLIの既定は3、APIの既定は8）
-#   command: /path/to/claude   # 任意。claude_code / codex のCLIのパス
-#   api_key: ...            # 任意。環境変数（ANTHROPIC_API_KEY など）を推奨
-#   fallback:               # 任意。レポート役が拒否・失敗したときだけ聞く予備のレポート役
-#     provider: claude_code
-#     model: sonnet
+# レポート役（必須。omamori init が書きます）。--reporter で上書きできます
+reporter:
+  provider: anthropic       # RubyLLMのプロバイダ、または claude_code / codex
+  model: claude-sonnet-5-5  # APIのプロバイダでは必須。CLIでは省略するとCLIの既定のモデル
+  # concurrency: 8           # レポートを並列で書く数（CLIの既定は3、APIの既定は8）
+  # command: /path/to/claude # 任意。claude_code / codex のCLIのパス
+  # api_key: ...             # 任意。環境変数（ANTHROPIC_API_KEY など）を推奨
+  # fallback:                # 任意。レポート役が拒否・失敗したときだけ聞く予備のレポート役
+  #   provider: claude_code
+  #   model: sonnet
 
 # 実行するセキュリティチェック（任意。デフォルトは判定役なしで主要8項目、判定役ありで全35項目）
 # checks:
@@ -237,7 +248,7 @@ diffには外部から来たコードが含まれるため、`claude_code` / `co
 - `static_analysers`: 静的解析ツール（Brakeman、Bundler-Auditなど）の追加オプション設定。
 - `language`: AI解析結果の詳細説明文の言語設定。デフォルトは英語（`en`）。
 
-以前の書き方（`engine`、`llm`、`model`、`provider`、`api_key`、`decision`、`claude`、`codex`）と、以前のオプション（`--engine`、`--llm`）も、引き続き使えます。
+以前の書き方（`engine`、`llm`、`model`、`provider`、`api_key`、`decision`、`claude`、`codex`）と、以前のオプション（`--engine`、`--llm`）も、引き続き使えます。0.1系の設定ファイルで `api_key` だけを書いていた場合は、これまでどおりGemini（`gemini-3.8-flash`）を使います。
 
 ## .omamoriignore ファイル
 
@@ -253,14 +264,16 @@ diffには外部から来たコードが含まれるため、`claude_code` / `co
 
 ## CIで使う
 
-GitHub Actions または GitLab CI の設定ファイルを生成できます：
+`omamori init` に `--ci` を付けるか、あとから `.omamorirc` をもとに生成します：
 
 ```bash
 omamori ci-setup --ci github_actions   # .github/workflows/omamori_scan.yml
 omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
 ```
 
-生成される設定は、プルリクエスト（マージリクエスト）では `--base` でブランチの差分を、それ以外では `--all` でコードベース全体をスキャンします。差分を取るため、リポジトリは履歴ごと取得します。APIキーはCIのシークレット（GitLabではCI/CD変数）に登録してください。判定役を使う場合は、生成された設定のコメントにある `TYPESAFE_API_KEY` などの行を有効にし、`.omamorirc` に `classifier` を設定します。
+生成される設定は、プルリクエスト（マージリクエスト）では `--base` でブランチの差分を、それ以外では `--all` でコードベース全体をスキャンします。差分を取るため、リポジトリは履歴ごと取得します。`.omamorirc` の判定役とレポート役に合わせて、必要な環境変数を設定に書き、登録するシークレット（GitLabではCI/CD変数）の名前を表示します。
+
+`claude_code` / `codex` は、そのマシンでのCLIのログインを使うものです。生成される設定は、CIのランナーにCLIのインストールやログインはしません。CIでは、スキャンのコマンドに `--reporter PROVIDER --reporter-model MODEL` を足してAPIのレポート役を使うか、ランナーの準備を自分で用意してください。
 
 ## デモファイル
 
@@ -280,7 +293,7 @@ omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
     git add demo_
     ```
 
-3. ステージしたデモファイルに対してOmamoriを実行します：
+3. ステージしたデモファイルに対してOmamoriを実行します（先に `omamori init --reporter ...` で設定しておきます）：
 
     ```bash
     omamori scan

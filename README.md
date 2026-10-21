@@ -19,6 +19,7 @@ With a classifier, each of the 35 risks is checked independently, which makes re
 - Choose the classifier and the reporter independently. The reporter can be any API RubyLLM supports (Gemini, Claude, OpenAI, ...) or a Claude Code (`claude -p`) / Codex (`codex exec`) subscription.
 - Integrates with static analysis tools like Brakeman and Bundler-Audit.
 - Supports multiple report formats (console, HTML, JSON).
+- `omamori init` runs with flags only and `omamori doctor` checks the setup, so an AI agent can set omamori up for you.
 - Generates GitHub Actions / GitLab CI configuration.
 - An eval set (`evals/`) for measuring detection accuracy.
 - Configuration via a `.omamorirc` file, and exclusions via a `.omamoriignore` file.
@@ -40,57 +41,67 @@ The questions sent to the classifier contain the same vulnerability definitions 
 
 Risks about something being absent (CSP and other security headers, production settings, two-factor authentication, password policy, audit logging) are judged as "does this change weaken or remove an existing protection?". Whether the application had the protection in the first place cannot be told from a diff that does not touch it. If the classifier fails for a file, every check for that file is escalated to the reporter. If the reporter cannot write a report, the classifier's flag is kept in the results, so nothing is silently skipped.
 
-## Installation
+## Getting Started
 
-Add this line to your application's Gemfile:
+1. Add omamori to your Gemfile and install it.
 
-```ruby
-gem 'omamori'
-```
+    ```ruby
+    gem 'omamori', group: :development, require: false
+    ```
 
-And then execute:
+    ```bash
+    bundle install
+    ```
 
-```bash
-bundle install
-```
+2. Choose a reporter and write the config file. The provider and model are given as flags (there are no interactive questions).
 
-Or install it yourself as:
+    ```bash
+    bundle exec omamori init --reporter claude_code                                   # Claude Code subscription (claude -p)
+    bundle exec omamori init --reporter codex                                         # Codex subscription (codex exec)
+    bundle exec omamori init --reporter anthropic --reporter-model claude-sonnet-5-5  # Any API RubyLLM supports
+    ```
 
-```bash
-gem install omamori
-```
+    Add `--classifier typesafe` to use a classifier, `--language ja` for reports in Japanese, and `--ci github_actions` (or `gitlab_ci`) to also generate a CI configuration. This writes `.omamorirc` and `.omamoriignore`, then prints the next steps (such as the environment variables to set). An existing `.omamorirc` is not overwritten unless you pass `--force`.
 
-## Usage
+3. Set the environment variables it printed, and check the setup.
 
-### Initialization
+    ```bash
+    bundle exec omamori doctor
+    ```
 
-To generate an initial configuration file (`.omamorirc`), run:
+    This sends the classifier and the reporter one small request each, and says what is missing (an API key, or installing or logging in to a CLI) and how to fix it. It exits with 0 when everything works and 1 otherwise.
 
-```bash
-omamori init
-```
+4. Scan.
 
-Edit the generated `.omamorirc` and `.omamoriignore` files to configure the classifier and reporter, checks to perform, files/directories to exclude from scanning, and other settings.
+    ```bash
+    bundle exec omamori scan --base main
+    ```
+
+There is no default reporter. If neither `.omamorirc` nor `--reporter` sets one, `omamori scan` stops and shows how to run `init`.
 
 ### API Keys
 
-API keys are passed through environment variables. Set the ones for the features you use:
+API keys are passed through environment variables, named after RubyLLM's settings in upper case (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `TYPESAFE_API_KEY` for the Jev classifier, ...). `omamori init` prints the ones your setup uses. The `claude_code` / `codex` reporters use the installed CLI's login, so no API key is needed.
 
-```bash
-export GEMINI_API_KEY=...     # Default reporter (gemini-3.8-flash)
-export TYPESAFE_API_KEY=...   # Classifier: typesafe (Jev)
-export OPENAI_API_KEY=...     # Classifier: openai
-```
+Code diffs are sent to the classifier and reporter providers you choose. For code that must not leave your environment, choose a model that runs locally, such as one on Ollama.
 
-For a reporter other than Gemini, set that provider's environment variable (`ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY`, ...: RubyLLM's setting name in upper case). The `claude_code` / `codex` reporters use the installed CLI's login, so no API key is needed.
+## Setting Up with an AI Agent
+
+When you ask an AI coding agent (Claude Code, Codex, ...) to set up omamori, it can follow these steps:
+
+1. Add `gem 'omamori', group: :development, require: false` to the Gemfile and run `bundle install`
+2. Choose the reporter: `claude_code` if the `claude` command exists, `codex` if `codex` exists. Otherwise, ask the developer which API provider and model they use
+3. Ask the developer whether to use a classifier (`--classifier typesafe`, ...). It makes scans faster and more stable, but needs that provider's API key and sends the code to that provider as well
+4. Run `bundle exec omamori init --reporter ... [--reporter-model ...] [--classifier ...] [--language ja] [--ci github_actions]`
+5. Ask the developer to set the environment variables it printed. Do not ask them to paste API keys into the chat, and do not write keys into files
+6. Run `bundle exec omamori doctor`, fixing what it reports, until it exits with 0
+7. Run `bundle exec omamori scan --base main` and report the results. If a CI configuration was generated, also tell the developer the secret names to register (printed by `init`)
+
+## Usage
 
 ### Scanning
 
-The recommended way is to check the branch diff with a classifier (Jev):
-
-```bash
-omamori scan --base main --classifier typesafe
-```
+Any setting in `.omamorirc` can be changed for one run with flags (see Choosing the Classifier and Reporter).
 
 Scan staged changes (default):
 
@@ -136,7 +147,7 @@ omamori scan --ai
 Both roles are set with a `provider` and a `model`, on the command line or in `.omamorirc` (see [Configuration](#configuration)).
 
 ```bash
-omamori scan --base main --classifier typesafe                           # Jev decides, Gemini reports
+omamori scan --base main --classifier typesafe --reporter gemini --reporter-model gemini-3.8-flash   # Jev decides, Gemini reports
 omamori scan --base main --classifier typesafe --reporter claude_code    # Jev decides, claude -p reports
 omamori scan --base main --classifier openai --reporter anthropic --reporter-model claude-sonnet-5-5
 omamori scan --reporter codex                                            # No classifier; codex exec checks everything
@@ -157,11 +168,11 @@ With `base_url`, you can point a classifier at any other server that speaks the 
 
 | provider | What it calls |
 | --- | --- |
-| A RubyLLM provider (`gemini`, `anthropic`, `openai`, `openrouter`, `ollama`, ...) | An API through [RubyLLM](https://rubyllm.com). Defaults to `gemini` with `gemini-3.8-flash` |
+| A RubyLLM provider (`gemini`, `anthropic`, `openai`, `openrouter`, `ollama`, ...) | An API through [RubyLLM](https://rubyllm.com). `model` is required |
 | `claude_code` | `claude -p` (subscription) with all tools disabled, in an empty temporary directory |
 | `codex` | `codex exec` (subscription) in a read-only sandbox, in an empty temporary directory |
 
-The reporter's `provider` can be omitted, in which case it is inferred from the model name. Set `provider` when the model is too new to be in RubyLLM's model registry.
+In `.omamorirc`, the reporter's `provider` can be omitted, in which case it is inferred from the model name. Set `provider` when the model is too new to be in RubyLLM's model registry.
 
 A reporter may refuse to analyze some content (Gemini sometimes refuses security analysis). A refused check is not silently passed; the classifier's flag is kept. With a fallback reporter (`reporter.fallback`), refused or failed checks are asked again there, and only those.
 
@@ -188,16 +199,16 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 #   base_url: https://api.typesafe.ai   # Optional. Another SystemOne server
 #   api_key: ...            # Optional. Environment variables (TYPESAFE_API_KEY, ...) are recommended
 
-# Reporter (optional; default: gemini / gemini-3.8-flash). Can be overridden with --reporter
-# reporter:
-#   provider: anthropic     # A RubyLLM provider, or claude_code / codex
-#   model: claude-sonnet-5-5
-#   concurrency: 8          # Reports written in parallel (default 3 for CLIs, 8 for APIs)
-#   command: /path/to/claude   # Optional. Path to the claude_code / codex CLI
-#   api_key: ...            # Optional. Environment variables (ANTHROPIC_API_KEY, ...) are recommended
-#   fallback:               # Optional. Asked only when the reporter refuses or fails
-#     provider: claude_code
-#     model: sonnet
+# Reporter (required; written by omamori init). Can be overridden with --reporter
+reporter:
+  provider: anthropic       # A RubyLLM provider, or claude_code / codex
+  model: claude-sonnet-5-5  # Required for API providers. For CLIs, omit it to use the CLI's default model
+  # concurrency: 8           # Reports written in parallel (default 3 for CLIs, 8 for APIs)
+  # command: /path/to/claude # Optional. Path to the claude_code / codex CLI
+  # api_key: ...             # Optional. Environment variables (ANTHROPIC_API_KEY, ...) are recommended
+  # fallback:                # Optional. Asked only when the reporter refuses or fails
+  #   provider: claude_code
+  #   model: sonnet
 
 # Security checks to run (optional; default: the 8 main checks without a classifier, all 35 with one)
 # checks:
@@ -238,7 +249,7 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
     *   `bundler_audit`: Additional command-line options for Bundler-Audit.
 *   `language`: Language setting for the details provided in AI analysis reports. Defaults to English (`en`).
 
-The older keys (`engine`, `llm`, `model`, `provider`, `api_key`, `decision`, `claude`, `codex`) and options (`--engine`, `--llm`) still work.
+The older keys (`engine`, `llm`, `model`, `provider`, `api_key`, `decision`, `claude`, `codex`) and options (`--engine`, `--llm`) still work. A 0.1 config that only sets `api_key` keeps using Gemini (`gemini-3.8-flash`).
 
 ## .omamoriignore File
 
@@ -254,14 +265,16 @@ When you run the `omamori init` command, a `.omamoriignore` file pre-filled with
 
 ## Using in CI
 
-You can generate GitHub Actions or GitLab CI configuration:
+Pass `--ci` to `omamori init`, or generate the configuration later from `.omamorirc`:
 
 ```bash
 omamori ci-setup --ci github_actions   # .github/workflows/omamori_scan.yml
 omamori ci-setup --ci gitlab_ci        # .gitlab-ci.yml
 ```
 
-The generated configuration scans the branch diff with `--base` on pull requests (merge requests) and the entire codebase with `--all` otherwise. It fetches the full history so the diff can be taken. Register API keys as CI secrets (CI/CD variables on GitLab). To use a classifier, uncomment the `TYPESAFE_API_KEY` (or similar) line in the generated configuration and set `classifier` in `.omamorirc`.
+The generated configuration scans the branch diff with `--base` on pull requests (merge requests) and the entire codebase with `--all` otherwise. It fetches the full history so the diff can be taken. It passes the environment variables your classifier and reporter need, and prints the names of the secrets (CI/CD variables on GitLab) to register.
+
+`claude_code` / `codex` use the CLI's login on the machine. The generated configuration does not install or log in a CLI on the CI runner: in CI, add `--reporter PROVIDER --reporter-model MODEL` to the scan command to use an API reporter, or set up the runner yourself.
 
 ## Demo Files
 
@@ -277,7 +290,7 @@ To run Omamori on the demo files, you need to stage the changes in the `demo` di
     ```bash
     git add demo_
     ```
-3.  Now you can run Omamori on the staged demo files:
+3.  Now you can run Omamori on the staged demo files (set it up with `omamori init --reporter ...` first):
     ```bash
     omamori scan
     ```

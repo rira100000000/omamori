@@ -14,10 +14,18 @@ RSpec.describe Omamori::AISettings do
   end
 
   describe 'defaults' do
-    it 'uses no classifier and Gemini as the reporter' do
+    it 'has no classifier and no reporter' do
       s = settings
 
       expect(s.classifier?).to be(false)
+      expect(s.reporter?).to be(false)
+      expect(s.build_reporter_client).to be_nil
+      expect(s.describe).to eq('reporter: none')
+    end
+
+    it 'keeps Gemini for an omamori 0.1 config with only api_key' do
+      s = settings('api_key' => 'gm-key')
+
       expect(s.reporter).to eq('provider' => 'gemini', 'model' => 'gemini-3.8-flash')
       expect(s.reporter_concurrency).to eq(8)
     end
@@ -53,7 +61,8 @@ RSpec.describe Omamori::AISettings do
     end
 
     it 'builds RubyLLM clients for API providers' do
-      s = settings('classifier' => { 'provider' => 'typesafe' })
+      s = settings('classifier' => { 'provider' => 'typesafe' },
+                   'reporter' => { 'provider' => 'anthropic', 'model' => 'claude-x' })
 
       expect(s.build_classifier_client).to be_a(Omamori::AIAnalysisEngine::JudgeClient)
       expect(s.build_reporter_client).to be_a(Omamori::AIAnalysisEngine::LLMClient)
@@ -124,7 +133,7 @@ RSpec.describe Omamori::AISettings do
 
   describe 'reporter fallback' do
     it 'reads the fallback reporter and wraps the reporter client' do
-      s = settings('reporter' => { 'provider' => 'gemini',
+      s = settings('reporter' => { 'provider' => 'gemini', 'model' => 'gemini-3.8-flash',
                                    'fallback' => { 'provider' => 'claude_code', 'model' => 'sonnet' } })
 
       expect(s.reporter).to eq('provider' => 'gemini', 'model' => 'gemini-3.8-flash')
@@ -134,7 +143,8 @@ RSpec.describe Omamori::AISettings do
     end
 
     it 'keeps the configured fallback when the reporter is overridden, and can be turned off' do
-      config = { 'reporter' => { 'provider' => 'gemini', 'fallback' => { 'provider' => 'claude_code' } } }
+      config = { 'reporter' => { 'provider' => 'gemini', 'model' => 'gemini-3.8-flash',
+                                 'fallback' => { 'provider' => 'claude_code' } } }
 
       expect(settings(config, reporter: 'anthropic', reporter_model: 'claude-x').reporter_fallback)
         .to eq('provider' => 'claude_code')
@@ -157,6 +167,11 @@ RSpec.describe Omamori::AISettings do
         .to raise_error(described_class::Error, /cannot be used as a classifier/)
     end
 
+    it 'requires a model for an API reporter' do
+      expect { settings('reporter' => { 'provider' => 'gemini' }) }
+        .to raise_error(described_class::Error, /reporter.model is required/)
+    end
+
     it 'requires a model when the classifier provider has no default' do
       expect { settings('classifier' => { 'provider' => 'ollama' }) }
         .to raise_error(described_class::Error, /classifier.model is required/)
@@ -171,6 +186,18 @@ RSpec.describe Omamori::AISettings do
 
     it 'rejects an unknown legacy engine' do
       expect { settings('engine' => 'nope') }.to raise_error(described_class::Error, /Unknown engine/)
+    end
+  end
+
+  describe '.api_key_env' do
+    it "names RubyLLM's environment variable for a provider" do
+      expect(described_class.api_key_env('anthropic')).to eq('ANTHROPIC_API_KEY')
+      expect(described_class.api_key_env('typesafe')).to eq('TYPESAFE_API_KEY')
+    end
+
+    it 'is nil for the subscription CLIs and providers without an API key' do
+      expect(described_class.api_key_env('claude_code')).to be_nil
+      expect(described_class.api_key_env('vertexai')).to be_nil
     end
   end
 end

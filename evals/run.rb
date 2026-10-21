@@ -70,6 +70,9 @@ module OmamoriEvals
       overrides = options.slice(:classifier, :classifier_model, :reporter, :reporter_model,
                                 :reporter_fallback, :reporter_fallback_model)
       @settings = Omamori::AISettings.new(PromptConfig.new(config), overrides)
+      if !@settings.reporter? && (options[:pipeline] || !@settings.classifier?)
+        abort 'A reporter is required with --pipeline or --classifier none: pass --reporter (and --reporter-model).'
+      end
       @llm_client = @settings.build_reporter_client
       @question_log = {}
       @reporter_calls = 0
@@ -418,7 +421,7 @@ module OmamoriEvals
 
     def save(report, cases, runs)
       FileUtils.mkdir_p(RESULTS_DIR)
-      name = @settings.classifier? ? @settings.classifier['provider'] : "llm-#{@settings.reporter['provider'] || 'auto'}"
+      name = @settings.classifier? ? @settings.classifier['provider'] : "llm-#{@settings.reporter&.fetch('provider', nil) || 'auto'}"
       path = File.join(RESULTS_DIR, "#{name}-#{Time.now.strftime('%Y%m%d-%H%M%S')}.json")
       raw = cases.to_h { |c| [c.id, runs.map { |run| run[c.id] }] }
       File.write(path, JSON.pretty_generate(report.merge(raw: raw, questions: @question_log)))

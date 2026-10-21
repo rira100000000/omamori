@@ -21,12 +21,15 @@ module Omamori
   #       provider: claude_code
   #       model: sonnet
   #
-  # The older keys (engine, llm, model, provider, api_key, decision, claude, codex) are still read.
+  # There is no default reporter: `omamori init --reporter ...` writes one. The older keys (engine, llm,
+  # model, provider, api_key, decision, claude, codex) are still read; an old config with only `api_key`
+  # keeps using Gemini, as it did before.
   class AISettings
     class Error < StandardError; end
 
     CLI_REPORTERS = %w[claude_code codex].freeze
-    DEFAULT_REPORTER = { 'provider' => 'gemini', 'model' => AIAnalysisEngine::LLMClient::DEFAULT_MODEL }.freeze
+    # The reporter of omamori 0.1, used only for old configs that set the top-level api_key (a Gemini key)
+    LEGACY_REPORTER = { 'provider' => 'gemini', 'model' => AIAnalysisEngine::LLMClient::DEFAULT_MODEL }.freeze
     # Classifier providers whose model can be omitted
     DEFAULT_CLASSIFIER_MODELS = { 'typesafe' => 'jev-1.13.0', 'openai' => 'gpt-6-luna' }.freeze
     # Questions per request accepted by each classifier provider (no entry: no limit)
@@ -45,6 +48,7 @@ module Omamori
 
     # The classifier settings, or nil when the reporter checks everything itself
     attr_reader :classifier
+    # The reporter settings, or nil when none is configured (`omamori scan` stops with #reporter_missing_message)
     attr_reader :reporter
 
     # overrides: classifier:, classifier_model:, reporter:, reporter_model:, reporter_fallback:,
@@ -61,8 +65,12 @@ module Omamori
       !@classifier.nil?
     end
 
+    def reporter?
+      !@reporter.nil?
+    end
+
     def cli_reporter?
-      CLI_REPORTERS.include?(@reporter['provider'])
+      reporter? && CLI_REPORTERS.include?(@reporter['provider'])
     end
 
     def threshold
@@ -83,7 +91,29 @@ module Omamori
     end
 
     def reporter_model
-      @reporter['model']
+      @reporter&.fetch('model', nil)
+    end
+
+    def self.reporter_missing_message(command: 'scan')
+      message = <<~MESSAGE
+        No reporter is configured. Choose the LLM that writes reports, for example:
+
+          omamori init --reporter claude_code                                # Claude Code subscription (claude -p)
+          omamori init --reporter codex                                      # Codex subscription (codex exec)
+          omamori init --reporter anthropic --reporter-model claude-sonnet-5-5   # Any RubyLLM provider and model
+      MESSAGE
+      return message unless command == 'scan'
+
+      "#{message}\nOr pass --reporter (and --reporter-model) to `omamori scan`.\n"
+    end
+
+    # The environment variable that holds the API key of a RubyLLM provider, or nil when it has none
+    # (claude_code / codex use the CLI's login; some providers only need a server address)
+    def self.api_key_env(provider)
+      return nil if provider.nil? || CLI_REPORTERS.include?(provider)
+
+      name = "#{provider}_api_key"
+      RubyLLM.config.respond_to?("#{name}=") ? name.upcase : nil
     end
 
     def build_classifier_client
@@ -97,6 +127,8 @@ module Omamori
     end
 
     def build_reporter_client
+      return nil unless reporter?
+
       client = build_llm_client(@reporter)
       return client unless @reporter_fallback
 
@@ -106,9 +138,18 @@ module Omamori
 
     attr_reader :reporter_fallback
 
+    # A client for one reporter's settings (the reporter or its fallback)
+    def build_llm_client(settings)
+      case settings['provider']
+      when 'claude_code' then AIAnalysisEngine::CLIClients::ClaudeCodeClient.new(command: settings['command'])
+      when 'codex' then AIAnalysisEngine::CLIClients::CodexClient.new(command: settings['command'])
+      else AIAnalysisEngine::LLMClient.new(ruby_llm_context, provider: settings['provider']&.to_sym)
+      end
+    end
+
     # One line for the console, e.g. "classifier: typesafe/jev-1.13.0, reporter: gemini/gemini-3.8-flash"
     def describe
-      reporter = [@reporter['provider'], @reporter['model']].compact.join('/')
+      reporter = reporter? ? [@reporter['provider'], @reporter['model']].compact.join('/') : 'none'
       reporter += " (fallback: #{[@reporter_fallback['provider'], @reporter_fallback['model']].compact.join('/')})" if @reporter_fallback
       return "reporter: #{reporter}" unless classifier?
 
@@ -135,7 +176,9 @@ module Omamori
 
     def resolve_reporter
       settings = apply_override(configured_reporter, @overrides[:reporter], @overrides[:reporter_model])
-      settings = DEFAULT_REPORTER.merge(settings || {}) if settings.nil? || (settings['provider'].nil? && settings['model'].nil?)
+      settings = LEGACY_REPORTER.merge(settings || {}) if legacy_gemini?(settings)
+      return nil if settings.nil? || (settings['provider'].nil? && settings['model'].nil?)
+
       validate_reporter(settings.except('fallback'))
     end
 
@@ -153,19 +196,9 @@ module Omamori
       return settings if provider.nil? || CLI_REPORTERS.include?(provider)
 
       raise Error, "Unknown #{role} provider: #{provider}" unless RubyLLM::Provider.resolve(provider)
-
-      settings['model'] ||= DEFAULT_REPORTER['model'] if provider == DEFAULT_REPORTER['provider']
       raise Error, "#{role}.model is required for provider #{provider}" unless settings['model']
 
       settings
-    end
-
-    def build_llm_client(settings)
-      case settings['provider']
-      when 'claude_code' then AIAnalysisEngine::CLIClients::ClaudeCodeClient.new(command: settings['command'])
-      when 'codex' then AIAnalysisEngine::CLIClients::CodexClient.new(command: settings['command'])
-      else AIAnalysisEngine::LLMClient.new(ruby_llm_context, provider: settings['provider']&.to_sym)
-      end
     end
 
     # A provider given on the command line replaces the configured one; the configured model only
@@ -177,6 +210,11 @@ module Omamori
       end
       settings = (settings || {}).merge('model' => model) if model
       settings
+    end
+
+    # omamori 0.1 configs had only the Gemini `api_key` (and maybe `model`), and used Gemini by default
+    def legacy_gemini?(settings)
+      get('api_key') && (settings.nil? || (settings['provider'].nil? && settings['model'].nil?))
     end
 
     def configured_classifier
