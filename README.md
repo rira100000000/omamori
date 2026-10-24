@@ -194,7 +194,7 @@ The `.omamorirc` file in the project root directory allows you to customize Omam
 # classifier:
 #   provider: typesafe      # typesafe / openai / ollama
 #   model: jev-1.13.0       # Pin a version (not jev-latest) if you tune the threshold
-#   threshold: 0.3          # Checks at or above this probability go to the reporter
+#   threshold: 0.5          # Checks at or above this probability go to the reporter
 #   concurrency: 8          # Parallel requests to the classifier
 #   base_url: https://api.typesafe.ai   # Optional. Another SystemOne server
 #   api_key: ...            # Optional. Environment variables (TYPESAFE_API_KEY, ...) are recommended
@@ -237,7 +237,7 @@ reporter:
 # language: ja
 ```
 
-*   `classifier`: `provider`, `model`, `threshold` (default 0.3), `concurrency` (default 8), `base_url`, `api_key`.
+*   `classifier`: `provider`, `model`, `threshold` (default 0.5), `concurrency` (default 8), `base_url`, `api_key`.
 *   `reporter`: `provider`, `model`, `concurrency`, `command`, `api_key`, `fallback` (a fallback reporter with its own `provider`, `model`, ...).
 *   `checks`: The list of security checks to run. The former `server_error_information_exposure` is merged into `overly_detailed_errors`. `dependency_trojan_package` (malicious packages) is no longer judged by AI, because it cannot be judged reliably from code: use bundler-audit (run by omamori) for known vulnerable versions, and a scanner with a malicious-package database, such as OSV-Scanner or GitHub dependency review.
 *   `prompt_templates`: Define custom prompt templates for AI analysis.

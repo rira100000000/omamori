@@ -36,7 +36,7 @@ module Omamori
     MAX_QUESTIONS = { 'openai' => 200 }.freeze
     # RubyLLM protocols that answer judgment questions
     JUDGE_PROTOCOLS = %i[system_one decisions].freeze
-    DEFAULT_THRESHOLD = 0.3
+    DEFAULT_THRESHOLD = 0.5
     DEFAULT_CLASSIFIER_CONCURRENCY = 8
     DEFAULT_API_REPORTER_CONCURRENCY = 8
     # Subscription CLIs have tighter rate limits than APIs

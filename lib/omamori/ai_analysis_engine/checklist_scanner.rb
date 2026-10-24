@@ -7,7 +7,7 @@ module Omamori
     # Runs each risk as an independent yes/no check with a fast decision model,
     # then asks an LLM to write a report only for the checks that did not pass.
     class ChecklistScanner
-      DEFAULT_THRESHOLD = 0.3
+      DEFAULT_THRESHOLD = 0.5
       DEFAULT_CONCURRENCY = 8
 
       Unit = Struct.new(:label, :content)

@@ -476,7 +476,7 @@ OptionParser.new do |opts|
   opts.on('--holdout', 'Use the held-out cases in evals/holdout/ (never used for tuning)') do
     options[:cases_dir] = File.expand_path('holdout', __dir__)
   end
-  opts.on('--threshold T', Float, 'Threshold for the per-risk table (default 0.3)') { |v| options[:threshold] = v }
+  opts.on('--threshold T', Float, 'Threshold for the per-risk table (default 0.5)') { |v| options[:threshold] = v }
   opts.on('--concurrency N', Integer, 'Cases run in parallel (default 8)') { |v| options[:concurrency] = v }
 end.parse!
 

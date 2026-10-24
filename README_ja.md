@@ -195,7 +195,7 @@ diffには外部から来たコードが含まれるため、`claude_code` / `co
 # classifier:
 #   provider: typesafe      # typesafe / openai / ollama
 #   model: jev-1.13.0       # 閾値を調整するなら、jev-latest ではなく版を固定する
-#   threshold: 0.3          # この確率以上の項目をレポート役に回す
+#   threshold: 0.5          # この確率以上の項目をレポート役に回す
 #   concurrency: 8          # 判定役に同時に投げるリクエスト数
 #   base_url: https://api.typesafe.ai   # 任意。SystemOne形式の別のサーバーを使うとき
 #   api_key: ...            # 任意。環境変数（TYPESAFE_API_KEY など）を推奨
@@ -238,7 +238,7 @@ reporter:
 # language: ja
 ```
 
-- `classifier`: 判定役。`provider`、`model`、`threshold`（デフォルト0.3）、`concurrency`（デフォルト8）、`base_url`、`api_key`。
+- `classifier`: 判定役。`provider`、`model`、`threshold`（デフォルト0.5）、`concurrency`（デフォルト8）、`base_url`、`api_key`。
 - `reporter`: レポート役。`provider`、`model`、`concurrency`、`command`、`api_key`、`fallback`（予備のレポート役。`provider`、`model` など）。
 - `checks`: 実行するセキュリティチェックのリスト。以前の項目名 `server_error_information_exposure` は `overly_detailed_errors` に統合されました。`dependency_trojan_package`（悪意のある依存パッケージ）は、コードからは正確に判断できないためAIの判定から外しました。既知の脆弱なバージョンはomamoriが一緒に動かすbundler-auditで、悪意のあるパッケージはOSV-ScannerやGitHubのDependency Reviewなど、悪意のあるパッケージのデータベースを持つツールで確かめてください。
 - `prompt_templates`: AI解析用のカスタムプロンプトテンプレートを設定。
