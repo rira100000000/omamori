@@ -25,7 +25,7 @@ RSpec.describe Omamori::CoreRunner do
     allow(config_double).to receive(:get).with('report', any_args).and_return({})
     allow(config_double).to receive(:get).with('static_analysers', any_args).and_return({})
     allow(config_double).to receive(:get).with('checks',
-                                               any_args).and_return(Omamori::CoreRunner::DEFAULT_RISKS_TO_CHECK)
+                                               any_args).and_return(Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys)
     allow(config_double).to receive(:get).with('ci_setup', any_args).and_return({})
     allow(config_double).to receive(:get).with('engine', any_args).and_return('gemini')
     allow(config_double).to receive(:get).with('llm', any_args).and_return('gemini')

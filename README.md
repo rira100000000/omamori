@@ -10,7 +10,6 @@ It might help prevent vulnerabilities that could occur even after human review.
 
 Caution:
 AI analysis can uncover vulnerabilities that static analysis alone might miss, but LLM results tend to vary from run to run.
-With a classifier, each of the 35 risks is checked independently, which makes results more stable.
 
 ## Features
 
@@ -91,7 +90,7 @@ When you ask an AI coding agent (Claude Code, Codex, ...) to set up omamori, it 
 
 1. Add `gem 'omamori', group: :development, require: false` to the Gemfile and run `bundle install`
 2. Choose the reporter: `claude_code` if the `claude` command exists, `codex` if `codex` exists. Otherwise, ask the developer which API provider and model they use
-3. Ask the developer whether to use a classifier (`--classifier typesafe`, ...). It makes scans faster and more stable, but needs that provider's API key and sends the code to that provider as well
+3. Ask the developer whether to use a classifier (`--classifier typesafe`, ...). It makes scans faster and cheaper and raises fewer false alarms, but needs that provider's API key and sends the code to that provider as well
 4. Run `bundle exec omamori init --reporter ... [--reporter-model ...] [--classifier ...] [--language ja] [--ci github_actions]`
 5. Ask the developer to set the environment variables it printed. Do not ask them to paste API keys into the chat, and do not write keys into files
 6. Run `bundle exec omamori doctor`, fixing what it reports, until it exits with 0
@@ -153,6 +152,8 @@ omamori scan --base main --classifier openai --reporter anthropic --reporter-mod
 omamori scan --reporter codex                                            # No classifier; codex exec checks everything
 ```
 
+**Do you need a classifier?** It is optional. In our measurements with `claude -p` (sonnet) as the reporter, on real security fixes from Rails applications and on ordinary commits from open-source Rails apps, the reporter alone caught at least as many vulnerabilities as the classifier pipeline. The classifier made scans faster and cheaper (the reporter is called only for flagged checks) and raised fewer false alarms on changes that look risky but are safe. Cheaper reporters have not been measured on their own.
+
 **Classifier providers**
 
 | provider | Decision model | API key |
@@ -210,7 +211,7 @@ reporter:
   #   provider: claude_code
   #   model: sonnet
 
-# Security checks to run (optional; default: the 8 main checks without a classifier, all 35 with one)
+# Security checks to run (optional; default: all 35)
 # checks:
 #   - xss
 #   - csrf

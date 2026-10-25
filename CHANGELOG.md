@@ -1,12 +1,12 @@
 # Changelog
 
-## 0.2.0 (unreleased)
+## 0.2.0 (2026-10-25)
 
 ### Breaking changes
 
 - **There is no default reporter.** Choose one with `omamori init --reporter ...` (or `--reporter` on `omamori scan`). Without one, `omamori scan` stops and shows how to run `init`. An 0.1 config that only sets `api_key` keeps using Gemini, now with `gemini-3.8-flash`.
 - `omamori init` takes the settings as flags (`--reporter`, `--reporter-model`, `--classifier`, `--classifier-model`, `--language`, `--ci`, `--force`) and requires `--reporter`. It no longer overwrites an existing `.omamorirc` unless `--force` is given.
-- The checks are now 35: `server_error_information_exposure` is merged into `overly_detailed_errors`, and `dependency_trojan_package` (malicious packages) is no longer judged by AI. Use bundler-audit (run by omamori) for known vulnerable versions, and a scanner with a malicious-package database (such as OSV-Scanner or GitHub dependency review) for malicious packages.
+- Without a classifier, all checks are now run by default (0.1 ran 6 main checks). The checks are now 35: `server_error_information_exposure` is merged into `overly_detailed_errors`, and `dependency_trojan_package` (malicious packages) is no longer judged by AI. Use bundler-audit (run by omamori) for known vulnerable versions, and a scanner with a malicious-package database (such as OSV-Scanner or GitHub dependency review) for malicious packages.
 - Checks about something being absent (CSP and other security headers, production settings, two-factor authentication, password policy, audit logging) now ask whether the change weakens or removes an existing protection, instead of whether the application has it.
 
 ### Added

@@ -9,7 +9,6 @@ Omamoriは、Rubyコードおよび依存関係に潜む潜在的なセキュリ
 
 注意:
 AI解析は静的解析で診断できない脆弱性を発見することができますが、LLMの診断結果は実行のたびにブレが生じやすいです。
-判定役（classifier）を使うと、35項目を1つずつ独立に判定するため、結果が比較的安定します。
 
 ## 特徴
 
@@ -90,7 +89,7 @@ Claude CodeやCodexなどのAIエージェントに「omamoriを入れて」と�
 
 1. Gemfileに `gem 'omamori', group: :development, require: false` を足し、`bundle install` する
 2. レポート役を決める。`claude` コマンドがあれば `claude_code`、`codex` があれば `codex`。どちらも無ければ、使っているAPIのプロバイダとモデルを開発者に聞く
-3. 判定役（`--classifier typesafe` など）を使うかを開発者に聞く。使うと速く安定するが、そのプロバイダのAPIキーが要り、コードがそのプロバイダにも送られる
+3. 判定役（`--classifier typesafe` など）を使うかを開発者に聞く。使うと速く安くなり誤検知も減るが、そのプロバイダのAPIキーが要り、コードがそのプロバイダにも送られる
 4. `bundle exec omamori init --reporter ... [--reporter-model ...] [--classifier ...] [--language ja] [--ci github_actions]` を実行する
 5. 表示された環境変数を、開発者に設定してもらう。APIキーをチャットに貼ってもらったり、ファイルに書いたりしない
 6. `bundle exec omamori doctor` を、終了コードが0になるまで直しては実行する
@@ -152,6 +151,8 @@ omamori scan --base main --classifier openai --reporter anthropic --reporter-mod
 omamori scan --reporter codex                                            # 判定役なし。codex execで全項目を判定
 ```
 
+**判定役は要るか？** 使わなくても構いません。レポート役を `claude -p`（sonnet）にして、Railsアプリの実際の脆弱性修正と、OSSのRailsアプリの普通のコミットで測ったところ、レポート役だけでも判定役ありと同じくらい脆弱性を拾いました。判定役を使うと、レポート役を呼ぶのが引っかかった項目だけになるので速く安くなり、危なそうに見えて安全な変更での誤検知も減りました。安いレポート役を単独で使った場合は測っていません。
+
 **判定役（classifier）に指定できるprovider**
 
 | provider | 判定モデル | APIキー |
@@ -211,7 +212,7 @@ reporter:
   #   provider: claude_code
   #   model: sonnet
 
-# 実行するセキュリティチェック（任意。デフォルトは判定役なしで主要8項目、判定役ありで全35項目）
+# 実行するセキュリティチェック（任意。デフォルトは全35項目）
 # checks:
 #   - xss
 #   - csrf

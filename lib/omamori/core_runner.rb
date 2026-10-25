@@ -60,11 +60,6 @@ module Omamori
       "required": ['security_risks']
     }.freeze # Freeze the hash to make it immutable
 
-    # Default risks to check, can be overridden by config
-    DEFAULT_RISKS_TO_CHECK = [
-      :xss, :sql_injection, :csrf, :idor, :mass_assignment, :open_redirect, :ssrf, :session_fixation
-      # TODO: Add other risks from requirements based on PromptManager::RISK_PROMPTS.keys
-    ].freeze
 
     DEFAULT_MODEL = AIAnalysisEngine::LLMClient::DEFAULT_MODEL
 
@@ -253,9 +248,8 @@ module Omamori
 
     def get_risks_to_check
       # 設定ファイルからチェック対象のリスクを取得し、シンボルの配列に変換する
-      # 設定がない場合、LLMだけで判定するときは DEFAULT_RISKS_TO_CHECK、判定モデルを使うときは全項目を使う
-      default_checks = decision_engine? ? AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys : DEFAULT_RISKS_TO_CHECK
-      configured_checks = @config.get('checks', default_checks).map(&:to_sym)
+      # 設定がない場合は全項目を使う（判定役なしでも、レポート役が全項目を一度に判定する）
+      configured_checks = @config.get('checks', AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys).map(&:to_sym)
       configured_checks.filter_map do |risk|
         if (reason = AIAnalysisEngine::PromptManager::RETIRED_RISKS[risk])
           puts "Note: '#{risk}' is no longer checked by omamori. #{reason}"
