@@ -1,0 +1,86 @@
+id: idor-vulnerable-task-move-to-project
+description: Task edit form gains a project picker so a task can be moved to another project on update
+expected:
+  idor: true
+files:
+  - path: app/controllers/tasks_controller.rb
+    before: |
+      class TasksController < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_project
+        before_action :set_task, only: [:edit, :update]
+
+        def edit
+        end
+
+        def update
+          if @task.update(task_params)
+            redirect_to project_task_path(@project, @task), notice: "Task updated"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+
+        def set_task
+          @task = @project.tasks.find(params[:id])
+        end
+
+        def task_params
+          params.expect(task: [:title, :description, :due_on])
+        end
+      end
+    after: |
+      class TasksController < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_project
+        before_action :set_task, only: [:edit, :update]
+
+        def edit
+          @projects = current_user.projects.order(:name)
+        end
+
+        def update
+          if @task.update(task_params)
+            redirect_to project_task_path(@task.project, @task), notice: "Task updated"
+          else
+            @projects = current_user.projects.order(:name)
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+
+        def set_task
+          @task = @project.tasks.find(params[:id])
+        end
+
+        def task_params
+          params.expect(task: [:title, :description, :due_on, :project_id])
+        end
+      end
+  - path: app/views/tasks/_form.html.erb
+    before: |
+      <%= form_with model: [@project, @task] do |f| %>
+        <%= f.text_field :title %>
+        <%= f.text_area :description %>
+        <%= f.date_field :due_on %>
+        <%= f.submit %>
+      <% end %>
+    after: |
+      <%= form_with model: [@project, @task] do |f| %>
+        <%= f.text_field :title %>
+        <%= f.text_area :description %>
+        <%= f.date_field :due_on %>
+        <%= f.collection_select :project_id, @projects, :id, :name %>
+        <%= f.submit %>
+      <% end %>

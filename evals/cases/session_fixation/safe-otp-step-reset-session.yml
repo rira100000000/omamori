@@ -1,0 +1,71 @@
+id: session_fixation-safe-otp-step-reset-session
+description: New two-factor step promotes the pending user to signed in only after the OTP check, calling reset_session before setting the user id
+expected:
+  session_fixation: false
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            if user.otp_enabled?
+              session[:pending_user_id] = user.id
+              redirect_to new_two_factor_path
+            else
+              session[:user_id] = user.id
+              redirect_to dashboard_path
+            end
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+  - path: app/controllers/two_factors_controller.rb
+    after: |
+      class TwoFactorsController < ApplicationController
+        skip_before_action :require_login
+        before_action :load_pending_user
+
+        def new
+        end
+
+        def create
+          if @pending_user.verify_otp(params[:code])
+            reset_session
+            session[:user_id] = @pending_user.id
+            session[:two_factor_verified_at] = Time.current.to_i
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Incorrect code"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def load_pending_user
+          @pending_user = User.find_by(id: session[:pending_user_id])
+          redirect_to new_session_path unless @pending_user
+        end
+      end

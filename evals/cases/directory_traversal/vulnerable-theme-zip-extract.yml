@@ -1,0 +1,56 @@
+id: directory_traversal-vulnerable-theme-zip-extract
+description: Theme import job extracts uploaded zip entries using the entry name as the destination path, allowing ../ entries to escape
+expected:
+  directory_traversal: true
+files:
+  - path: app/jobs/theme_import_job.rb
+    before: |
+      require "zip"
+
+      class ThemeImportJob < ApplicationJob
+        queue_as :default
+
+        def perform(theme_id)
+          theme = Theme.find(theme_id)
+          theme.update!(status: "importing")
+
+          theme.archive.open do |file|
+            stylesheet = Zip::File.open(file.path) do |zip|
+              entry = zip.find_entry("theme.css")
+              entry&.get_input_stream&.read
+            end
+            theme.update!(stylesheet: stylesheet.to_s)
+          end
+
+          theme.update!(status: "ready")
+        rescue Zip::Error => e
+          theme.update!(status: "failed", error_message: e.message)
+        end
+      end
+    after: |
+      require "zip"
+
+      class ThemeImportJob < ApplicationJob
+        queue_as :default
+
+        def perform(theme_id)
+          theme = Theme.find(theme_id)
+          theme.update!(status: "importing")
+          dest = Rails.root.join("storage", "themes", theme.id.to_s)
+          FileUtils.mkdir_p(dest)
+
+          theme.archive.open do |file|
+            Zip::File.open(file.path) do |zip|
+              zip.each do |entry|
+                target = File.join(dest, entry.name)
+                FileUtils.mkdir_p(File.dirname(target))
+                entry.extract(target) { true }
+              end
+            end
+          end
+
+          theme.update!(status: "ready", asset_root: dest.to_s)
+        rescue Zip::Error => e
+          theme.update!(status: "failed", error_message: e.message)
+        end
+      end

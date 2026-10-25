@@ -1,0 +1,49 @@
+id: session_fixation-safe-keep-cart-across-login
+description: Login carries the guest cart id over by copying it before reset_session and restoring it afterwards
+expected:
+  session_fixation: false
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            guest_cart_id = session[:cart_id]
+            return_to = session[:return_to]
+
+            reset_session
+            session[:user_id] = user.id
+            Cart.merge_guest_cart!(guest_cart_id, into: user) if guest_cart_id
+
+            redirect_to return_to.presence_in([cart_path, checkout_path]) || dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end

@@ -1,0 +1,48 @@
+id: security_header_inconsistency-safe-default-headers-app-wide
+description: application.rb adds Referrer-Policy and Permissions-Policy to default headers for every environment
+expected:
+  security_header_inconsistency: false
+files:
+  - path: config/application.rb
+    before: |
+      require_relative "boot"
+
+      require "rails/all"
+
+      Bundler.require(*Rails.groups)
+
+      module Storefront
+        class Application < Rails::Application
+          config.load_defaults 7.2
+
+          config.autoload_lib(ignore: %w[assets tasks])
+
+          config.time_zone = "Tokyo"
+          config.i18n.default_locale = :ja
+          config.active_job.queue_adapter = :sidekiq
+        end
+      end
+    after: |
+      require_relative "boot"
+
+      require "rails/all"
+
+      Bundler.require(*Rails.groups)
+
+      module Storefront
+        class Application < Rails::Application
+          config.load_defaults 7.2
+
+          config.autoload_lib(ignore: %w[assets tasks])
+
+          config.time_zone = "Tokyo"
+          config.i18n.default_locale = :ja
+          config.active_job.queue_adapter = :sidekiq
+
+          config.action_dispatch.default_headers.merge!(
+            "X-Frame-Options" => "DENY",
+            "Referrer-Policy" => "strict-origin-when-cross-origin",
+            "Permissions-Policy" => "camera=(), microphone=(), geolocation=()"
+          )
+        end
+      end

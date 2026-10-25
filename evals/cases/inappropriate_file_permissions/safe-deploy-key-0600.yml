@@ -1,0 +1,23 @@
+id: inappropriate_file_permissions-safe-deploy-key-0600
+description: Rake task writes a private SSH deploy key with owner-only permissions on the key and its directory
+expected:
+  inappropriate_file_permissions: false
+files:
+  - path: lib/tasks/deploy_keys.rake
+    after: |
+      namespace :deploy_keys do
+        desc "Write the mirror deploy key from credentials to ~/.ssh"
+        task install: :environment do
+          key = Rails.application.credentials.dig(:mirror, :deploy_key)
+          abort "mirror.deploy_key missing from credentials" if key.blank?
+
+          ssh_dir = File.join(Dir.home, ".ssh")
+          FileUtils.mkdir_p(ssh_dir, mode: 0o700)
+
+          key_path = File.join(ssh_dir, "mirror_deploy_key")
+          File.open(key_path, File::WRONLY | File::CREAT | File::TRUNC, 0o600) { |f| f.write(key) }
+          File.chmod(0o600, key_path)
+
+          puts "Installed deploy key at #{key_path}"
+        end
+      end

@@ -1,0 +1,36 @@
+id: open_redirect-safe-sso-host-allowlist
+description: SSO handoff for partner storefronts parses the destination and compares scheme and exact host against an allowlist before redirecting off-host
+expected:
+  open_redirect: false
+files:
+  - path: app/controllers/sso/handoffs_controller.rb
+    after: |
+      module Sso
+        class HandoffsController < ApplicationController
+          ALLOWED_HOSTS = %w[
+            shop.acme-outdoor.test
+            wholesale.acme-outdoor.test
+          ].freeze
+
+          def show
+            uri = parse_destination(params.require(:destination))
+            return head(:bad_request) unless uri
+
+            token = Sso::HandoffToken.issue(user: current_user, audience: "#{uri.scheme}://#{uri.host}")
+            query = URI.decode_www_form(uri.query.to_s) << ["sso_token", token]
+            uri.query = URI.encode_www_form(query)
+            redirect_to uri.to_s, allow_other_host: true
+          end
+
+          private
+
+          def parse_destination(raw)
+            uri = URI.parse(raw)
+            return unless uri.scheme == "https" && ALLOWED_HOSTS.include?(uri.host) && uri.userinfo.nil?
+
+            uri
+          rescue URI::InvalidURIError
+            nil
+          end
+        end
+      end

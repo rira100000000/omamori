@@ -1,0 +1,57 @@
+id: xss-vulnerable-url-attribute-website-link
+description: Profile page links to the user-entered website field with link_to, accepting any URL scheme
+expected:
+  xss: true
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_many :posts, dependent: :destroy
+        has_one_attached :avatar
+
+        validates :display_name, presence: true, length: { maximum: 50 }
+        validates :bio, length: { maximum: 500 }
+        validates :email, presence: true, uniqueness: true
+
+        def to_param
+          "#{id}-#{display_name.parameterize}"
+        end
+      end
+    after: |
+      class User < ApplicationRecord
+        has_many :posts, dependent: :destroy
+        has_one_attached :avatar
+
+        validates :display_name, presence: true, length: { maximum: 50 }
+        validates :bio, length: { maximum: 500 }
+        validates :email, presence: true, uniqueness: true
+        validates :website, length: { maximum: 200 }, allow_blank: true
+
+        def to_param
+          "#{id}-#{display_name.parameterize}"
+        end
+      end
+  - path: app/views/users/show.html.erb
+    before: |
+      <div class="profile">
+        <%= image_tag @user.avatar, class: "profile-avatar" if @user.avatar.attached? %>
+        <h1><%= @user.display_name %></h1>
+        <p class="profile-bio"><%= @user.bio %></p>
+      </div>
+
+      <h2>Posts</h2>
+      <%= render @user.posts.order(created_at: :desc) %>
+    after: |
+      <div class="profile">
+        <%= image_tag @user.avatar, class: "profile-avatar" if @user.avatar.attached? %>
+        <h1><%= @user.display_name %></h1>
+        <p class="profile-bio"><%= @user.bio %></p>
+        <% if @user.website.present? %>
+          <p class="profile-website">
+            <%= link_to @user.website, @user.website, rel: "nofollow noopener", target: "_blank" %>
+          </p>
+        <% end %>
+      </div>
+
+      <h2>Posts</h2>
+      <%= render @user.posts.order(created_at: :desc) %>

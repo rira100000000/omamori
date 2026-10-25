@@ -1,0 +1,39 @@
+id: insecure_deserialization_rce-vulnerable-marshal-oauth-state
+description: Calendar OAuth connect flow round-trips its state through the browser as Base64 Marshal data and Marshal.loads the state parameter in the callback
+expected:
+  insecure_deserialization_rce: true
+files:
+  - path: app/controllers/calendar_connections_controller.rb
+    before: |
+      class CalendarConnectionsController < ApplicationController
+        def new
+          session[:calendar_oauth_nonce] = SecureRandom.hex(16)
+          redirect_to CalendarOAuth.authorize_url(state: session[:calendar_oauth_nonce]), allow_other_host: true
+        end
+
+        def callback
+          nonce = session.delete(:calendar_oauth_nonce)
+          return head :bad_request unless nonce && params[:state] == nonce
+
+          tokens = CalendarOAuth.exchange_code(params[:code])
+          current_user.calendar_connections.create!(tokens)
+          redirect_to settings_integrations_path, notice: "Calendar connected"
+        end
+      end
+    after: |
+      class CalendarConnectionsController < ApplicationController
+        def new
+          state = { user_id: current_user.id, return_to: params[:return_to], calendar_ids: params[:calendar_ids] }
+          encoded = Base64.urlsafe_encode64(Marshal.dump(state))
+          redirect_to CalendarOAuth.authorize_url(state: encoded), allow_other_host: true
+        end
+
+        def callback
+          state = Marshal.load(Base64.urlsafe_decode64(params[:state].to_s))
+          return head :bad_request unless state[:user_id] == current_user.id
+
+          tokens = CalendarOAuth.exchange_code(params[:code])
+          current_user.calendar_connections.create!(tokens.merge(calendar_ids: state[:calendar_ids]))
+          redirect_to state[:return_to].presence || settings_integrations_path, notice: "Calendar connected"
+        end
+      end

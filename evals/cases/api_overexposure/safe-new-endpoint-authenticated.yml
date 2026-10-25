@@ -1,0 +1,50 @@
+id: api_overexposure-safe-new-endpoint-authenticated
+description: New invoices API endpoint uses the authenticated base controller and scopes to the caller's account
+expected:
+  api_overexposure: false
+files:
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: %i[index show create]
+            resources :products, only: %i[index show]
+          end
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: %i[index show create]
+            resources :products, only: %i[index show]
+            resources :invoices, only: %i[index show]
+          end
+        end
+      end
+  - path: app/controllers/api/v1/invoices_controller.rb
+    after: |
+      module Api
+        module V1
+          class InvoicesController < Api::V1::BaseController
+            before_action :authenticate_api_user!
+
+            def index
+              invoices = current_api_user.account.invoices.order(issued_at: :desc).page(params[:page]).per(50)
+              render json: invoices.map { |invoice| serialize(invoice) }
+            end
+
+            def show
+              invoice = current_api_user.account.invoices.find(params[:id])
+              render json: serialize(invoice)
+            end
+
+            private
+
+            def serialize(invoice)
+              invoice.as_json(only: %i[id number status total_cents currency issued_at due_at])
+            end
+          end
+        end
+      end

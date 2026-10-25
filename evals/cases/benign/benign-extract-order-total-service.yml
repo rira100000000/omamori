@@ -1,0 +1,108 @@
+id: benign-extract-order-total-service
+description: Moves order total calculation out of the Order model into a plain service object
+expected:
+  xss: false
+  csrf: false
+  idor: false
+  open_redirect: false
+  ssrf: false
+  session_fixation: false
+  inappropriate_cookie_attributes: false
+  insufficient_encryption: false
+  insecure_deserialization_rce: false
+  directory_traversal: false
+  dangerous_eval: false
+  inappropriate_file_permissions: false
+  temporary_backup_file_leak: false
+  overly_detailed_errors: false
+  csp_not_set: false
+  mime_sniffing_vulnerability: false
+  clickjacking_vulnerability: false
+  auto_index_exposure: false
+  inappropriate_password_policy: false
+  two_factor_auth_missing: false
+  race_condition: false
+  api_overexposure: false
+  security_middleware_disabled: false
+  security_header_inconsistency: false
+  excessive_login_attempts: false
+  inappropriate_cache_settings: false
+  secret_key_committed: false
+  third_party_script_validation_missing: false
+  over_logging: false
+  fail_open_design: false
+  environment_differences: false
+  audit_log_missing: false
+  time_based_side_channel: false
+  sql_injection: false
+  mass_assignment: false
+files:
+  - path: app/models/order.rb
+    before: |
+      class Order < ApplicationRecord
+        belongs_to :customer
+        has_many :line_items, dependent: :destroy
+        belongs_to :coupon, optional: true
+
+        enum :status, { draft: 0, placed: 1, shipped: 2, cancelled: 3 }
+
+        def subtotal_cents
+          line_items.sum { |item| item.unit_price_cents * item.quantity }
+        end
+
+        def discount_cents
+          return 0 unless coupon
+
+          if coupon.percent_off?
+            (subtotal_cents * coupon.percent_off / 100.0).round
+          else
+            [coupon.amount_off_cents, subtotal_cents].min
+          end
+        end
+
+        def total_cents
+          subtotal_cents - discount_cents + shipping_cents
+        end
+      end
+    after: |
+      class Order < ApplicationRecord
+        belongs_to :customer
+        has_many :line_items, dependent: :destroy
+        belongs_to :coupon, optional: true
+
+        enum :status, { draft: 0, placed: 1, shipped: 2, cancelled: 3 }
+
+        delegate :subtotal_cents, :discount_cents, :total_cents, to: :totals
+
+        def totals
+          @totals ||= Orders::Totals.new(self)
+        end
+      end
+  - path: app/services/orders/totals.rb
+    after: |
+      module Orders
+        class Totals
+          def initialize(order)
+            @order = order
+          end
+
+          def subtotal_cents
+            @subtotal_cents ||= @order.line_items.sum { |item| item.unit_price_cents * item.quantity }
+          end
+
+          def discount_cents
+            coupon = @order.coupon
+            return 0 unless coupon
+
+            if coupon.percent_off?
+              (subtotal_cents * coupon.percent_off / 100.0).round
+            else
+              [coupon.amount_off_cents, subtotal_cents].min
+            end
+          end
+
+          def total_cents
+            subtotal_cents - discount_cents + @order.shipping_cents
+          end
+        end
+      end

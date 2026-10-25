@@ -1,0 +1,45 @@
+id: xss-safe-markdown-commonmarker-extensions
+description: Markdown helper for comments enables more Commonmarker extensions while keeping raw HTML rendering off, then marks the output html_safe
+expected:
+  xss: false
+files:
+  - path: app/helpers/markdown_helper.rb
+    before: |
+      module MarkdownHelper
+        MARKDOWN_OPTIONS = {
+          parse: { smart: true },
+          render: { hardbreaks: true },
+          extension: { strikethrough: true, table: true, autolink: true }
+        }.freeze
+
+        def render_markdown(text)
+          return "" if text.blank?
+
+          Commonmarker.to_html(text, options: MARKDOWN_OPTIONS).html_safe
+        end
+      end
+    after: |
+      module MarkdownHelper
+        MARKDOWN_OPTIONS = {
+          parse: { smart: true },
+          render: { hardbreaks: true, github_pre_lang: true },
+          extension: { strikethrough: true, table: true, autolink: true, tasklist: true, footnotes: true }
+        }.freeze
+
+        def render_markdown(text)
+          return "" if text.blank?
+
+          Commonmarker.to_html(text, options: MARKDOWN_OPTIONS).html_safe
+        end
+      end
+  - path: app/views/comments/_comment.html.erb
+    after: |
+      <article class="comment" id="<%= dom_id(comment) %>">
+        <header class="comment-meta">
+          <strong><%= comment.author.display_name %></strong>
+          <time datetime="<%= comment.created_at.iso8601 %>"><%= time_ago_in_words(comment.created_at) %> ago</time>
+        </header>
+        <div class="comment-body">
+          <%= render_markdown(comment.body) %>
+        </div>
+      </article>

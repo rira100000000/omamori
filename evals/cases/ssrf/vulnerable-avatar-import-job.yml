@@ -1,0 +1,72 @@
+id: ssrf-vulnerable-avatar-import-job
+description: Profile form accepts an avatar URL which a background job downloads with open-uri and stores
+expected:
+  ssrf: true
+files:
+  - path: app/jobs/import_avatar_job.rb
+    after: |
+      require "open-uri"
+
+      class ImportAvatarJob < ApplicationJob
+        queue_as :default
+
+        def perform(user_id, avatar_url)
+          user = User.find(user_id)
+          io = URI.open(avatar_url, read_timeout: 10)
+          user.avatar.attach(
+            io: io,
+            filename: File.basename(URI(avatar_url).path).presence || "avatar",
+            content_type: io.content_type
+          )
+        end
+      end
+  - path: app/controllers/profiles_controller.rb
+    before: |
+      class ProfilesController < ApplicationController
+        before_action :require_login
+
+        def edit
+          @user = current_user
+        end
+
+        def update
+          @user = current_user
+          if @user.update(profile_params)
+            redirect_to edit_profile_path, notice: "Profile updated"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def profile_params
+          params.require(:user).permit(:display_name, :bio, :avatar)
+        end
+      end
+    after: |
+      class ProfilesController < ApplicationController
+        before_action :require_login
+
+        def edit
+          @user = current_user
+        end
+
+        def update
+          @user = current_user
+          if @user.update(profile_params)
+            if params[:avatar_url].present?
+              ImportAvatarJob.perform_later(@user.id, params[:avatar_url])
+            end
+            redirect_to edit_profile_path, notice: "Profile updated"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def profile_params
+          params.require(:user).permit(:display_name, :bio, :avatar)
+        end
+      end

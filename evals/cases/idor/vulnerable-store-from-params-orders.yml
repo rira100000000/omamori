@@ -1,0 +1,70 @@
+id: idor-vulnerable-store-from-params-orders
+description: Merchant API order endpoints move under /stores/:store_id so merchants with several stores can pick which one to query
+expected:
+  idor: true
+files:
+  - path: app/controllers/api/v1/orders_controller.rb
+    before: |
+      module Api
+        module V1
+          class OrdersController < Api::BaseController
+            before_action :authenticate_merchant!
+
+            def index
+              orders = current_store.orders.order(placed_at: :desc).limit(100)
+              render json: OrderSerializer.new(orders).as_json
+            end
+
+            def show
+              order = current_store.orders.find(params[:id])
+              render json: OrderSerializer.new(order, include: [:line_items, :shipping_address]).as_json
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class OrdersController < Api::BaseController
+            before_action :authenticate_merchant!
+            before_action :set_store
+
+            def index
+              orders = @store.orders.order(placed_at: :desc).limit(100)
+              render json: OrderSerializer.new(orders).as_json
+            end
+
+            def show
+              order = @store.orders.find(params[:id])
+              render json: OrderSerializer.new(order, include: [:line_items, :shipping_address]).as_json
+            end
+
+            private
+
+            def set_store
+              @store = Store.find(params[:store_id])
+            end
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: [:index, :show]
+            resources :products
+          end
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :stores, only: [] do
+              resources :orders, only: [:index, :show]
+            end
+            resources :products
+          end
+        end
+      end

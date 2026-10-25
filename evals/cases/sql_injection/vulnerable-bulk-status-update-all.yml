@@ -1,0 +1,85 @@
+id: sql_injection-vulnerable-bulk-status-update-all
+description: Admin bulk action sets the status of selected tickets by interpolating the submitted status into an update_all SQL string
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/support/tickets_controller.rb
+    before: |
+      module Support
+        class TicketsController < ApplicationController
+          before_action :authenticate_agent!
+
+          def index
+            @tickets = current_team.tickets.includes(:requester).order(created_at: :desc).page(params[:page])
+          end
+
+          def show
+            @ticket = current_team.tickets.find(params[:id])
+          end
+
+          def update
+            @ticket = current_team.tickets.find(params[:id])
+            if @ticket.update(ticket_params)
+              redirect_to support_ticket_path(@ticket), notice: "Ticket updated"
+            else
+              render :show, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def ticket_params
+            params.require(:ticket).permit(:status, :priority, :assignee_id)
+          end
+        end
+      end
+    after: |
+      module Support
+        class TicketsController < ApplicationController
+          before_action :authenticate_agent!
+
+          def index
+            @tickets = current_team.tickets.includes(:requester).order(created_at: :desc).page(params[:page])
+          end
+
+          def show
+            @ticket = current_team.tickets.find(params[:id])
+          end
+
+          def update
+            @ticket = current_team.tickets.find(params[:id])
+            if @ticket.update(ticket_params)
+              redirect_to support_ticket_path(@ticket), notice: "Ticket updated"
+            else
+              render :show, status: :unprocessable_entity
+            end
+          end
+
+          def bulk_update
+            tickets = current_team.tickets.where(id: params[:ticket_ids])
+            count = tickets.update_all("status = '#{params[:status]}', updated_at = NOW()")
+            redirect_to support_tickets_path, notice: "#{count} tickets updated"
+          end
+
+          private
+
+          def ticket_params
+            params.require(:ticket).permit(:status, :priority, :assignee_id)
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :support do
+          resources :tickets, only: [:index, :show, :update]
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :support do
+          resources :tickets, only: [:index, :show, :update] do
+            patch :bulk_update, on: :collection
+          end
+        end
+      end

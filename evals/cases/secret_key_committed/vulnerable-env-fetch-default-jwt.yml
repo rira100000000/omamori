@@ -1,0 +1,33 @@
+id: secret_key_committed-vulnerable-env-fetch-default-jwt
+description: JWT initializer falls back to a literal signing secret when JWT_SECRET is unset, in every environment including production
+expected:
+  secret_key_committed: true
+files:
+  - path: config/initializers/jwt.rb
+    before: |
+      Rails.application.config.x.jwt = ActiveSupport::OrderedOptions.new.tap do |jwt|
+        jwt.algorithm = "HS256"
+        jwt.issuer = "ledger-api"
+        jwt.ttl = 15.minutes
+      end
+    after: |
+      Rails.application.config.x.jwt = ActiveSupport::OrderedOptions.new.tap do |jwt|
+        jwt.algorithm = "HS256"
+        jwt.issuer = "ledger-api"
+        jwt.ttl = 15.minutes
+        jwt.secret = ENV.fetch("JWT_SECRET", "omamori-eval-dummy-jwt-secret-5b2e91d0c7")
+      end
+  - path: app/services/access_token.rb
+    after: |
+      class AccessToken
+        def self.encode(user)
+          cfg = Rails.configuration.x.jwt
+          payload = { sub: user.id, iss: cfg.issuer, exp: cfg.ttl.from_now.to_i }
+          JWT.encode(payload, cfg.secret, cfg.algorithm)
+        end
+
+        def self.decode(token)
+          cfg = Rails.configuration.x.jwt
+          JWT.decode(token, cfg.secret, true, algorithm: cfg.algorithm, iss: cfg.issuer, verify_iss: true).first
+        end
+      end

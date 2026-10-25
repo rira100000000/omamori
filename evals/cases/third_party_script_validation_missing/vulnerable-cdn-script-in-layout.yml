@@ -1,0 +1,45 @@
+id: third_party_script_validation_missing-vulnerable-cdn-script-in-layout
+description: Dashboard layout loads Chart.js and a date-picker stylesheet from public CDNs with no integrity attribute
+expected:
+  third_party_script_validation_missing: true
+files:
+  - path: app/views/layouts/dashboard.html.erb
+    before: |
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title><%= content_for(:title) || "Dashboard" %></title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <%= csrf_meta_tags %>
+          <%= csp_meta_tag %>
+          <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+          <%= javascript_importmap_tags %>
+        </head>
+        <body class="dashboard">
+          <%= render "shared/sidebar" %>
+          <main>
+            <%= yield %>
+          </main>
+        </body>
+      </html>
+    after: |
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title><%= content_for(:title) || "Dashboard" %></title>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <%= csrf_meta_tags %>
+          <%= csp_meta_tag %>
+          <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+          <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+          <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+          <%= javascript_importmap_tags %>
+        </head>
+        <body class="dashboard">
+          <%= render "shared/sidebar" %>
+          <main>
+            <%= yield %>
+          </main>
+        </body>
+      </html>

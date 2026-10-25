@@ -2,7 +2,7 @@
 
 require_relative 'omamori/version'
 require_relative 'omamori/core_runner'
-require_relative 'omamori/ai_analysis_engine/gemini_client'
+require_relative 'omamori/ai_analysis_engine/llm_client'
 require_relative 'omamori/ai_analysis_engine/prompt_manager'
 require_relative 'omamori/ai_analysis_engine/diff_splitter'
 require_relative 'omamori/report_generator/console_formatter'

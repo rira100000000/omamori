@@ -1,0 +1,45 @@
+id: csp_not_set-vulnerable-controller-csp-disabled
+description: Marketing pages controller turns the content security policy off entirely so editors can paste embed snippets
+expected:
+  csp_not_set: true
+files:
+  - path: app/controllers/landing_pages_controller.rb
+    before: |
+      class LandingPagesController < ApplicationController
+        skip_before_action :authenticate_user!
+        layout "marketing"
+
+        def show
+          @page = LandingPage.published.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          fresh_when @page, public: true
+        end
+
+        def preview
+          authorize! :preview, LandingPage
+          @page = LandingPage.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          render :show
+        end
+      end
+    after: |
+      class LandingPagesController < ApplicationController
+        skip_before_action :authenticate_user!
+        layout "marketing"
+
+        # editors paste third-party embed snippets (forms, video, ads) into page bodies
+        content_security_policy false
+
+        def show
+          @page = LandingPage.published.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          fresh_when @page, public: true
+        end
+
+        def preview
+          authorize! :preview, LandingPage
+          @page = LandingPage.find_by!(slug: params[:slug])
+          @body_html = @page.rendered_body
+          render :show
+        end
+      end

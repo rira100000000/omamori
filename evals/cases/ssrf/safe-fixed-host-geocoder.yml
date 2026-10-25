@@ -1,0 +1,39 @@
+id: ssrf-safe-fixed-host-geocoder
+description: Geocoding service sends user-entered address as an encoded query parameter to a fixed API host with Net::HTTP
+expected:
+  ssrf: false
+files:
+  - path: app/services/geocoder_client.rb
+    before: |
+      class GeocoderClient
+        def initialize(api_key: ENV.fetch("GEOCODER_API_KEY"))
+          @api_key = api_key
+        end
+
+        def lookup(address)
+          raise NotImplementedError
+        end
+      end
+    after: |
+      require "net/http"
+
+      class GeocoderClient
+        BASE_URI = URI("https://geocode.example-maps.com/v1/search").freeze
+
+        def initialize(api_key: ENV.fetch("GEOCODER_API_KEY"))
+          @api_key = api_key
+        end
+
+        def lookup(address)
+          uri = BASE_URI.dup
+          uri.query = URI.encode_www_form(q: address, limit: 1, key: @api_key)
+
+          response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 3, read_timeout: 5) do |http|
+            http.get(uri.request_uri)
+          end
+          return unless response.is_a?(Net::HTTPSuccess)
+
+          result = JSON.parse(response.body).fetch("results", []).first
+          result && { lat: result["lat"], lng: result["lng"] }
+        end
+      end

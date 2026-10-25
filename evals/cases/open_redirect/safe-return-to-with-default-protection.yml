@@ -1,0 +1,88 @@
+id: open_redirect-safe-return-to-with-default-protection
+description: Add-to-cart redirects to a return_to parameter in an app on load_defaults 7.1 that keeps the default raise_on_open_redirects
+expected:
+  open_redirect: false
+files:
+  - path: config/application.rb
+    before: |
+      require_relative "boot"
+
+      require "rails/all"
+
+      Bundler.require(*Rails.groups)
+
+      module Storefront
+        class Application < Rails::Application
+          config.load_defaults 7.1
+
+          config.autoload_lib(ignore: %w[assets tasks])
+
+          config.time_zone = "Tokyo"
+          config.i18n.default_locale = :ja
+          config.i18n.available_locales = [:ja, :en]
+
+          config.generators.system_tests = nil
+        end
+      end
+    after: |
+      require_relative "boot"
+
+      require "rails/all"
+
+      Bundler.require(*Rails.groups)
+
+      module Storefront
+        class Application < Rails::Application
+          config.load_defaults 7.1
+          config.active_record.query_log_tags_enabled = true
+
+          config.autoload_lib(ignore: %w[assets tasks])
+
+          config.time_zone = "Tokyo"
+          config.i18n.default_locale = :ja
+          config.i18n.available_locales = [:ja, :en]
+
+          config.generators.system_tests = nil
+        end
+      end
+  - path: app/controllers/cart_items_controller.rb
+    before: |
+      class CartItemsController < ApplicationController
+        before_action :set_cart
+
+        def create
+          @cart.add(Product.find(params[:product_id]), quantity: params.fetch(:quantity, 1).to_i)
+          redirect_to cart_path, notice: "Added to cart"
+        end
+
+        def destroy
+          @cart.items.find(params[:id]).destroy!
+          redirect_to cart_path, status: :see_other
+        end
+
+        private
+
+        def set_cart
+          @cart = Cart.for_session(session)
+        end
+      end
+    after: |
+      class CartItemsController < ApplicationController
+        before_action :set_cart
+
+        def create
+          @cart.add(Product.find(params[:product_id]), quantity: params.fetch(:quantity, 1).to_i)
+          redirect_to params[:return_to].presence || cart_path, notice: "Added to cart"
+        end
+
+        def destroy
+          @cart.items.find(params[:id]).destroy!
+          redirect_to cart_path, status: :see_other
+        end
+
+        private
+
+        def set_cart
+          @cart = Cart.for_session(session)
+        end
+      end

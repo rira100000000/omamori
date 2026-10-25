@@ -1,0 +1,52 @@
+id: sql_injection-vulnerable-payroll-report-dates
+description: HR payroll summary service interpolates the date range taken from the request into a raw select_all query
+expected:
+  sql_injection: true
+files:
+  - path: app/services/payroll/department_summary.rb
+    after: |
+      module Payroll
+        class DepartmentSummary
+          def initialize(company:, from:, to:)
+            @company = company
+            @from = from
+            @to = to
+          end
+
+          def rows
+            ActiveRecord::Base.connection.select_all(<<~SQL).to_a
+              SELECT d.name AS department,
+                     COUNT(DISTINCT p.employee_id) AS headcount,
+                     SUM(p.gross_cents) AS gross_cents,
+                     SUM(p.net_cents) AS net_cents
+              FROM payslips p
+              JOIN employees e ON e.id = p.employee_id
+              JOIN departments d ON d.id = e.department_id
+              WHERE e.company_id = #{@company.id.to_i}
+                AND p.period_start >= '#{@from}'
+                AND p.period_end <= '#{@to}'
+              GROUP BY d.name
+              ORDER BY d.name
+            SQL
+          end
+        end
+      end
+  - path: app/controllers/reports/payroll_controller.rb
+    after: |
+      module Reports
+        class PayrollController < ApplicationController
+          before_action :require_hr_role
+
+          def show
+            @from = params[:from].presence || Date.current.beginning_of_month.to_s
+            @to = params[:to].presence || Date.current.end_of_month.to_s
+
+            @rows = Payroll::DepartmentSummary.new(company: current_company, from: @from, to: @to).rows
+
+            respond_to do |format|
+              format.html
+              format.csv { send_data Payroll::SummaryCsv.new(@rows).to_s, filename: "payroll-#{@from}.csv" }
+            end
+          end
+        end
+      end

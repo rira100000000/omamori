@@ -1,0 +1,59 @@
+id: mass_assignment-safe-json-body-member-update
+description: Mobile API profile update parses the raw JSON request body, wraps it in ActionController::Parameters, and permits only profile fields
+expected:
+  mass_assignment: false
+files:
+  - path: app/controllers/api/v1/me_controller.rb
+    before: |
+      module Api
+        module V1
+          class MeController < Api::BaseController
+            before_action :authenticate_token!
+
+            def show
+              render json: UserSerializer.new(current_user).as_json
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class MeController < Api::BaseController
+            before_action :authenticate_token!
+
+            def show
+              render json: UserSerializer.new(current_user).as_json
+            end
+
+            def update
+              body = ActionController::Parameters.new(JSON.parse(request.body.read))
+              attrs = body.permit(:display_name, :bio, :avatar_url, :time_zone)
+              if current_user.update(attrs)
+                render json: UserSerializer.new(current_user).as_json
+              else
+                render json: { errors: current_user.errors.full_messages }, status: :unprocessable_entity
+              end
+            rescue JSON::ParserError
+              render json: { error: "invalid JSON" }, status: :bad_request
+            end
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resource :me, only: [:show], controller: "me"
+          end
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resource :me, only: [:show, :update], controller: "me"
+          end
+        end
+      end

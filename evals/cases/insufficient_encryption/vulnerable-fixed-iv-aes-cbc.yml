@@ -1,0 +1,53 @@
+id: insufficient_encryption-vulnerable-fixed-iv-aes-cbc
+description: New encryptor for stored partner API credentials uses AES-256-CBC with a constant IV and no authentication tag
+expected:
+  insufficient_encryption: true
+files:
+  - path: app/lib/credential_cipher.rb
+    after: |
+      require "openssl"
+      require "base64"
+
+      class CredentialCipher
+        CIPHER = "aes-256-cbc".freeze
+        IV = ("\x00" * 16).b.freeze
+
+        def initialize(key: Rails.application.credentials.credential_cipher_key)
+          @key = [key].pack("H*")
+        end
+
+        def encrypt(plaintext)
+          cipher = OpenSSL::Cipher.new(CIPHER).encrypt
+          cipher.key = @key
+          cipher.iv = IV
+          Base64.strict_encode64(cipher.update(plaintext) + cipher.final)
+        end
+
+        def decrypt(encoded)
+          cipher = OpenSSL::Cipher.new(CIPHER).decrypt
+          cipher.key = @key
+          cipher.iv = IV
+          cipher.update(Base64.strict_decode64(encoded)) + cipher.final
+        end
+      end
+  - path: app/models/partner_integration.rb
+    before: |
+      class PartnerIntegration < ApplicationRecord
+        belongs_to :account
+
+        validates :provider, inclusion: { in: %w[freee moneyforward] }
+      end
+    after: |
+      class PartnerIntegration < ApplicationRecord
+        belongs_to :account
+
+        validates :provider, inclusion: { in: %w[freee moneyforward] }
+
+        def api_secret
+          CredentialCipher.new.decrypt(api_secret_ciphertext) if api_secret_ciphertext
+        end
+
+        def api_secret=(value)
+          self.api_secret_ciphertext = CredentialCipher.new.encrypt(value)
+        end
+      end

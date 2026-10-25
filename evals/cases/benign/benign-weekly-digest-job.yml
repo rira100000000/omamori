@@ -1,0 +1,70 @@
+id: benign-weekly-digest-job
+description: Adds a weekly job that enqueues digest emails for opted-in users through the existing mailer
+expected:
+  xss: false
+  csrf: false
+  idor: false
+  open_redirect: false
+  ssrf: false
+  session_fixation: false
+  inappropriate_cookie_attributes: false
+  insufficient_encryption: false
+  insecure_deserialization_rce: false
+  directory_traversal: false
+  dangerous_eval: false
+  inappropriate_file_permissions: false
+  temporary_backup_file_leak: false
+  overly_detailed_errors: false
+  csp_not_set: false
+  mime_sniffing_vulnerability: false
+  clickjacking_vulnerability: false
+  auto_index_exposure: false
+  inappropriate_password_policy: false
+  two_factor_auth_missing: false
+  race_condition: false
+  api_overexposure: false
+  security_middleware_disabled: false
+  security_header_inconsistency: false
+  excessive_login_attempts: false
+  inappropriate_cache_settings: false
+  secret_key_committed: false
+  third_party_script_validation_missing: false
+  over_logging: false
+  fail_open_design: false
+  environment_differences: false
+  audit_log_missing: false
+  time_based_side_channel: false
+  sql_injection: false
+  mass_assignment: false
+files:
+  - path: app/jobs/weekly_digest_job.rb
+    after: |
+      class WeeklyDigestJob < ApplicationJob
+        queue_as :mailers
+
+        def perform(week_start = Date.current.beginning_of_week(:monday) - 1.week)
+          range = week_start.all_week(:monday)
+
+          User.where(weekly_digest: true).where.not(confirmed_at: nil).find_each do |user|
+            activity = user.followed_projects.with_activity_in(range)
+            next if activity.empty?
+
+            DigestMailer.weekly(user, project_ids: activity.ids, week_start: week_start).deliver_later
+          end
+        end
+      end
+  - path: config/recurring.yml
+    before: |
+      production:
+        clear_finished_jobs:
+          command: "SolidQueue::Job.clear_finished_in_batches"
+          schedule: every hour at minute 12
+    after: |
+      production:
+        clear_finished_jobs:
+          command: "SolidQueue::Job.clear_finished_in_batches"
+          schedule: every hour at minute 12
+        weekly_digest:
+          class: WeeklyDigestJob
+          queue: mailers
+          schedule: every monday at 8am

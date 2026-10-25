@@ -1,0 +1,58 @@
+id: mass_assignment-vulnerable-json-body-member-update
+description: Mobile API profile update parses the raw JSON request body and passes the resulting hash straight to update
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/api/v1/me_controller.rb
+    before: |
+      module Api
+        module V1
+          class MeController < Api::BaseController
+            before_action :authenticate_token!
+
+            def show
+              render json: UserSerializer.new(current_user).as_json
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class MeController < Api::BaseController
+            before_action :authenticate_token!
+
+            def show
+              render json: UserSerializer.new(current_user).as_json
+            end
+
+            def update
+              attrs = JSON.parse(request.body.read)
+              if current_user.update(attrs)
+                render json: UserSerializer.new(current_user).as_json
+              else
+                render json: { errors: current_user.errors.full_messages }, status: :unprocessable_entity
+              end
+            rescue JSON::ParserError
+              render json: { error: "invalid JSON" }, status: :bad_request
+            end
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resource :me, only: [:show], controller: "me"
+          end
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resource :me, only: [:show, :update], controller: "me"
+          end
+        end
+      end

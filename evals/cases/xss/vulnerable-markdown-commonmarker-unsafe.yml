@@ -1,0 +1,45 @@
+id: xss-vulnerable-markdown-commonmarker-unsafe
+description: Markdown helper for comments turns on Commonmarker's unsafe rendering so raw HTML in comment bodies passes through to html_safe output
+expected:
+  xss: true
+files:
+  - path: app/helpers/markdown_helper.rb
+    before: |
+      module MarkdownHelper
+        MARKDOWN_OPTIONS = {
+          parse: { smart: true },
+          render: { hardbreaks: true },
+          extension: { strikethrough: true, table: true, autolink: true }
+        }.freeze
+
+        def render_markdown(text)
+          return "" if text.blank?
+
+          Commonmarker.to_html(text, options: MARKDOWN_OPTIONS).html_safe
+        end
+      end
+    after: |
+      module MarkdownHelper
+        MARKDOWN_OPTIONS = {
+          parse: { smart: true },
+          render: { hardbreaks: true, unsafe: true },
+          extension: { strikethrough: true, table: true, autolink: true, tagfilter: false }
+        }.freeze
+
+        def render_markdown(text)
+          return "" if text.blank?
+
+          Commonmarker.to_html(text, options: MARKDOWN_OPTIONS).html_safe
+        end
+      end
+  - path: app/views/comments/_comment.html.erb
+    after: |
+      <article class="comment" id="<%= dom_id(comment) %>">
+        <header class="comment-meta">
+          <strong><%= comment.author.display_name %></strong>
+          <time datetime="<%= comment.created_at.iso8601 %>"><%= time_ago_in_words(comment.created_at) %> ago</time>
+        </header>
+        <div class="comment-body">
+          <%= render_markdown(comment.body) %>
+        </div>
+      </article>

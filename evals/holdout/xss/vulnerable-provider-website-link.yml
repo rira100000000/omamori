@@ -1,0 +1,92 @@
+id: xss-vulnerable-provider-website-link
+description: Clinic directory lets providers set a website URL with only a presence check and renders it with link_to on the public profile
+expected:
+  xss: true
+files:
+  - path: app/models/provider.rb
+    before: |
+      class Provider < ApplicationRecord
+        belongs_to :clinic
+        has_many :availability_slots, dependent: :destroy
+
+        validates :full_name, :specialty, presence: true
+        validates :npi_number, presence: true, uniqueness: true
+
+        def display_name
+          [title, full_name].compact.join(" ")
+        end
+      end
+    after: |
+      class Provider < ApplicationRecord
+        belongs_to :clinic
+        has_many :availability_slots, dependent: :destroy
+
+        validates :full_name, :specialty, presence: true
+        validates :npi_number, presence: true, uniqueness: true
+        validates :website_url, length: { maximum: 255 }, allow_blank: true
+
+        normalizes :website_url, with: ->(url) { url.strip }
+
+        def display_name
+          [title, full_name].compact.join(" ")
+        end
+      end
+  - path: app/controllers/providers/profiles_controller.rb
+    before: |
+      module Providers
+        class ProfilesController < ApplicationController
+          before_action :authenticate_provider!
+
+          def update
+            if current_provider.update(profile_params)
+              redirect_to edit_providers_profile_path, notice: "Profile updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:provider).permit(:title, :full_name, :specialty, :bio)
+          end
+        end
+      end
+    after: |
+      module Providers
+        class ProfilesController < ApplicationController
+          before_action :authenticate_provider!
+
+          def update
+            if current_provider.update(profile_params)
+              redirect_to edit_providers_profile_path, notice: "Profile updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:provider).permit(:title, :full_name, :specialty, :bio, :website_url)
+          end
+        end
+      end
+  - path: app/views/directory/providers/show.html.erb
+    before: |
+      <section class="provider">
+        <h1><%= @provider.display_name %></h1>
+        <p class="specialty"><%= @provider.specialty %></p>
+        <p><%= simple_format(@provider.bio) %></p>
+        <%= link_to "Book an appointment", new_directory_provider_booking_path(@provider), class: "btn" %>
+      </section>
+    after: |
+      <section class="provider">
+        <h1><%= @provider.display_name %></h1>
+        <p class="specialty"><%= @provider.specialty %></p>
+        <p><%= simple_format(@provider.bio) %></p>
+        <% if @provider.website_url.present? %>
+          <p><%= link_to "Practice website", @provider.website_url, rel: "noopener", target: "_blank" %></p>
+        <% end %>
+        <%= link_to "Book an appointment", new_directory_provider_booking_path(@provider), class: "btn" %>
+      </section>

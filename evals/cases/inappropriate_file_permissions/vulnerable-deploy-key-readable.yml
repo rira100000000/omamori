@@ -1,0 +1,23 @@
+id: inappropriate_file_permissions-vulnerable-deploy-key-readable
+description: Rake task writes a private SSH deploy key to disk and makes it readable and writable by everyone
+expected:
+  inappropriate_file_permissions: true
+files:
+  - path: lib/tasks/deploy_keys.rake
+    after: |
+      namespace :deploy_keys do
+        desc "Write the mirror deploy key from credentials to ~/.ssh"
+        task install: :environment do
+          key = Rails.application.credentials.dig(:mirror, :deploy_key)
+          abort "mirror.deploy_key missing from credentials" if key.blank?
+
+          ssh_dir = File.join(Dir.home, ".ssh")
+          FileUtils.mkdir_p(ssh_dir)
+
+          key_path = File.join(ssh_dir, "mirror_deploy_key")
+          File.write(key_path, key)
+          File.chmod(0o666, key_path)
+
+          puts "Installed deploy key at #{key_path}"
+        end
+      end

@@ -1,0 +1,50 @@
+id: inappropriate_cookie_attributes-vulnerable-remember-token-plain-cookie
+description: Remember-me login stores the auth token in a plain cookie without HttpOnly, Secure, or SameSite
+expected:
+  inappropriate_cookie_attributes: true
+files:
+  - path: app/controllers/concerns/remember_me.rb
+    before: |
+      module RememberMe
+        extend ActiveSupport::Concern
+
+        def remember(user)
+          token = user.regenerate_remember_token!
+          cookies.encrypted.permanent[:remember_token] = {
+            value: token,
+            httponly: true,
+            secure: Rails.env.production?,
+            same_site: :lax
+          }
+        end
+
+        def forget
+          cookies.delete(:remember_token)
+        end
+
+        def user_from_remember_cookie
+          token = cookies.encrypted[:remember_token]
+          token && User.find_by_remember_token(token)
+        end
+      end
+    after: |
+      module RememberMe
+        extend ActiveSupport::Concern
+
+        def remember(user)
+          token = user.regenerate_remember_token!
+          cookies[:remember_token] = {
+            value: token,
+            expires: 1.year.from_now
+          }
+        end
+
+        def forget
+          cookies.delete(:remember_token)
+        end
+
+        def user_from_remember_cookie
+          token = cookies[:remember_token]
+          token && User.find_by_remember_token(token)
+        end
+      end

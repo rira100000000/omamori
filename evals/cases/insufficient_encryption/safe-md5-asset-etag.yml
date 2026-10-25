@@ -1,0 +1,36 @@
+id: insufficient_encryption-safe-md5-asset-etag
+description: Uses MD5 to build a cache-busting fingerprint for public theme CSS, not for any secret data
+expected:
+  insufficient_encryption: false
+files:
+  - path: app/models/theme.rb
+    before: |
+      class Theme < ApplicationRecord
+        belongs_to :shop
+
+        validates :primary_color, :font_family, presence: true
+
+        def stylesheet
+          ThemeStylesheet.new(self).render
+        end
+      end
+    after: |
+      require "digest/md5"
+
+      class Theme < ApplicationRecord
+        belongs_to :shop
+
+        validates :primary_color, :font_family, presence: true
+
+        def stylesheet
+          ThemeStylesheet.new(self).render
+        end
+
+        def stylesheet_fingerprint
+          Digest::MD5.hexdigest(stylesheet)[0, 12]
+        end
+
+        def stylesheet_path
+          "/themes/#{id}-#{stylesheet_fingerprint}.css"
+        end
+      end

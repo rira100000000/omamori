@@ -1,0 +1,46 @@
+id: race_condition-safe-inventory-atomic-update
+description: Stock reservation uses a single conditional UPDATE and checks affected rows
+expected:
+  race_condition: false
+files:
+  - path: app/services/inventory/reserve.rb
+    before: |
+      module Inventory
+        class Reserve
+          class OutOfStock < StandardError; end
+
+          def initialize(product_id:, quantity:)
+            @product_id = product_id
+            @quantity = quantity
+          end
+
+          def call
+            product = Product.lock.find(@product_id)
+            raise OutOfStock if product.stock < @quantity
+
+            product.update!(stock: product.stock - @quantity)
+          end
+        end
+      end
+    after: |
+      module Inventory
+        class Reserve
+          class OutOfStock < StandardError; end
+
+          def initialize(product_id:, quantity:)
+            @product_id = product_id
+            @quantity = quantity
+          end
+
+          def call
+            updated = Product
+              .where(id: @product_id)
+              .where("stock >= ?", @quantity)
+              .update_all(["stock = stock - ?, updated_at = ?", @quantity, Time.current])
+
+            raise OutOfStock if updated.zero?
+
+            StockReservedEvent.publish(product_id: @product_id, quantity: @quantity)
+          end
+        end
+      end

@@ -1,0 +1,62 @@
+id: session_fixation-vulnerable-login-drops-reset-session
+description: Login refactor removes reset_session so the pre-login session id is kept after authentication
+expected:
+  session_fixation: true
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            session[:signed_in_at] = Time.current.to_i
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to root_path
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            sign_in(user)
+            redirect_to session.delete(:return_to) || dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          reset_session
+          redirect_to root_path
+        end
+
+        private
+
+        # Keep return_to and cart contents across sign in
+        def sign_in(user)
+          session[:user_id] = user.id
+          session[:signed_in_at] = Time.current.to_i
+        end
+      end

@@ -5,7 +5,7 @@ require 'omamori/ai_analysis_engine/diff_splitter'
 
 RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
   let(:chunk_size) { 100 }
-  let(:gemini_client_double) { instance_double(Omamori::AIAnalysisEngine::GeminiClient) }
+  let(:llm_client_double) { instance_double(Omamori::AIAnalysisEngine::LLMClient) }
   let(:prompt_manager_double) { instance_double(Omamori::AIAnalysisEngine::PromptManager) }
   let(:json_schema) { { type: 'object', properties: { security_risks: { type: 'array' } } } }
   let(:risks_to_check) { %i[xss csrf] }
@@ -89,20 +89,20 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
     end
 
     it 'splits the content, processes each chunk, and combines results' do
-      allow(gemini_client_double).to receive(:analyze).with(chunk1_prompt, json_schema,
-                                                            model: 'gemini-2.5-flash-preview-04-17').and_return(chunk1_result)
-      allow(gemini_client_double).to receive(:analyze).with(chunk2_prompt, json_schema,
-                                                            model: 'gemini-2.5-flash-preview-04-17').and_return(chunk2_result)
-      allow(gemini_client_double).to receive(:analyze).with(chunk3_prompt, json_schema,
-                                                            model: 'gemini-2.5-flash-preview-04-17').and_return(chunk3_result)
+      allow(llm_client_double).to receive(:analyze).with(chunk1_prompt, json_schema,
+                                                            model: Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL).and_return(chunk1_result)
+      allow(llm_client_double).to receive(:analyze).with(chunk2_prompt, json_schema,
+                                                            model: Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL).and_return(chunk2_result)
+      allow(llm_client_double).to receive(:analyze).with(chunk3_prompt, json_schema,
+                                                            model: Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL).and_return(chunk3_result)
 
       expect(splitter).to receive(:split).with(content).and_call_original
       expect(prompt_manager_double).to receive(:build_prompt).exactly(3).times
-      expect(gemini_client_double).to receive(:analyze).exactly(3).times
+      expect(llm_client_double).to receive(:analyze).exactly(3).times
       expect(splitter).to receive(:combine_results).with([chunk1_result, chunk2_result,
                                                           chunk3_result]).and_call_original
 
-      result = splitter.process_in_chunks(content, gemini_client_double, json_schema, prompt_manager_double,
+      result = splitter.process_in_chunks(content, llm_client_double, json_schema, prompt_manager_double,
                                           risks_to_check)
 
       expected_combined_risks = chunk1_result['security_risks'] + chunk2_result['security_risks'] + chunk3_result['security_risks']
@@ -116,15 +116,15 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
       allow(prompt_manager_double).to receive(:build_prompt).with(short_content, risks_to_check, json_schema,
                                                                   file_path: anything).and_return(short_prompt)
-      allow(gemini_client_double).to receive(:analyze).with(short_prompt, json_schema,
-                                                            model: 'gemini-2.5-flash-preview-04-17').and_return(short_result)
+      allow(llm_client_double).to receive(:analyze).with(short_prompt, json_schema,
+                                                            model: Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL).and_return(short_result)
 
       expect(splitter).to receive(:split).with(short_content).and_call_original
       expect(prompt_manager_double).to receive(:build_prompt).once
-      expect(gemini_client_double).to receive(:analyze).once
+      expect(llm_client_double).to receive(:analyze).once
       expect(splitter).to receive(:combine_results).with([short_result]).and_call_original
 
-      result = splitter.process_in_chunks(short_content, gemini_client_double, json_schema, prompt_manager_double,
+      result = splitter.process_in_chunks(short_content, llm_client_double, json_schema, prompt_manager_double,
                                           risks_to_check)
       expect(result).to eq(short_result)
     end
@@ -132,21 +132,21 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
     it 'handles empty content' do
       expect(splitter).to receive(:split).with('').and_return([])
       expect(prompt_manager_double).not_to receive(:build_prompt)
-      expect(gemini_client_double).not_to receive(:analyze)
+      expect(llm_client_double).not_to receive(:analyze)
       expect(splitter).to receive(:combine_results).with([]).and_call_original
 
-      result = splitter.process_in_chunks('', gemini_client_double, json_schema, prompt_manager_double, risks_to_check)
+      result = splitter.process_in_chunks('', llm_client_double, json_schema, prompt_manager_double, risks_to_check)
       expect(result).to eq({ 'security_risks' => [] })
     end
 
     it 'handles nil results from analyze' do
       allow(prompt_manager_double).to receive(:build_prompt).with(anything, anything, json_schema,
                                                                   file_path: anything).and_return('dummy prompt')
-      allow(gemini_client_double).to receive(:analyze).with(anything, json_schema, model: 'gemini-2.5-flash-preview-04-17').and_return(chunk1_result, nil, chunk2_result) # Simulate one nil result
+      allow(llm_client_double).to receive(:analyze).with(anything, json_schema, model: Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL).and_return(chunk1_result, nil, chunk2_result) # Simulate one nil result
 
       expect(splitter).to receive(:combine_results).with([chunk1_result, nil, chunk2_result]).and_call_original
 
-      result = splitter.process_in_chunks(content, gemini_client_double, json_schema, prompt_manager_double,
+      result = splitter.process_in_chunks(content, llm_client_double, json_schema, prompt_manager_double,
                                           risks_to_check)
 
       expected_combined_risks = chunk1_result['security_risks'] + chunk2_result['security_risks']
@@ -157,12 +157,12 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
       result_without_risks = { 'other_data' => '...' }
       allow(prompt_manager_double).to receive(:build_prompt).with(anything, anything, json_schema,
                                                                   file_path: anything).and_return('dummy prompt')
-      allow(gemini_client_double).to receive(:analyze).with(anything, json_schema, model: 'gemini-2.5-flash-preview-04-17').and_return(chunk1_result, result_without_risks, chunk2_result) # Simulate one result without risks
+      allow(llm_client_double).to receive(:analyze).with(anything, json_schema, model: Omamori::AIAnalysisEngine::LLMClient::DEFAULT_MODEL).and_return(chunk1_result, result_without_risks, chunk2_result) # Simulate one result without risks
 
       expect(splitter).to receive(:combine_results).with([chunk1_result, result_without_risks,
                                                           chunk2_result]).and_call_original
 
-      result = splitter.process_in_chunks(content, gemini_client_double, json_schema, prompt_manager_double,
+      result = splitter.process_in_chunks(content, llm_client_double, json_schema, prompt_manager_double,
                                           risks_to_check)
 
       expected_combined_risks = chunk1_result['security_risks'] + chunk2_result['security_risks']
@@ -199,6 +199,29 @@ RSpec.describe Omamori::AIAnalysisEngine::DiffSplitter do
 
     it 'handles an empty list of results' do
       expect(splitter.__send__(:combine_results, [])).to eq({ 'security_risks' => [] })
+    end
+  end
+
+  describe '#split_by_file' do
+    let(:splitter) { Omamori::AIAnalysisEngine::DiffSplitter.new }
+
+    it 'splits a unified diff into file path and diff pairs' do
+      diff = <<~DIFF
+        diff --git a/app/a.rb b/app/a.rb
+        index 111..222 100644
+        +a
+        diff --git a/app/b.rb b/app/b.rb
+        +b
+      DIFF
+
+      expect(splitter.split_by_file(diff)).to eq([
+                                                   ['app/a.rb', "diff --git a/app/a.rb b/app/a.rb\nindex 111..222 100644\n+a\n"],
+                                                   ['app/b.rb', "diff --git a/app/b.rb b/app/b.rb\n+b\n"]
+                                                 ])
+    end
+
+    it 'returns an empty array for an empty diff' do
+      expect(splitter.split_by_file('')).to eq([])
     end
   end
 end

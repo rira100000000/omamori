@@ -1,0 +1,48 @@
+id: time_based_side_channel-vulnerable-webhook-signature-equality
+description: Payment webhook controller adds HMAC signature verification but compares the signature with ==
+expected:
+  time_based_side_channel: true
+files:
+  - path: app/controllers/webhooks/payments_controller.rb
+    before: |
+      module Webhooks
+        class PaymentsController < ActionController::API
+          def create
+            payload = request.raw_post
+            event = JSON.parse(payload)
+
+            Payments::WebhookProcessor.new(event).process
+            head :ok
+          rescue JSON::ParserError
+            head :bad_request
+          end
+        end
+      end
+    after: |
+      module Webhooks
+        class PaymentsController < ActionController::API
+          before_action :verify_signature!
+
+          def create
+            payload = request.raw_post
+            event = JSON.parse(payload)
+
+            Payments::WebhookProcessor.new(event).process
+            head :ok
+          rescue JSON::ParserError
+            head :bad_request
+          end
+
+          private
+
+          def verify_signature!
+            provided = request.headers["X-Payhub-Signature"].to_s
+            expected = OpenSSL::HMAC.hexdigest("SHA256", webhook_secret, request.raw_post)
+            head :unauthorized unless provided == expected
+          end
+
+          def webhook_secret
+            Rails.application.credentials.dig(:payhub, :webhook_secret)
+          end
+        end
+      end

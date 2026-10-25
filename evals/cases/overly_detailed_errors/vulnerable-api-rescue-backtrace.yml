@@ -1,0 +1,66 @@
+id: overly_detailed_errors-vulnerable-api-rescue-backtrace
+description: API base controller rescues all errors and returns the exception class, message and backtrace in the JSON response
+expected:
+  overly_detailed_errors: true
+files:
+  - path: app/controllers/api/v1/base_controller.rb
+    before: |
+      module Api
+        module V1
+          class BaseController < ActionController::API
+            include ActionController::HttpAuthentication::Token::ControllerMethods
+
+            before_action :authenticate_client!
+
+            rescue_from ActiveRecord::RecordNotFound do
+              render json: { error: "not_found" }, status: :not_found
+            end
+
+            rescue_from ActionController::ParameterMissing do |e|
+              render json: { error: "bad_request", param: e.param }, status: :bad_request
+            end
+
+            private
+
+            def authenticate_client!
+              @client = authenticate_with_http_token { |token, _| ApiClient.find_by_token(token) }
+              head :unauthorized unless @client
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class BaseController < ActionController::API
+            include ActionController::HttpAuthentication::Token::ControllerMethods
+
+            before_action :authenticate_client!
+
+            rescue_from StandardError do |e|
+              Rails.logger.error(e.full_message)
+              render json: {
+                error: "internal_error",
+                exception: e.class.name,
+                message: e.message,
+                backtrace: e.backtrace&.first(20)
+              }, status: :internal_server_error
+            end
+
+            rescue_from ActiveRecord::RecordNotFound do
+              render json: { error: "not_found" }, status: :not_found
+            end
+
+            rescue_from ActionController::ParameterMissing do |e|
+              render json: { error: "bad_request", param: e.param }, status: :bad_request
+            end
+
+            private
+
+            def authenticate_client!
+              @client = authenticate_with_http_token { |token, _| ApiClient.find_by_token(token) }
+              head :unauthorized unless @client
+            end
+          end
+        end
+      end

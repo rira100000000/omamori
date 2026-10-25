@@ -1,0 +1,63 @@
+id: inappropriate_cookie_attributes-vulnerable-preview-middleware-set-cookie
+description: New Rack middleware stores a draft-preview access token in a cookie set with only path and expiry, without HttpOnly, Secure or SameSite
+expected:
+  inappropriate_cookie_attributes: true
+files:
+  - path: app/middleware/preview_access.rb
+    after: |
+      class PreviewAccess
+        COOKIE = "preview_token".freeze
+
+        def initialize(app)
+          @app = app
+        end
+
+        def call(env)
+          request = Rack::Request.new(env)
+          token = request.params["preview_token"]
+
+          unless token && PreviewGrant.active.exists?(token: token)
+            return @app.call(env)
+          end
+
+          env["app.preview_token"] = token
+          status, headers, body = @app.call(env)
+
+          Rack::Utils.set_cookie_header!(headers, COOKIE, {
+            value: token,
+            path: "/",
+            expires: 3.days.from_now
+          })
+
+          [status, headers, body]
+        end
+      end
+  - path: config/application.rb
+    before: |
+      require_relative "boot"
+      require "rails/all"
+
+      Bundler.require(*Rails.groups)
+
+      module Newsroom
+        class Application < Rails::Application
+          config.load_defaults 7.2
+          config.time_zone = "Tokyo"
+          config.autoload_lib(ignore: %w[assets tasks])
+        end
+      end
+    after: |
+      require_relative "boot"
+      require "rails/all"
+
+      Bundler.require(*Rails.groups)
+
+      module Newsroom
+        class Application < Rails::Application
+          config.load_defaults 7.2
+          config.time_zone = "Tokyo"
+          config.autoload_lib(ignore: %w[assets tasks])
+          config.autoload_paths << Rails.root.join("app/middleware")
+          config.middleware.use "PreviewAccess"
+        end
+      end

@@ -1,0 +1,62 @@
+id: mass_assignment-vulnerable-graphql-profile-input-role
+description: New updateProfile GraphQL mutation for the signed-in user, taking a ProfileAttributes input object
+expected:
+  mass_assignment: true
+files:
+  - path: app/graphql/types/user_role_enum.rb
+    after: |
+      module Types
+        class UserRoleEnum < Types::BaseEnum
+          value "MEMBER", value: "member"
+          value "MODERATOR", value: "moderator"
+          value "ADMIN", value: "admin"
+        end
+      end
+  - path: app/graphql/types/profile_attributes.rb
+    after: |
+      module Types
+        class ProfileAttributes < Types::BaseInputObject
+          description "Fields of a user profile"
+
+          argument :display_name, String, required: false
+          argument :bio, String, required: false
+          argument :time_zone, String, required: false
+          argument :role, Types::UserRoleEnum, required: false
+          argument :organization_id, ID, required: false
+        end
+      end
+  - path: app/graphql/mutations/update_profile.rb
+    after: |
+      module Mutations
+        class UpdateProfile < BaseMutation
+          argument :attributes, Types::ProfileAttributes, required: true
+
+          field :user, Types::UserType, null: true
+          field :errors, [String], null: false
+
+          def resolve(attributes:)
+            user = context.fetch(:current_user)
+            if user.update(**attributes.to_h)
+              { user: user, errors: [] }
+            else
+              { user: nil, errors: user.errors.full_messages }
+            end
+          end
+        end
+      end
+  - path: app/graphql/types/mutation_type.rb
+    before: |
+      module Types
+        class MutationType < Types::BaseObject
+          field :create_post, mutation: Mutations::CreatePost
+          field :delete_post, mutation: Mutations::DeletePost
+        end
+      end
+    after: |
+      module Types
+        class MutationType < Types::BaseObject
+          field :create_post, mutation: Mutations::CreatePost
+          field :delete_post, mutation: Mutations::DeletePost
+          field :update_profile, mutation: Mutations::UpdateProfile
+        end
+      end

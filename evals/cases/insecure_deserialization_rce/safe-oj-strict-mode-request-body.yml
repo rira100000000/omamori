@@ -1,0 +1,42 @@
+id: insecure_deserialization_rce-safe-oj-strict-mode-request-body
+description: Bulk sync API switches request parsing from JSON.parse to Oj.load in :strict mode, which only builds plain JSON types
+expected:
+  insecure_deserialization_rce: false
+files:
+  - path: app/controllers/api/v1/bulk_syncs_controller.rb
+    before: |
+      module Api
+        module V1
+          class BulkSyncsController < Api::BaseController
+            MAX_ITEMS = 5_000
+
+            def create
+              payload = JSON.parse(request.raw_post)
+              items = Array(payload["items"]).first(MAX_ITEMS)
+
+              result = InventorySync.new(account: current_account).call(items)
+              render json: { accepted: result.accepted, rejected: result.rejected }, status: :accepted
+            rescue JSON::ParserError
+              render json: { error: "invalid JSON" }, status: :bad_request
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class BulkSyncsController < Api::BaseController
+            MAX_ITEMS = 5_000
+
+            def create
+              payload = Oj.load(request.raw_post, mode: :strict)
+              items = Array(payload["items"]).first(MAX_ITEMS)
+
+              result = InventorySync.new(account: current_account).call(items)
+              render json: { accepted: result.accepted, rejected: result.rejected }, status: :accepted
+            rescue Oj::ParseError, EncodingError
+              render json: { error: "invalid JSON" }, status: :bad_request
+            end
+          end
+        end
+      end

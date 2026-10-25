@@ -1,0 +1,44 @@
+id: time_based_side_channel-vulnerable-basic-auth-block-equality
+description: Staging and admin basic auth moves from http_basic_authenticate_with to a custom block that checks the username and password with ==
+expected:
+  time_based_side_channel: true
+files:
+  - path: app/controllers/admin/base_controller.rb
+    before: |
+      module Admin
+        class BaseController < ApplicationController
+          layout "admin"
+
+          http_basic_authenticate_with(
+            name: ENV.fetch("ADMIN_BASIC_USER"),
+            password: ENV.fetch("ADMIN_BASIC_PASSWORD")
+          )
+
+          private
+
+          def audit!(action, target)
+            AuditLog.record!(actor: "basic-auth-admin", action: action, target: target)
+          end
+        end
+      end
+    after: |
+      module Admin
+        class BaseController < ApplicationController
+          layout "admin"
+
+          before_action :require_basic_auth
+
+          private
+
+          def require_basic_auth
+            authenticate_or_request_with_http_basic("Admin") do |name, password|
+              @admin_operator = AdminOperator.active.find_by(login: name)
+              @admin_operator.present? && password == @admin_operator.basic_password
+            end
+          end
+
+          def audit!(action, target)
+            AuditLog.record!(actor: @admin_operator&.login || "unknown", action: action, target: target)
+          end
+        end
+      end

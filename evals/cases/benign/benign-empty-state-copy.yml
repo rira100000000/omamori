@@ -1,0 +1,83 @@
+id: benign-empty-state-copy
+description: Rewrites the empty-state message and button label on the projects index view
+expected:
+  xss: false
+  csrf: false
+  idor: false
+  open_redirect: false
+  ssrf: false
+  session_fixation: false
+  inappropriate_cookie_attributes: false
+  insufficient_encryption: false
+  insecure_deserialization_rce: false
+  directory_traversal: false
+  dangerous_eval: false
+  inappropriate_file_permissions: false
+  temporary_backup_file_leak: false
+  overly_detailed_errors: false
+  csp_not_set: false
+  mime_sniffing_vulnerability: false
+  clickjacking_vulnerability: false
+  auto_index_exposure: false
+  inappropriate_password_policy: false
+  two_factor_auth_missing: false
+  race_condition: false
+  api_overexposure: false
+  security_middleware_disabled: false
+  security_header_inconsistency: false
+  excessive_login_attempts: false
+  inappropriate_cache_settings: false
+  secret_key_committed: false
+  third_party_script_validation_missing: false
+  over_logging: false
+  fail_open_design: false
+  environment_differences: false
+  audit_log_missing: false
+  time_based_side_channel: false
+  sql_injection: false
+  mass_assignment: false
+files:
+  - path: app/views/projects/index.html.erb
+    before: |
+      <div class="page-header">
+        <h1>Projects</h1>
+        <%= link_to "New project", new_project_path, class: "btn btn-primary" %>
+      </div>
+
+      <% if @projects.any? %>
+        <ul class="project-list">
+          <% @projects.each do |project| %>
+            <li>
+              <%= link_to project.name, project_path(project) %>
+              <span class="muted">updated <%= time_ago_in_words(project.updated_at) %> ago</span>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <div class="empty-state">
+          <p>No projects.</p>
+          <%= link_to "Create", new_project_path, class: "btn" %>
+        </div>
+      <% end %>
+    after: |
+      <div class="page-header">
+        <h1>Projects</h1>
+        <%= link_to "New project", new_project_path, class: "btn btn-primary" %>
+      </div>
+
+      <% if @projects.any? %>
+        <ul class="project-list">
+          <% @projects.each do |project| %>
+            <li>
+              <%= link_to project.name, project_path(project) %>
+              <span class="muted">updated <%= time_ago_in_words(project.updated_at) %> ago</span>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <div class="empty-state">
+          <h2>You don't have any projects yet</h2>
+          <p>Projects keep your tasks, files and notes together in one place.</p>
+          <%= link_to "Start your first project", new_project_path, class: "btn btn-primary" %>
+        </div>
+      <% end %>

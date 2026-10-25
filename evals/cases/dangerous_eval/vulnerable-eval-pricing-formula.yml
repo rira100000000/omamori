@@ -1,0 +1,74 @@
+id: dangerous_eval-vulnerable-eval-pricing-formula
+description: Quote calculator evaluates a formula string submitted in the request with Kernel#eval
+expected:
+  dangerous_eval: true
+files:
+  - path: app/services/quote_calculator.rb
+    before: |
+      class QuoteCalculator
+        DEFAULT_MARKUP = 1.2
+
+        def initialize(plan:, seats:, months:)
+          @plan = plan
+          @seats = seats.to_i
+          @months = months.to_i
+        end
+
+        def total_cents
+          (base_cents * DEFAULT_MARKUP).round
+        end
+
+        private
+
+        def base_cents
+          @plan.price_cents * @seats * @months
+        end
+      end
+    after: |
+      class QuoteCalculator
+        DEFAULT_MARKUP = 1.2
+
+        def initialize(plan:, seats:, months:, formula: nil)
+          @plan = plan
+          @seats = seats.to_i
+          @months = months.to_i
+          @formula = formula
+        end
+
+        def total_cents
+          return (base_cents * DEFAULT_MARKUP).round if @formula.blank?
+
+          price = base_cents
+          seats = @seats
+          months = @months
+          eval(@formula).round
+        end
+
+        private
+
+        def base_cents
+          @plan.price_cents * @seats * @months
+        end
+      end
+  - path: app/controllers/quotes_controller.rb
+    before: |
+      class QuotesController < ApplicationController
+        def create
+          plan = Plan.find(params[:plan_id])
+          calculator = QuoteCalculator.new(plan: plan, seats: params[:seats], months: params[:months])
+          render json: { total_cents: calculator.total_cents }
+        end
+      end
+    after: |
+      class QuotesController < ApplicationController
+        def create
+          plan = Plan.find(params[:plan_id])
+          calculator = QuoteCalculator.new(
+            plan: plan,
+            seats: params[:seats],
+            months: params[:months],
+            formula: params[:formula]
+          )
+          render json: { total_cents: calculator.total_cents }
+        end
+      end

@@ -1,0 +1,88 @@
+id: idor-safe-nested-task-scoped-find
+description: Nested tasks controller under a project adds show, edit, update, and destroy actions for a single task
+expected:
+  idor: false
+files:
+  - path: app/controllers/tasks_controller.rb
+    before: |
+      class TasksController < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_project
+
+        def index
+          @tasks = @project.tasks.order(:position)
+        end
+
+        def create
+          @task = @project.tasks.build(task_params.merge(creator: current_user))
+          if @task.save
+            redirect_to project_tasks_path(@project), notice: "Task added"
+          else
+            @tasks = @project.tasks.order(:position)
+            render :index, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+
+        def task_params
+          params.expect(task: [:title, :description, :due_on])
+        end
+      end
+    after: |
+      class TasksController < ApplicationController
+        before_action :authenticate_user!
+        before_action :set_project
+        before_action :set_task, only: [:show, :edit, :update, :destroy]
+
+        def index
+          @tasks = @project.tasks.order(:position)
+        end
+
+        def show
+        end
+
+        def edit
+        end
+
+        def create
+          @task = @project.tasks.build(task_params.merge(creator: current_user))
+          if @task.save
+            redirect_to project_tasks_path(@project), notice: "Task added"
+          else
+            @tasks = @project.tasks.order(:position)
+            render :index, status: :unprocessable_entity
+          end
+        end
+
+        def update
+          if @task.update(task_params)
+            redirect_to project_task_path(@project, @task), notice: "Task updated"
+          else
+            render :edit, status: :unprocessable_entity
+          end
+        end
+
+        def destroy
+          @task.destroy!
+          redirect_to project_tasks_path(@project), status: :see_other
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+
+        def set_task
+          @task = @project.tasks.find(params[:id])
+        end
+
+        def task_params
+          params.expect(task: [:title, :description, :due_on])
+        end
+      end

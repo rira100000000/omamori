@@ -1,0 +1,35 @@
+id: sql_injection-vulnerable-raw-sql-method-arel-order
+description: Product listing adds user-chosen sorting by wrapping the sort and direction params in Arel.sql for order
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/products_controller.rb
+    before: |
+      class ProductsController < ApplicationController
+        def index
+          @products = Product.available
+                             .includes(:brand)
+                             .order(created_at: :desc)
+                             .page(params[:page])
+        end
+
+        def show
+          @product = Product.available.find(params[:id])
+        end
+      end
+    after: |
+      class ProductsController < ApplicationController
+        def index
+          sort = params.fetch(:sort, "created_at")
+          direction = params.fetch(:direction, "desc")
+
+          @products = Product.available
+                             .includes(:brand)
+                             .order(Arel.sql("#{sort} #{direction} NULLS LAST"))
+                             .page(params[:page])
+        end
+
+        def show
+          @product = Product.available.find(params[:id])
+        end
+      end

@@ -1,0 +1,66 @@
+id: overly_detailed_errors-safe-api-rescue-request-id
+description: API base controller rescues all errors, logs the full exception server-side and returns only a generic message with the request id
+expected:
+  overly_detailed_errors: false
+files:
+  - path: app/controllers/api/v1/base_controller.rb
+    before: |
+      module Api
+        module V1
+          class BaseController < ActionController::API
+            include ActionController::HttpAuthentication::Token::ControllerMethods
+
+            before_action :authenticate_client!
+
+            rescue_from ActiveRecord::RecordNotFound do
+              render json: { error: "not_found" }, status: :not_found
+            end
+
+            rescue_from ActionController::ParameterMissing do |e|
+              render json: { error: "bad_request", param: e.param }, status: :bad_request
+            end
+
+            private
+
+            def authenticate_client!
+              @client = authenticate_with_http_token { |token, _| ApiClient.find_by_token(token) }
+              head :unauthorized unless @client
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class BaseController < ActionController::API
+            include ActionController::HttpAuthentication::Token::ControllerMethods
+
+            before_action :authenticate_client!
+
+            rescue_from StandardError do |e|
+              Rails.logger.error(e.full_message)
+              Rails.error.report(e, handled: true, context: { request_id: request.request_id })
+              render json: {
+                error: "internal_error",
+                message: "Something went wrong. Contact support with the request id.",
+                request_id: request.request_id
+              }, status: :internal_server_error
+            end
+
+            rescue_from ActiveRecord::RecordNotFound do
+              render json: { error: "not_found" }, status: :not_found
+            end
+
+            rescue_from ActionController::ParameterMissing do |e|
+              render json: { error: "bad_request", param: e.param }, status: :bad_request
+            end
+
+            private
+
+            def authenticate_client!
+              @client = authenticate_with_http_token { |token, _| ApiClient.find_by_token(token) }
+              head :unauthorized unless @client
+            end
+          end
+        end
+      end

@@ -1,0 +1,61 @@
+id: idor-safe-pundit-authorized-report
+description: Report controller loads a report with Report.find but authorizes it with a Pundit policy checking membership
+expected:
+  idor: false
+files:
+  - path: app/controllers/reports_controller.rb
+    before: |
+      class ReportsController < ApplicationController
+        before_action :authenticate_user!
+        after_action :verify_authorized, except: :index
+
+        def index
+          @reports = policy_scope(Report).recent
+        end
+      end
+    after: |
+      class ReportsController < ApplicationController
+        before_action :authenticate_user!
+        after_action :verify_authorized, except: :index
+
+        def index
+          @reports = policy_scope(Report).recent
+        end
+
+        def show
+          @report = Report.find(params[:id])
+          authorize @report
+        end
+
+        def destroy
+          @report = Report.find(params[:id])
+          authorize @report
+          @report.destroy!
+          redirect_to reports_path, notice: "Report deleted"
+        end
+      end
+  - path: app/policies/report_policy.rb
+    before: |
+      class ReportPolicy < ApplicationPolicy
+        class Scope < Scope
+          def resolve
+            scope.where(team_id: user.team_ids)
+          end
+        end
+      end
+    after: |
+      class ReportPolicy < ApplicationPolicy
+        class Scope < Scope
+          def resolve
+            scope.where(team_id: user.team_ids)
+          end
+        end
+
+        def show?
+          user.team_ids.include?(record.team_id)
+        end
+
+        def destroy?
+          record.author_id == user.id || user.admin_of?(record.team)
+        end
+      end

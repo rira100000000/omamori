@@ -1,0 +1,65 @@
+id: over_logging-vulnerable-oauth-token-response
+description: OAuth token exchange service logs the provider's full response body containing access and refresh tokens
+expected:
+  over_logging: true
+files:
+  - path: app/services/integrations/calendar_token_exchange.rb
+    before: |
+      module Integrations
+        class CalendarTokenExchange
+          TOKEN_URL = "https://auth.calendarhub.example.com/oauth/token"
+
+          def initialize(connection)
+            @connection = connection
+          end
+
+          def call(code:, redirect_uri:)
+            response = Faraday.post(TOKEN_URL, {
+              grant_type: "authorization_code",
+              code: code,
+              redirect_uri: redirect_uri,
+              client_id: ENV.fetch("CALENDARHUB_CLIENT_ID"),
+              client_secret: ENV.fetch("CALENDARHUB_CLIENT_SECRET")
+            })
+
+            raise ExchangeError, "token exchange failed (#{response.status})" unless response.success?
+
+            data = JSON.parse(response.body)
+            @connection.update!(
+              access_token: data.fetch("access_token"),
+              refresh_token: data.fetch("refresh_token"),
+              expires_at: Time.current + data.fetch("expires_in").to_i
+            )
+          end
+        end
+      end
+    after: |
+      module Integrations
+        class CalendarTokenExchange
+          TOKEN_URL = "https://auth.calendarhub.example.com/oauth/token"
+
+          def initialize(connection)
+            @connection = connection
+          end
+
+          def call(code:, redirect_uri:)
+            response = Faraday.post(TOKEN_URL, {
+              grant_type: "authorization_code",
+              code: code,
+              redirect_uri: redirect_uri,
+              client_id: ENV.fetch("CALENDARHUB_CLIENT_ID"),
+              client_secret: ENV.fetch("CALENDARHUB_CLIENT_SECRET")
+            })
+
+            Rails.logger.info("CalendarHub token exchange for connection=#{@connection.id} status=#{response.status} body=#{response.body}")
+            raise ExchangeError, "token exchange failed (#{response.status}): #{response.body}" unless response.success?
+
+            data = JSON.parse(response.body)
+            @connection.update!(
+              access_token: data.fetch("access_token"),
+              refresh_token: data.fetch("refresh_token"),
+              expires_at: Time.current + data.fetch("expires_in").to_i
+            )
+          end
+        end
+      end

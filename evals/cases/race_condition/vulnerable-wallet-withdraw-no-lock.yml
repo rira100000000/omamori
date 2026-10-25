@@ -1,0 +1,57 @@
+id: race_condition-vulnerable-wallet-withdraw-no-lock
+description: Wallet withdrawal drops with_lock, leaving a check-then-update on the balance
+expected:
+  race_condition: true
+files:
+  - path: app/models/wallet.rb
+    before: |
+      class Wallet < ApplicationRecord
+        class InsufficientFunds < StandardError; end
+
+        belongs_to :user
+        has_many :ledger_entries, dependent: :restrict_with_exception
+
+        validates :balance_cents, numericality: { greater_than_or_equal_to: 0 }
+
+        def withdraw!(amount_cents, reference:)
+          with_lock do
+            raise InsufficientFunds if balance_cents < amount_cents
+
+            update!(balance_cents: balance_cents - amount_cents)
+            ledger_entries.create!(amount_cents: -amount_cents, reference: reference)
+          end
+        end
+
+        def deposit!(amount_cents, reference:)
+          with_lock do
+            update!(balance_cents: balance_cents + amount_cents)
+            ledger_entries.create!(amount_cents: amount_cents, reference: reference)
+          end
+        end
+      end
+    after: |
+      class Wallet < ApplicationRecord
+        class InsufficientFunds < StandardError; end
+
+        belongs_to :user
+        has_many :ledger_entries, dependent: :restrict_with_exception
+
+        validates :balance_cents, numericality: { greater_than_or_equal_to: 0 }
+
+        def withdraw!(amount_cents, reference:)
+          raise InsufficientFunds if balance_cents < amount_cents
+
+          new_balance = balance_cents - amount_cents
+          transaction do
+            update_columns(balance_cents: new_balance, updated_at: Time.current)
+            ledger_entries.create!(amount_cents: -amount_cents, reference: reference)
+          end
+        end
+
+        def deposit!(amount_cents, reference:)
+          with_lock do
+            update!(balance_cents: balance_cents + amount_cents)
+            ledger_entries.create!(amount_cents: amount_cents, reference: reference)
+          end
+        end
+      end

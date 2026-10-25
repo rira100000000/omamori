@@ -1,0 +1,89 @@
+id: mass_assignment-vulnerable-account-column-names-permit
+description: Member-facing account API permits every column except a few so new fields do not need controller changes
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/api/v1/accounts_controller.rb
+    before: |
+      module Api
+        module V1
+          class AccountsController < Api::V1::BaseController
+            def show
+              render json: AccountSerializer.new(current_user).as_json
+            end
+
+            def update
+              if current_user.update(account_params)
+                render json: AccountSerializer.new(current_user).as_json
+              else
+                render json: { errors: current_user.errors }, status: :unprocessable_entity
+              end
+            end
+
+            private
+
+            def account_params
+              params.require(:account).permit(:display_name, :locale, :marketing_opt_in)
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class AccountsController < Api::V1::BaseController
+            PROTECTED_COLUMNS = %w[id password_digest created_at updated_at].freeze
+
+            def show
+              render json: AccountSerializer.new(current_user).as_json
+            end
+
+            def update
+              if current_user.update(account_params)
+                render json: AccountSerializer.new(current_user).as_json
+              else
+                render json: { errors: current_user.errors }, status: :unprocessable_entity
+              end
+            end
+
+            private
+
+            def account_params
+              params.require(:account).permit(*(User.column_names - PROTECTED_COLUMNS))
+            end
+          end
+        end
+      end
+  - path: db/schema.rb
+    before: |
+      ActiveRecord::Schema[7.2].define(version: 2026_08_14_101500) do
+        create_table "users", force: :cascade do |t|
+          t.string "email", null: false
+          t.string "password_digest", null: false
+          t.string "display_name"
+          t.string "locale", default: "en"
+          t.boolean "marketing_opt_in", default: false
+          t.string "plan", default: "free", null: false
+          t.integer "credit_balance_cents", default: 0, null: false
+          t.boolean "staff", default: false, null: false
+          t.datetime "email_verified_at"
+          t.timestamps
+        end
+      end
+    after: |
+      ActiveRecord::Schema[7.2].define(version: 2026_10_02_093000) do
+        create_table "users", force: :cascade do |t|
+          t.string "email", null: false
+          t.string "password_digest", null: false
+          t.string "display_name"
+          t.string "locale", default: "en"
+          t.boolean "marketing_opt_in", default: false
+          t.string "pronouns"
+          t.string "time_zone", default: "UTC"
+          t.string "plan", default: "free", null: false
+          t.integer "credit_balance_cents", default: 0, null: false
+          t.boolean "staff", default: false, null: false
+          t.datetime "email_verified_at"
+          t.timestamps
+        end
+      end

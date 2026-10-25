@@ -1,0 +1,41 @@
+id: sql_injection-safe-raw-connection-select-all
+description: Analytics endpoint runs a daily event count through connection.select_all, quoting the event name with connection.quote and casting the day count to an integer
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/analytics_controller.rb
+    before: |
+      class AnalyticsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @event_names = current_account.events.distinct.order(:name).pluck(:name)
+        end
+      end
+    after: |
+      class AnalyticsController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @event_names = current_account.events.distinct.order(:name).pluck(:name)
+        end
+
+        def daily
+          conn = ActiveRecord::Base.connection
+          days = Integer(params.fetch(:days, 30)).clamp(1, 365)
+
+          rows = conn.select_all(<<~SQL)
+            SELECT date_trunc('day', occurred_at) AS day, COUNT(*) AS total
+            FROM events
+            WHERE account_id = #{current_account.id}
+              AND name = #{conn.quote(params[:event].to_s)}
+              AND occurred_at >= NOW() - INTERVAL '#{days} days'
+            GROUP BY 1
+            ORDER BY 1
+          SQL
+
+          render json: rows.map { |r| { day: r["day"], total: r["total"].to_i } }
+        rescue ArgumentError
+          head :bad_request
+        end
+      end

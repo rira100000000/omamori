@@ -1,0 +1,55 @@
+id: insufficient_encryption-safe-sha256-api-token-digest
+description: Personal API tokens are generated with 32 random bytes from SecureRandom and only their SHA-256 digest is stored for lookup
+expected:
+  insufficient_encryption: false
+files:
+  - path: app/models/api_token.rb
+    after: |
+      class ApiToken < ApplicationRecord
+        PREFIX = "ledg_".freeze
+
+        belongs_to :user
+
+        validates :name, presence: true
+        validates :token_digest, presence: true, uniqueness: true
+
+        scope :active, -> { where(revoked_at: nil) }
+
+        attr_reader :plaintext
+
+        def self.issue!(user:, name:)
+          plaintext = PREFIX + SecureRandom.base58(40)
+          token = create!(user: user, name: name, token_digest: digest(plaintext), last_four: plaintext.last(4))
+          token.instance_variable_set(:@plaintext, plaintext)
+          token
+        end
+
+        def self.authenticate(plaintext)
+          return if plaintext.blank?
+
+          active.find_by(token_digest: digest(plaintext))&.tap { |t| t.touch(:last_used_at) }
+        end
+
+        def self.digest(plaintext)
+          OpenSSL::Digest::SHA256.hexdigest(plaintext)
+        end
+
+        def revoke!
+          update!(revoked_at: Time.current)
+        end
+      end
+  - path: db/migrate/20261020100000_create_api_tokens.rb
+    after: |
+      class CreateApiTokens < ActiveRecord::Migration[8.0]
+        def change
+          create_table :api_tokens do |t|
+            t.references :user, null: false, foreign_key: true
+            t.string :name, null: false
+            t.string :token_digest, null: false, index: { unique: true }
+            t.string :last_four, null: false
+            t.datetime :last_used_at
+            t.datetime :revoked_at
+            t.timestamps
+          end
+        end
+      end

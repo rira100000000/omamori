@@ -1,0 +1,49 @@
+id: security_header_inconsistency-vulnerable-csp-report-only-in-production
+description: CSP initializer enforces the policy everywhere except production, where it becomes report-only and allows unsafe-inline
+expected:
+  security_header_inconsistency: true
+files:
+  - path: config/initializers/content_security_policy.rb
+    before: |
+      # Be sure to restart your server when you modify this file.
+
+      Rails.application.configure do
+        config.content_security_policy do |policy|
+          policy.default_src :self, :https
+          policy.font_src    :self, :https, :data
+          policy.img_src     :self, :https, :data
+          policy.object_src  :none
+          policy.script_src  :self, :https
+          policy.style_src   :self, :https
+          policy.frame_ancestors :none
+          policy.report_uri "/csp-violation-report"
+        end
+
+        config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
+        config.content_security_policy_nonce_directives = %w[script-src style-src]
+      end
+    after: |
+      # Be sure to restart your server when you modify this file.
+
+      Rails.application.configure do
+        config.content_security_policy do |policy|
+          policy.default_src :self, :https
+          policy.font_src    :self, :https, :data
+          policy.img_src     :self, :https, :data
+          policy.object_src  :none
+          if Rails.env.production?
+            policy.script_src :self, :https, :unsafe_inline, :unsafe_eval
+          else
+            policy.script_src :self, :https
+          end
+          policy.style_src   :self, :https
+          policy.frame_ancestors :none unless Rails.env.production?
+          policy.report_uri "/csp-violation-report"
+        end
+
+        # Marketing tags break under enforcement in prod; only report there for now
+        config.content_security_policy_report_only = Rails.env.production?
+
+        config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
+        config.content_security_policy_nonce_directives = %w[script-src style-src]
+      end

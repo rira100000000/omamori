@@ -1,0 +1,54 @@
+id: inappropriate_password_policy-safe-stronger-validation
+description: User model raises minimum password length to 12 and adds a breached-password check
+expected:
+  inappropriate_password_policy: false
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+
+        has_many :projects, dependent: :destroy
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false },
+                          format: { with: URI::MailTo::EMAIL_REGEXP }
+        validates :password, length: { minimum: 8, maximum: 72 }, if: :password_required?
+
+        normalizes :email, with: ->(email) { email.strip.downcase }
+
+        private
+
+        def password_required?
+          new_record? || password.present?
+        end
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+
+        has_many :projects, dependent: :destroy
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false },
+                          format: { with: URI::MailTo::EMAIL_REGEXP }
+        validates :password, length: { minimum: 12, maximum: 72 }, if: :password_required?
+        validate :password_not_breached, if: :password_required?
+        validate :password_not_email, if: :password_required?
+
+        normalizes :email, with: ->(email) { email.strip.downcase }
+
+        private
+
+        def password_required?
+          new_record? || password.present?
+        end
+
+        def password_not_breached
+          errors.add(:password, "has appeared in a data breach, choose another") if Pwned.pwned?(password)
+        rescue Pwned::Error
+          Rails.logger.warn("Pwned Passwords check unavailable")
+        end
+
+        def password_not_email
+          errors.add(:password, "must not contain your email") if email.present? && password.downcase.include?(email.split("@").first)
+        end
+      end

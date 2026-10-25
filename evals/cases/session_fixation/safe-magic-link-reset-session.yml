@@ -1,0 +1,57 @@
+id: session_fixation-safe-magic-link-reset-session
+description: Adds a magic-link sign-in action that keeps the return path by reading it before reset_session and then sets the user id on the new session
+expected:
+  session_fixation: false
+files:
+  - path: app/controllers/sessions_controller.rb
+    before: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+      end
+    after: |
+      class SessionsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create, :magic]
+
+        def new
+        end
+
+        def create
+          user = User.find_by(email: params[:email].to_s.downcase)
+          if user&.authenticate(params[:password])
+            reset_session
+            session[:user_id] = user.id
+            redirect_to dashboard_path
+          else
+            flash.now[:alert] = "Invalid email or password"
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        def magic
+          user = User.find_by_token_for(:magic_link, params[:token])
+          if user
+            return_to = session[:return_to]
+            reset_session
+            session[:user_id] = user.id
+            session[:login_method] = "magic_link"
+            redirect_to return_to || dashboard_path, notice: "Signed in"
+          else
+            redirect_to new_session_path, alert: "That sign-in link is invalid or has expired"
+          end
+        end
+      end

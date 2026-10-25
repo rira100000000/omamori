@@ -1,0 +1,30 @@
+id: race_condition-vulnerable-coupon-redeem-check-then-act
+description: New coupon redemption service checks remaining uses then increments in Ruby without locking
+expected:
+  race_condition: true
+files:
+  - path: app/services/coupons/redeem.rb
+    after: |
+      module Coupons
+        class Redeem
+          Result = Struct.new(:success?, :error, keyword_init: true)
+
+          def initialize(coupon:, order:)
+            @coupon = coupon
+            @order = order
+          end
+
+          def call
+            return Result.new(success?: false, error: "expired") if @coupon.expires_at.past?
+            return Result.new(success?: false, error: "used up") if @coupon.redemptions_count >= @coupon.max_redemptions
+            return Result.new(success?: false, error: "already used") if @coupon.redemptions.exists?(user_id: @order.user_id)
+
+            @coupon.redemptions_count += 1
+            @coupon.save!
+            @coupon.redemptions.create!(user_id: @order.user_id, order: @order)
+            @order.update!(discount_cents: @coupon.discount_for(@order.subtotal_cents))
+
+            Result.new(success?: true)
+          end
+        end
+      end

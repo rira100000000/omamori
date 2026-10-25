@@ -1,0 +1,87 @@
+id: mass_assignment-vulnerable-nested-membership-role
+description: SaaS profile settings page now edits team memberships through nested attributes and permits the membership role
+expected:
+  mass_assignment: true
+files:
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :memberships, dependent: :destroy
+        has_many :teams, through: :memberships
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false }
+        normalizes :email, with: ->(e) { e.strip.downcase }
+      end
+    after: |
+      class User < ApplicationRecord
+        has_secure_password
+        has_many :memberships, dependent: :destroy
+        has_many :teams, through: :memberships
+
+        accepts_nested_attributes_for :memberships
+
+        validates :email, presence: true, uniqueness: { case_sensitive: false }
+        normalizes :email, with: ->(e) { e.strip.downcase }
+      end
+  - path: app/controllers/settings/profiles_controller.rb
+    before: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def edit
+            @user = Current.user
+          end
+
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: t(".saved")
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:user).permit(:name, :email, :time_zone, :avatar)
+          end
+        end
+      end
+    after: |
+      module Settings
+        class ProfilesController < ApplicationController
+          def edit
+            @user = Current.user
+            @memberships = @user.memberships.includes(:team)
+          end
+
+          def update
+            @user = Current.user
+            if @user.update(profile_params)
+              redirect_to edit_settings_profile_path, notice: t(".saved")
+            else
+              @memberships = @user.memberships.includes(:team)
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def profile_params
+            params.require(:user).permit(
+              :name, :email, :time_zone, :avatar,
+              memberships_attributes: [:id, :notification_level, :role]
+            )
+          end
+        end
+      end
+  - path: app/views/settings/profiles/_membership_fields.html.erb
+    after: |
+      <%= f.fields_for :memberships, @memberships do |mf| %>
+        <fieldset class="membership">
+          <legend><%= mf.object.team.name %></legend>
+          <%= mf.select :notification_level, Membership::NOTIFICATION_LEVELS %>
+          <%= mf.hidden_field :role %>
+        </fieldset>
+      <% end %>

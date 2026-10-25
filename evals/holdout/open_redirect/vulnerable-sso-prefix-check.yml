@@ -1,0 +1,37 @@
+id: open_redirect-vulnerable-sso-prefix-check
+description: SSO handoff for partner storefronts validates the destination with a string prefix check before redirecting off-host
+expected:
+  open_redirect: true
+files:
+  - path: app/controllers/sso/handoffs_controller.rb
+    after: |
+      module Sso
+        class HandoffsController < ApplicationController
+          ALLOWED_PREFIXES = %w[
+            https://shop.acme-outdoor.test
+            https://wholesale.acme-outdoor.test
+          ].freeze
+
+          def show
+            destination = params.require(:destination)
+            return head(:bad_request) unless ALLOWED_PREFIXES.any? { |prefix| destination.start_with?(prefix) }
+
+            token = Sso::HandoffToken.issue(user: current_user, audience: destination)
+            redirect_to "#{destination}#{destination.include?('?') ? '&' : '?'}sso_token=#{token}", allow_other_host: true
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resource :session, only: %i[new create destroy]
+        root "dashboard#show"
+      end
+    after: |
+      Rails.application.routes.draw do
+        resource :session, only: %i[new create destroy]
+        namespace :sso do
+          get "handoff", to: "handoffs#show"
+        end
+        root "dashboard#show"
+      end

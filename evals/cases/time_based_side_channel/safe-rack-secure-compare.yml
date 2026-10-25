@@ -1,0 +1,70 @@
+id: time_based_side_channel-safe-rack-secure-compare
+description: Ops token middleware adds a static break-glass token check via Rack::Utils.secure_compare
+expected:
+  time_based_side_channel: false
+files:
+  - path: lib/ops_token_auth.rb
+    before: |
+      # Authenticates calls to the internal ops endpoints (/ops/*) using a shared token.
+      class OpsTokenAuth
+        def initialize(app, token: ENV.fetch("OPS_API_TOKEN"))
+          @app = app
+          @token = token
+        end
+
+        def call(env)
+          return @app.call(env) unless env["PATH_INFO"].start_with?("/ops/")
+
+          header = env["HTTP_AUTHORIZATION"].to_s
+          given = header.delete_prefix("Bearer ")
+
+          if authorized?(given)
+            @app.call(env)
+          else
+            [401, { "content-type" => "application/json" }, ['{"error":"unauthorized"}']]
+          end
+        end
+
+        private
+
+        def authorized?(given)
+          return false if given.empty?
+
+          OpsToken.active.exists?(token_digest: Digest::SHA256.hexdigest(given))
+        end
+      end
+    after: |
+      # Authenticates calls to the internal ops endpoints (/ops/*) using a shared token.
+      class OpsTokenAuth
+        def initialize(app, token: ENV.fetch("OPS_API_TOKEN"))
+          @app = app
+          @token = token
+        end
+
+        def call(env)
+          return @app.call(env) unless env["PATH_INFO"].start_with?("/ops/")
+
+          header = env["HTTP_AUTHORIZATION"].to_s
+          given = header.delete_prefix("Bearer ")
+
+          if authorized?(given)
+            @app.call(env)
+          else
+            [401, { "content-type" => "application/json" }, ['{"error":"unauthorized"}']]
+          end
+        end
+
+        private
+
+        def authorized?(given)
+          return false if given.empty?
+
+          tokens_match?(given, @token) || OpsToken.active.exists?(token_digest: Digest::SHA256.hexdigest(given))
+        end
+
+        def tokens_match?(a, b)
+          return false unless a.bytesize == b.bytesize
+
+          Rack::Utils.secure_compare(a, b)
+        end
+      end

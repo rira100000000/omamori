@@ -1,0 +1,59 @@
+id: xss-vulnerable-comment-list-stimulus
+description: Stimulus controller that live-loads ticket comments renders author name and body from JSON with innerHTML template literals
+expected:
+  xss: true
+files:
+  - path: app/javascript/controllers/ticket_comments_controller.js
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static targets = ["list", "counter"]
+        static values = { url: String, interval: { type: Number, default: 15000 } }
+
+        connect() {
+          this.load()
+          this.timer = setInterval(() => this.load(), this.intervalValue)
+        }
+
+        disconnect() {
+          clearInterval(this.timer)
+        }
+
+        async load() {
+          const response = await fetch(this.urlValue, { headers: { Accept: "application/json" } })
+          if (!response.ok) return
+
+          const comments = await response.json()
+          this.counterTarget.textContent = comments.length
+          this.listTarget.innerHTML = comments.map((c) => `
+            <li class="comment" data-id="${c.id}">
+              <div class="comment__meta">
+                <strong>${c.author_name}</strong>
+                <time datetime="${c.created_at}">${c.created_at_human}</time>
+              </div>
+              <div class="comment__body">${c.body}</div>
+            </li>
+          `).join("")
+        }
+      }
+  - path: app/controllers/support/ticket_comments_controller.rb
+    after: |
+      module Support
+        class TicketCommentsController < ApplicationController
+          def index
+            ticket = current_agent.accessible_tickets.find(params[:ticket_id])
+            comments = ticket.comments.includes(:author).order(:created_at)
+
+            render json: comments.map { |c|
+              {
+                id: c.id,
+                author_name: c.author.display_name,
+                body: c.body,
+                created_at: c.created_at.iso8601,
+                created_at_human: helpers.time_ago_in_words(c.created_at)
+              }
+            }
+          end
+        end
+      end

@@ -1,0 +1,59 @@
+id: overly_detailed_errors-safe-development-requests-local
+description: Development environment config gains verbose error and debug settings, which only apply on local machines
+expected:
+  overly_detailed_errors: false
+files:
+  - path: config/environments/development.rb
+    before: |
+      require "active_support/core_ext/integer/time"
+
+      Rails.application.configure do
+        config.enable_reloading = true
+        config.eager_load = false
+
+        config.server_timing = true
+
+        if Rails.root.join("tmp/caching-dev.txt").exist?
+          config.action_controller.perform_caching = true
+          config.cache_store = :memory_store
+        else
+          config.action_controller.perform_caching = false
+          config.cache_store = :null_store
+        end
+
+        config.active_storage.service = :local
+        config.action_mailer.raise_delivery_errors = false
+        config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+
+        config.active_support.deprecation = :log
+        config.active_record.migration_error = :page_load
+        config.active_record.verbose_query_logs = true
+      end
+    after: |
+      require "active_support/core_ext/integer/time"
+
+      Rails.application.configure do
+        config.enable_reloading = true
+        config.eager_load = false
+
+        config.consider_all_requests_local = true
+        config.server_timing = true
+
+        if Rails.root.join("tmp/caching-dev.txt").exist?
+          config.action_controller.perform_caching = true
+          config.cache_store = :memory_store
+        else
+          config.action_controller.perform_caching = false
+          config.cache_store = :null_store
+        end
+
+        config.active_storage.service = :local
+        config.action_mailer.raise_delivery_errors = true
+        config.action_mailer.default_url_options = { host: "localhost", port: 3000 }
+
+        config.active_support.deprecation = :log
+        config.active_record.migration_error = :page_load
+        config.active_record.verbose_query_logs = true
+        config.action_view.annotate_rendered_view_with_filenames = true
+        config.action_dispatch.show_exceptions = :all
+      end

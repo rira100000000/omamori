@@ -1,0 +1,69 @@
+id: fail_open_design-safe-ip-allowlist-middleware-denies
+description: Admin IP-allowlist Rack middleware returns 403 when the client IP or allowlist cannot be parsed
+expected:
+  fail_open_design: false
+files:
+  - path: lib/middleware/admin_ip_allowlist.rb
+    before: |
+      require "ipaddr"
+
+      module Middleware
+        class AdminIpAllowlist
+          def initialize(app, ranges:)
+            @app = app
+            @ranges = ranges
+          end
+
+          def call(env)
+            request = Rack::Request.new(env)
+            return @app.call(env) unless request.path.start_with?("/admin")
+
+            client_ip = IPAddr.new(request.ip)
+            if allowed_networks.any? { |net| net.include?(client_ip) }
+              @app.call(env)
+            else
+              [403, { "content-type" => "text/plain" }, ["Forbidden"]]
+            end
+          end
+
+          private
+
+          def allowed_networks
+            @allowed_networks ||= @ranges.map { |r| IPAddr.new(r) }
+          end
+        end
+      end
+    after: |
+      require "ipaddr"
+
+      module Middleware
+        class AdminIpAllowlist
+          FORBIDDEN = [403, { "content-type" => "text/plain" }, ["Forbidden"]].freeze
+
+          def initialize(app, ranges:)
+            @app = app
+            @ranges = ranges
+          end
+
+          def call(env)
+            request = Rack::Request.new(env)
+            return @app.call(env) unless request.path.start_with?("/admin")
+
+            begin
+              client_ip = IPAddr.new(request.ip)
+              allowed = allowed_networks.any? { |net| net.include?(client_ip) }
+            rescue IPAddr::Error, ArgumentError, TypeError => e
+              warn "[admin_ip_allowlist] could not evaluate #{request.ip.inspect}: #{e.message}"
+              return FORBIDDEN
+            end
+
+            allowed ? @app.call(env) : FORBIDDEN
+          end
+
+          private
+
+          def allowed_networks
+            @allowed_networks ||= @ranges.map { |r| IPAddr.new(r) }
+          end
+        end
+      end

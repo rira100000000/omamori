@@ -1,0 +1,75 @@
+id: benign-validate-recipe-servings
+description: Adds a numericality validation and a default for the servings field on Recipe
+expected:
+  xss: false
+  csrf: false
+  idor: false
+  open_redirect: false
+  ssrf: false
+  session_fixation: false
+  inappropriate_cookie_attributes: false
+  insufficient_encryption: false
+  insecure_deserialization_rce: false
+  directory_traversal: false
+  dangerous_eval: false
+  inappropriate_file_permissions: false
+  temporary_backup_file_leak: false
+  overly_detailed_errors: false
+  csp_not_set: false
+  mime_sniffing_vulnerability: false
+  clickjacking_vulnerability: false
+  auto_index_exposure: false
+  inappropriate_password_policy: false
+  two_factor_auth_missing: false
+  race_condition: false
+  api_overexposure: false
+  security_middleware_disabled: false
+  security_header_inconsistency: false
+  excessive_login_attempts: false
+  inappropriate_cache_settings: false
+  secret_key_committed: false
+  third_party_script_validation_missing: false
+  over_logging: false
+  fail_open_design: false
+  environment_differences: false
+  audit_log_missing: false
+  time_based_side_channel: false
+  sql_injection: false
+  mass_assignment: false
+files:
+  - path: app/models/recipe.rb
+    before: |
+      class Recipe < ApplicationRecord
+        belongs_to :author, class_name: "User"
+        has_many :ingredients, -> { order(:position) }, dependent: :destroy
+        has_many :steps, -> { order(:position) }, dependent: :destroy
+        has_one_attached :cover_image
+
+        validates :title, presence: true, length: { maximum: 120 }
+        validates :prep_minutes, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+
+        scope :quick, -> { where(prep_minutes: ..20) }
+
+        def total_minutes
+          prep_minutes.to_i + cook_minutes.to_i
+        end
+      end
+    after: |
+      class Recipe < ApplicationRecord
+        belongs_to :author, class_name: "User"
+        has_many :ingredients, -> { order(:position) }, dependent: :destroy
+        has_many :steps, -> { order(:position) }, dependent: :destroy
+        has_one_attached :cover_image
+
+        attribute :servings, :integer, default: 2
+
+        validates :title, presence: true, length: { maximum: 120 }
+        validates :prep_minutes, numericality: { only_integer: true, greater_than_or_equal_to: 0 }, allow_nil: true
+        validates :servings, numericality: { only_integer: true, in: 1..50 }
+
+        scope :quick, -> { where(prep_minutes: ..20) }
+
+        def total_minutes
+          prep_minutes.to_i + cook_minutes.to_i
+        end
+      end

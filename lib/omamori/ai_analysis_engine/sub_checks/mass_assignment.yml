@@ -1,0 +1,19 @@
+# Concrete patterns that are each enough to make mass assignment real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+permit_all: >-
+  Does the code create or update a model with request parameters that are not limited to a fixed list of
+  attributes, through params.permit!, to_unsafe_h, to_unsafe_hash, permit(*Model.column_names), or a permit list
+  chosen by the client, in an action regular users can call? Answer no when the parameters are limited with permit
+  or expect to a fixed list, or when a hash permit such as permit(preferences: {}) only fills a single JSON or
+  serialized column.
+sensitive_attribute: >-
+  Does an action that regular users can call (sign-up, profile or account update, a member API) permit attributes
+  that users should not control, such as role, admin, owner_id, user_id, account_id, balance, price, plan, verified,
+  or confirmed_at? Answer no when such attributes are only permitted in an admin-only action that checks the user is
+  an administrator, or are set on the server instead of from params.
+strong_params_bypass: >-
+  Does the code pass request data to a model write (new, create, update, assign_attributes, insert_all, upsert)
+  without going through strong parameters, for example JSON.parse(request.body.read), request.request_parameters,
+  request.POST, or the arguments of a GraphQL mutation (GraphQL input objects are not protected by strong
+  parameters, so every argument the input type declares can be written)? Answer no when only explicitly listed,
+  harmless attributes are taken from that data, or the GraphQL input type declares only harmless arguments.

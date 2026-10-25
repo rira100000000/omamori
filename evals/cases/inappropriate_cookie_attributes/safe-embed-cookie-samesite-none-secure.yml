@@ -1,0 +1,47 @@
+id: inappropriate_cookie_attributes-safe-embed-cookie-samesite-none-secure
+description: Embeddable widget API sets its encrypted auth cookie with SameSite=None for third-party iframes, together with Secure and HttpOnly
+expected:
+  inappropriate_cookie_attributes: false
+files:
+  - path: app/controllers/api/widget/sessions_controller.rb
+    before: |
+      module Api
+        module Widget
+          class SessionsController < Api::BaseController
+            skip_before_action :authenticate_api_user!, only: :create
+
+            def create
+              site = EmbedSite.find_by!(public_key: params[:site_key])
+              visitor = site.visitors.find_or_create_by!(external_id: params[:visitor_id])
+              token = visitor.issue_widget_token!
+
+              render json: { token: token, expires_in: 2.hours.to_i }
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module Widget
+          class SessionsController < Api::BaseController
+            include ActionController::Cookies
+            skip_before_action :authenticate_api_user!, only: :create
+
+            def create
+              site = EmbedSite.find_by!(public_key: params[:site_key])
+              visitor = site.visitors.find_or_create_by!(external_id: params[:visitor_id])
+              token = visitor.issue_widget_token!
+
+              cookies.encrypted[:widget_auth] = {
+                value: token,
+                expires: 2.hours,
+                httponly: true,
+                secure: true,
+                same_site: :none
+              }
+
+              render json: { expires_in: 2.hours.to_i }
+            end
+          end
+        end
+      end

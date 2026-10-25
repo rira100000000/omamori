@@ -1,0 +1,49 @@
+id: sql_injection-safe-sortable-allowlist
+description: Admin product index adds sorting where the column is picked from a fixed map and the direction is normalised before use in Arel.sql
+expected:
+  sql_injection: false
+files:
+  - path: app/controllers/admin/products_controller.rb
+    before: |
+      module Admin
+        class ProductsController < Admin::BaseController
+          def index
+            @products = Product
+              .includes(:category, :variants)
+              .where(store: current_store)
+              .order(created_at: :desc)
+              .page(params[:page])
+          end
+        end
+      end
+    after: |
+      module Admin
+        class ProductsController < Admin::BaseController
+          SORT_COLUMNS = {
+            "name" => "products.name",
+            "price" => "products.price_cents",
+            "stock" => "products.stock_count",
+            "created" => "products.created_at"
+          }.freeze
+
+          helper_method :sort_key, :sort_direction
+
+          def index
+            @products = Product
+              .includes(:category, :variants)
+              .where(store: current_store)
+              .order(Arel.sql("#{SORT_COLUMNS.fetch(sort_key)} #{sort_direction} NULLS LAST"))
+              .page(params[:page])
+          end
+
+          private
+
+          def sort_key
+            SORT_COLUMNS.key?(params[:sort]) ? params[:sort] : "created"
+          end
+
+          def sort_direction
+            params[:direction] == "asc" ? "ASC" : "DESC"
+          end
+        end
+      end

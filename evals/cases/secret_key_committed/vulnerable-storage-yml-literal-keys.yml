@@ -1,0 +1,58 @@
+id: secret_key_committed-vulnerable-storage-yml-literal-keys
+description: Active Storage config for a new S3-compatible bucket writes the access key id and secret access key as literals
+expected:
+  secret_key_committed: true
+files:
+  - path: config/storage.yml
+    before: |
+      test:
+        service: Disk
+        root: <%= Rails.root.join("tmp/storage") %>
+
+      local:
+        service: Disk
+        root: <%= Rails.root.join("storage") %>
+
+      amazon:
+        service: S3
+        access_key_id: <%= Rails.application.credentials.dig(:aws, :access_key_id) %>
+        secret_access_key: <%= Rails.application.credentials.dig(:aws, :secret_access_key) %>
+        region: ap-northeast-1
+        bucket: ledger-production-uploads
+    after: |
+      test:
+        service: Disk
+        root: <%= Rails.root.join("tmp/storage") %>
+
+      local:
+        service: Disk
+        root: <%= Rails.root.join("storage") %>
+
+      amazon:
+        service: S3
+        access_key_id: <%= Rails.application.credentials.dig(:aws, :access_key_id) %>
+        secret_access_key: <%= Rails.application.credentials.dig(:aws, :secret_access_key) %>
+        region: ap-northeast-1
+        bucket: ledger-production-uploads
+
+      r2_exports:
+        service: S3
+        endpoint: https://exports.r2.example.com
+        access_key_id: omamori-eval-dummy-access-id-7c1f
+        secret_access_key: omamori-eval-dummy-secret-access-key-2e8b4a90
+        region: auto
+        bucket: ledger-exports
+  - path: config/environments/production.rb
+    before: |
+      Rails.application.configure do
+        config.eager_load = true
+        config.force_ssl = true
+        config.active_storage.service = :amazon
+      end
+    after: |
+      Rails.application.configure do
+        config.eager_load = true
+        config.force_ssl = true
+        config.active_storage.service = :amazon
+        config.x.exports_storage_service = :r2_exports
+      end

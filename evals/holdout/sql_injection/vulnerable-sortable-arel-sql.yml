@@ -1,0 +1,50 @@
+id: sql_injection-vulnerable-sortable-arel-sql
+description: Admin product index adds multi-column sorting by wrapping the sort and direction params in Arel.sql
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/admin/products_controller.rb
+    before: |
+      module Admin
+        class ProductsController < Admin::BaseController
+          def index
+            @products = Product
+              .includes(:category, :variants)
+              .where(store: current_store)
+              .order(created_at: :desc)
+              .page(params[:page])
+          end
+
+          def show
+            @product = current_store.products.find(params[:id])
+          end
+        end
+      end
+    after: |
+      module Admin
+        class ProductsController < Admin::BaseController
+          helper_method :sort_column, :sort_direction
+
+          def index
+            @products = Product
+              .includes(:category, :variants)
+              .where(store: current_store)
+              .order(Arel.sql("#{sort_column} #{sort_direction} NULLS LAST"))
+              .page(params[:page])
+          end
+
+          def show
+            @product = current_store.products.find(params[:id])
+          end
+
+          private
+
+          def sort_column
+            params[:sort].presence || "products.created_at"
+          end
+
+          def sort_direction
+            params[:direction].presence || "desc"
+          end
+        end
+      end

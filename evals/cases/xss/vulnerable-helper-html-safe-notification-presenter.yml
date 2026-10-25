@@ -1,0 +1,51 @@
+id: xss-vulnerable-helper-html-safe-notification-presenter
+description: Notification presenter builds the message line by interpolating the actor name and post title into HTML marked html_safe, rendered from the notifications view
+expected:
+  xss: true
+files:
+  - path: app/presenters/notification_presenter.rb
+    after: |
+      class NotificationPresenter
+        include Rails.application.routes.url_helpers
+
+        attr_reader :notification
+
+        delegate :actor, :post, :created_at, :read?, to: :notification
+
+        def initialize(notification)
+          @notification = notification
+        end
+
+        def css_class
+          read? ? "notification" : "notification notification--unread"
+        end
+
+        def message
+          verb = notification.kind == "like" ? "liked" : "commented on"
+          "<strong>#{actor.display_name}</strong> #{verb} <a href=\"#{post_path(post)}\">#{post.title}</a>".html_safe
+        end
+      end
+  - path: app/views/notifications/index.html.erb
+    before: |
+      <h1>Notifications</h1>
+
+      <ul class="notifications">
+        <% @notifications.each do |notification| %>
+          <li class="notification">
+            <%= notification.actor.display_name %> interacted with
+            <%= link_to notification.post.title, post_path(notification.post) %>
+            <time><%= time_ago_in_words(notification.created_at) %> ago</time>
+          </li>
+        <% end %>
+      </ul>
+    after: |
+      <h1>Notifications</h1>
+
+      <ul class="notifications">
+        <% @notifications.map { |n| NotificationPresenter.new(n) }.each do |presenter| %>
+          <li class="<%= presenter.css_class %>">
+            <%= presenter.message %>
+            <time><%= time_ago_in_words(presenter.created_at) %> ago</time>
+          </li>
+        <% end %>
+      </ul>

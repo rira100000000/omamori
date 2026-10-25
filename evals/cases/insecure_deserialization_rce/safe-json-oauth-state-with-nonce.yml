@@ -1,0 +1,45 @@
+id: insecure_deserialization_rce-safe-json-oauth-state-with-nonce
+description: Calendar OAuth connect flow encodes its state as JSON and parses it with JSON.parse in the callback, checking a nonce kept in the session
+expected:
+  insecure_deserialization_rce: false
+files:
+  - path: app/controllers/calendar_connections_controller.rb
+    before: |
+      class CalendarConnectionsController < ApplicationController
+        def new
+          session[:calendar_oauth_nonce] = SecureRandom.hex(16)
+          redirect_to CalendarOAuth.authorize_url(state: session[:calendar_oauth_nonce]), allow_other_host: true
+        end
+
+        def callback
+          nonce = session.delete(:calendar_oauth_nonce)
+          return head :bad_request unless nonce && params[:state] == nonce
+
+          tokens = CalendarOAuth.exchange_code(params[:code])
+          current_user.calendar_connections.create!(tokens)
+          redirect_to settings_integrations_path, notice: "Calendar connected"
+        end
+      end
+    after: |
+      class CalendarConnectionsController < ApplicationController
+        def new
+          nonce = SecureRandom.hex(16)
+          session[:calendar_oauth_nonce] = nonce
+          state = { nonce: nonce, calendar_ids: Array(params[:calendar_ids]).map(&:to_s) }
+          encoded = Base64.urlsafe_encode64(JSON.generate(state))
+          redirect_to CalendarOAuth.authorize_url(state: encoded), allow_other_host: true
+        end
+
+        def callback
+          nonce = session.delete(:calendar_oauth_nonce)
+          state = JSON.parse(Base64.urlsafe_decode64(params[:state].to_s))
+          return head :bad_request unless nonce && state.is_a?(Hash) &&
+                                          ActiveSupport::SecurityUtils.secure_compare(state["nonce"].to_s, nonce)
+
+          tokens = CalendarOAuth.exchange_code(params[:code])
+          current_user.calendar_connections.create!(tokens.merge(calendar_ids: Array(state["calendar_ids"]).map(&:to_s)))
+          redirect_to settings_integrations_path, notice: "Calendar connected"
+        rescue ArgumentError, JSON::ParserError
+          head :bad_request
+        end
+      end

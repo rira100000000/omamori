@@ -1,0 +1,22 @@
+# Concrete patterns that are each enough to make CSRF real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+state_change_on_get: >-
+  Does the code make an action that changes data or account state (create, update, delete, cancel, sign out,
+  turn a setting on or off, send something) reachable with a GET request, through a get route, match ... via: :all,
+  or a link that triggers it without a form? Answer no when such actions are only routed to POST, PATCH, PUT, or
+  DELETE and triggered with a form or button_to.
+token_check_skipped: >-
+  Does a controller that authenticates users with the session cookie skip or disable the authenticity token check
+  for actions that change data (skip_before_action :verify_authenticity_token, skip_forgery_protection,
+  protect_from_forgery with except: or an if: condition such as JSON format, or allow_forgery_protection = false
+  outside the test environment)? Answer no when the skipped actions do not use cookies to authenticate (for
+  example ActionController::API with a bearer token, or a webhook that verifies a signature), or when the setting
+  is only for the test environment.
+weak_origin_check: >-
+  Does the code replace or relax the token check with a hand-written Origin or Referer check that matches by
+  substring or prefix (include?, start_with?, a regular expression without anchors)? Answer no when the token check
+  is still in place, or the parsed origin host is compared exactly against a fixed list.
+cross_site_cookie: >-
+  Does the code make the session cookie be sent on cross-site requests (same_site: :none) while state-changing
+  actions that rely on that session skip the token check? Answer no when those actions still verify the
+  authenticity token.

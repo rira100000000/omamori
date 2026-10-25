@@ -1,0 +1,95 @@
+id: idor-safe-order-lookup-by-number
+description: Mobile API adds an order lookup by order number so the app can open orders from links in confirmation emails
+expected:
+  idor: false
+files:
+  - path: app/controllers/api/v1/orders_controller.rb
+    before: |
+      module Api
+        module V1
+          class OrdersController < Api::BaseController
+            before_action :authenticate_token!
+
+            def index
+              orders = current_user.orders.order(placed_at: :desc).page(params[:page])
+              render json: OrderSerializer.new(orders).as_json
+            end
+
+            def show
+              order = current_user.orders.find(params[:id])
+              render json: OrderSerializer.new(order, include: [:line_items, :shipping_address]).as_json
+            end
+          end
+        end
+      end
+    after: |
+      module Api
+        module V1
+          class OrdersController < Api::BaseController
+            before_action :authenticate_token!
+
+            def index
+              orders = current_user.orders.order(placed_at: :desc).page(params[:page])
+              render json: OrderSerializer.new(orders).as_json
+            end
+
+            def show
+              order = current_user.orders.find(params[:id])
+              render json: OrderSerializer.new(order, include: [:line_items, :shipping_address]).as_json
+            end
+
+            def lookup
+              order = current_user.orders.find_by!(number: params[:number].to_s.upcase)
+              render json: OrderSerializer.new(order, include: [:line_items, :shipping_address]).as_json
+            end
+          end
+        end
+      end
+  - path: app/models/order.rb
+    before: |
+      class Order < ApplicationRecord
+        belongs_to :user
+        has_many :line_items, dependent: :destroy
+        has_one :shipping_address, dependent: :destroy
+
+        before_create :assign_number
+
+        private
+
+        def assign_number
+          self.number = "SO-#{Order.maximum(:id).to_i + 1}"
+        end
+      end
+    after: |
+      class Order < ApplicationRecord
+        belongs_to :user
+        has_many :line_items, dependent: :destroy
+        has_one :shipping_address, dependent: :destroy
+
+        before_create :assign_number
+
+        private
+
+        def assign_number
+          self.number = format("SO-%07d", Order.maximum(:id).to_i + 1)
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: [:index, :show]
+          end
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        namespace :api do
+          namespace :v1 do
+            resources :orders, only: [:index, :show] do
+              get "lookup/:number", action: :lookup, on: :collection
+            end
+          end
+        end
+      end

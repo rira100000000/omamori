@@ -1,0 +1,56 @@
+id: mass_assignment-vulnerable-permit-all-account-settings
+description: Account settings update switches from an explicit permit list to permit! on the user params
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/settings/accounts_controller.rb
+    before: |
+      module Settings
+        class AccountsController < ApplicationController
+          before_action :authenticate_user!
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(account_params)
+              redirect_to edit_settings_account_path, notice: "Settings saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def account_params
+            params.require(:user).permit(:name, :email, :time_zone, :locale)
+          end
+        end
+      end
+    after: |
+      module Settings
+        class AccountsController < ApplicationController
+          before_action :authenticate_user!
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            if @user.update(account_params)
+              redirect_to edit_settings_account_path, notice: "Settings saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def account_params
+            params.require(:user).permit!
+          end
+        end
+      end

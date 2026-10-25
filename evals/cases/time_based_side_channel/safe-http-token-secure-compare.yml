@@ -1,0 +1,43 @@
+id: time_based_side_channel-safe-http-token-secure-compare
+description: New Prometheus metrics endpoint authenticates the scraper bearer token with ActiveSupport::SecurityUtils.secure_compare
+expected:
+  time_based_side_channel: false
+files:
+  - path: app/controllers/metrics_controller.rb
+    after: |
+      class MetricsController < ActionController::API
+        include ActionController::HttpAuthentication::Token::ControllerMethods
+
+        before_action :authenticate_scraper!
+
+        def show
+          render plain: MetricsRegistry.to_prometheus_text, content_type: "text/plain; version=0.0.4"
+        end
+
+        private
+
+        def authenticate_scraper!
+          authenticate_or_request_with_http_token("metrics") do |token, _options|
+            expected = Rails.application.credentials.metrics_scrape_token.to_s
+            expected.present? && ActiveSupport::SecurityUtils.secure_compare(token, expected)
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        get "up" => "rails/health#show", as: :rails_health_check
+
+        resources :invoices
+        resource :session
+        root "dashboard#show"
+      end
+    after: |
+      Rails.application.routes.draw do
+        get "up" => "rails/health#show", as: :rails_health_check
+        get "metrics" => "metrics#show"
+
+        resources :invoices
+        resource :session
+        root "dashboard#show"
+      end

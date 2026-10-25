@@ -1,0 +1,44 @@
+id: csrf-safe-api-bearer-token
+description: Adds a JSON API base controller on ActionController::API authenticated only by bearer tokens, no cookies
+expected:
+  csrf: false
+files:
+  - path: app/controllers/api/v1/base_controller.rb
+    after: |
+      module Api
+        module V1
+          class BaseController < ActionController::API
+            include ActionController::HttpAuthentication::Token::ControllerMethods
+
+            before_action :authenticate_api_client!
+
+            attr_reader :current_api_user
+
+            private
+
+            def authenticate_api_client!
+              @current_api_user = authenticate_with_http_token do |token, _options|
+                ApiToken.active.find_by_token(token)&.user
+              end
+              render json: { error: "unauthorized" }, status: :unauthorized unless @current_api_user
+            end
+          end
+        end
+      end
+  - path: app/controllers/api/v1/notes_controller.rb
+    after: |
+      module Api
+        module V1
+          class NotesController < BaseController
+            def create
+              note = current_api_user.notes.create!(params.require(:note).permit(:title, :body))
+              render json: note, status: :created
+            end
+
+            def destroy
+              current_api_user.notes.find(params[:id]).destroy!
+              head :no_content
+            end
+          end
+        end
+      end

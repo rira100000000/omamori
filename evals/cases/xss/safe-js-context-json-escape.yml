@@ -1,0 +1,43 @@
+id: xss-safe-js-context-json-escape
+description: Editor page bootstraps the current document into an inline script, passing the JSON through json_escape before raw
+expected:
+  xss: false
+files:
+  - path: app/views/documents/edit.html.erb
+    before: |
+      <% content_for :title, "Editing #{@document.title}" %>
+
+      <div class="editor-shell">
+        <header class="editor-header">
+          <h1><%= @document.title %></h1>
+          <span class="editor-owner">by <%= @document.owner.display_name %></span>
+        </header>
+
+        <div id="editor"
+             data-controller="editor"
+             data-editor-url-value="<%= document_path(@document) %>">
+        </div>
+      </div>
+    after: |
+      <% content_for :title, "Editing #{@document.title}" %>
+
+      <div class="editor-shell">
+        <header class="editor-header">
+          <h1><%= @document.title %></h1>
+          <span class="editor-owner">by <%= @document.owner.display_name %></span>
+        </header>
+
+        <div id="editor"
+             data-controller="editor"
+             data-editor-url-value="<%= document_path(@document) %>">
+        </div>
+      </div>
+
+      <script>
+        window.__EDITOR_STATE__ = <%= raw json_escape(JSON.generate(
+          id: @document.id,
+          title: @document.title,
+          body: @document.body,
+          owner: { id: @document.owner.id, name: @document.owner.display_name }
+        )) %>;
+      </script>

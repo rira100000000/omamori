@@ -1,0 +1,54 @@
+id: insecure_deserialization_rce-vulnerable-psych-unsafe-load-front-matter
+description: Knowledge base import reads front matter from user-uploaded Markdown files with Psych.unsafe_load so date and symbol values come through
+expected:
+  insecure_deserialization_rce: true
+files:
+  - path: app/services/articles/markdown_import.rb
+    before: |
+      module Articles
+        class MarkdownImport
+          FRONT_MATTER = /\A---\s*\n(.*?)\n---\s*\n/m
+
+          def initialize(workspace:, upload:)
+            @workspace = workspace
+            @upload = upload
+          end
+
+          def call
+            source = @upload.read.force_encoding(Encoding::UTF_8)
+            body = source.sub(FRONT_MATTER, "")
+
+            @workspace.articles.create!(
+              title: File.basename(@upload.original_filename, ".md").humanize,
+              body_markdown: body
+            )
+          end
+        end
+      end
+    after: |
+      module Articles
+        class MarkdownImport
+          FRONT_MATTER = /\A---\s*\n(.*?)\n---\s*\n/m
+
+          def initialize(workspace:, upload:)
+            @workspace = workspace
+            @upload = upload
+          end
+
+          def call
+            source = @upload.read.force_encoding(Encoding::UTF_8)
+            meta = {}
+            if (match = source.match(FRONT_MATTER))
+              meta = Psych.unsafe_load(match[1]) || {}
+            end
+            body = source.sub(FRONT_MATTER, "")
+
+            @workspace.articles.create!(
+              title: meta["title"].presence || File.basename(@upload.original_filename, ".md").humanize,
+              published_on: meta["date"],
+              tag_list: Array(meta["tags"]).map(&:to_s),
+              body_markdown: body
+            )
+          end
+        end
+      end

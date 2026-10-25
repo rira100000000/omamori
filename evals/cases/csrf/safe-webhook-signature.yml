@@ -1,0 +1,46 @@
+id: csrf-safe-webhook-signature
+description: New payment webhook endpoint skips the authenticity token but has no session and verifies an HMAC signature
+expected:
+  csrf: false
+files:
+  - path: app/controllers/webhooks/payments_controller.rb
+    after: |
+      module Webhooks
+        class PaymentsController < ActionController::Base
+          skip_before_action :verify_authenticity_token
+          before_action :verify_signature
+
+          def create
+            event = JSON.parse(request.raw_post)
+            PaymentEventJob.perform_later(event["id"], event["type"], event["data"])
+            head :ok
+          end
+
+          private
+
+          def verify_signature
+            expected = OpenSSL::HMAC.hexdigest("SHA256", signing_secret, request.raw_post)
+            given = request.headers["X-Payments-Signature"].to_s
+            head :unauthorized unless ActiveSupport::SecurityUtils.secure_compare(expected, given)
+          end
+
+          def signing_secret
+            Rails.application.credentials.dig(:payments, :webhook_secret)
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "dashboard#show"
+        resources :orders, only: [:index, :show, :create]
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "dashboard#show"
+        resources :orders, only: [:index, :show, :create]
+
+        namespace :webhooks do
+          post "payments", to: "payments#create"
+        end
+      end

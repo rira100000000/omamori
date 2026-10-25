@@ -1,0 +1,43 @@
+id: third_party_script_validation_missing-vulnerable-dynamic-widget-loader
+description: Stimulus controller injects a third-party chat widget script tag at runtime without any integrity check
+expected:
+  third_party_script_validation_missing: true
+files:
+  - path: app/javascript/controllers/support_chat_controller.js
+    before: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static values = { accountId: String }
+
+        open() {
+          window.location.href = "/support/new"
+        }
+      }
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      const WIDGET_SRC = "https://widget.chatdesk-cdn.example.net/v3/loader.js"
+
+      export default class extends Controller {
+        static values = { accountId: String }
+
+        connect() {
+          if (document.getElementById("chatdesk-loader")) return
+
+          const script = document.createElement("script")
+          script.id = "chatdesk-loader"
+          script.src = WIDGET_SRC
+          script.async = true
+          script.dataset.account = this.accountIdValue
+          document.head.appendChild(script)
+        }
+
+        open() {
+          if (window.ChatDesk) {
+            window.ChatDesk.open()
+          } else {
+            window.location.href = "/support/new"
+          }
+        }
+      }

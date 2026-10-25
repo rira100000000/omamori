@@ -1,0 +1,80 @@
+id: mass_assignment-safe-slice-fixed-preference-list
+description: Account preferences update now takes any submitted user field that appears in a fixed list of preference attributes
+expected:
+  mass_assignment: false
+files:
+  - path: app/controllers/settings/preferences_controller.rb
+    before: |
+      module Settings
+        class PreferencesController < ApplicationController
+          before_action :authenticate_user!
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            @user.assign_attributes(preference_params)
+            if @user.save
+              redirect_to edit_settings_preferences_path, notice: "Preferences saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def preference_params
+            params.require(:user).permit(:locale, :time_zone, :theme)
+          end
+        end
+      end
+    after: |
+      module Settings
+        class PreferencesController < ApplicationController
+          PREFERENCE_ATTRIBUTES = %w[locale time_zone theme week_starts_on compact_mode].freeze
+
+          before_action :authenticate_user!
+
+          def edit
+            @user = current_user
+          end
+
+          def update
+            @user = current_user
+            @user.assign_attributes(preference_params)
+            if @user.save
+              redirect_to edit_settings_preferences_path, notice: "Preferences saved"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def preference_params
+            params.require(:user).to_unsafe_h.slice(*PREFERENCE_ATTRIBUTES)
+          end
+        end
+      end
+  - path: app/models/user.rb
+    before: |
+      class User < ApplicationRecord
+        devise :database_authenticatable, :registerable, :recoverable, :confirmable
+
+        enum :role, { member: 0, billing_manager: 1, admin: 2 }
+        enum :theme, { system: 0, light: 1, dark: 2 }, prefix: true
+
+        validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
+      end
+    after: |
+      class User < ApplicationRecord
+        devise :database_authenticatable, :registerable, :recoverable, :confirmable
+
+        enum :role, { member: 0, billing_manager: 1, admin: 2 }
+        enum :theme, { system: 0, light: 1, dark: 2 }, prefix: true
+
+        validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
+        validates :time_zone, inclusion: { in: ActiveSupport::TimeZone.all.map(&:name) }
+      end

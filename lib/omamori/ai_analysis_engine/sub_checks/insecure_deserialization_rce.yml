@@ -1,0 +1,9 @@
+# Concrete patterns that are each enough to make insecure deserialization real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+object_creating_loader: >-
+  Does the code load data that may come from outside the application (request parameters or body, cookies, uploaded
+  files, data from another service, or cache or database values users can influence) with a loader that can create
+  arbitrary Ruby objects: Marshal.load, YAML.unsafe_load, Psych.unsafe_load, YAML.load on Psych versions before 4,
+  Oj.load in object mode or with its default mode, or JSON.load with object creation enabled? Answer no when it uses
+  JSON.parse, YAML.safe_load with a short list of permitted classes, Oj in strict or compat mode, or when the data is
+  produced and stored only by the application itself.

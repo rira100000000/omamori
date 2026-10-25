@@ -1,0 +1,49 @@
+id: xss-safe-dom-sink-search-controller
+description: Stimulus search controller renders the q URL parameter and fetched post titles by building elements and setting textContent
+expected:
+  xss: false
+files:
+  - path: app/javascript/controllers/search_controller.js
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static targets = ["input", "heading", "results"]
+        static values = { url: String }
+
+        connect() {
+          const query = new URLSearchParams(window.location.search).get("q")
+          if (query) {
+            this.inputTarget.value = query
+            this.search()
+          }
+        }
+
+        async search() {
+          const query = this.inputTarget.value.trim()
+          if (query === "") return
+
+          const response = await fetch(`${this.urlValue}?q=${encodeURIComponent(query)}`, {
+            headers: { Accept: "application/json" }
+          })
+          const posts = await response.json()
+
+          const em = document.createElement("em")
+          em.textContent = query
+          this.headingTarget.replaceChildren(`${posts.length} results for `, em)
+
+          this.resultsTarget.replaceChildren(...posts.map((post) => this.buildItem(post)))
+        }
+
+        buildItem(post) {
+          const li = document.createElement("li")
+          const link = document.createElement("a")
+          link.href = `/posts/${encodeURIComponent(post.id)}`
+          link.textContent = post.title
+          const author = document.createElement("span")
+          author.className = "author"
+          author.textContent = post.author_name
+          li.append(link, " ", author)
+          return li
+        }
+      }

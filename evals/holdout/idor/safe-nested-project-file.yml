@@ -1,0 +1,50 @@
+id: idor-safe-nested-project-file
+description: New project file download action looks the file up through the user's project association
+expected:
+  idor: false
+files:
+  - path: app/controllers/project_files_controller.rb
+    before: |
+      class ProjectFilesController < ApplicationController
+        before_action :set_project
+
+        def index
+          @files = @project.files.with_attached_blob.order(created_at: :desc)
+        end
+
+        def destroy
+          @project.files.find(params[:id]).destroy!
+          redirect_to project_files_path(@project), status: :see_other
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+      end
+    after: |
+      class ProjectFilesController < ApplicationController
+        before_action :set_project
+
+        def index
+          @files = @project.files.with_attached_blob.order(created_at: :desc)
+        end
+
+        def destroy
+          @project.files.find(params[:id]).destroy!
+          redirect_to project_files_path(@project), status: :see_other
+        end
+
+        def download
+          file = @project.files.find(params[:id])
+          file.increment!(:download_count)
+          redirect_to rails_blob_path(file.blob, disposition: "attachment")
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+      end

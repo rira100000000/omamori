@@ -1,0 +1,54 @@
+id: idor-safe-payslips-employee-policy
+description: Payslip list gains an employee_id parameter for managers, looked up globally but authorized with a Pundit policy that checks the reporting line
+expected:
+  idor: false
+files:
+  - path: app/controllers/payslips_controller.rb
+    before: |
+      class PayslipsController < ApplicationController
+        before_action :require_employee!
+
+        def index
+          @payslips = current_employee.payslips.order(period_end: :desc).limit(24)
+        end
+
+        def show
+          @payslip = current_employee.payslips.find(params[:id])
+          send_data PayslipPdf.new(@payslip).render, filename: @payslip.filename, type: "application/pdf"
+        end
+      end
+    after: |
+      class PayslipsController < ApplicationController
+        before_action :require_employee!
+        before_action :set_employee
+
+        def index
+          @payslips = @employee.payslips.order(period_end: :desc).limit(24)
+        end
+
+        def show
+          @payslip = @employee.payslips.find(params[:id])
+          send_data PayslipPdf.new(@payslip).render, filename: @payslip.filename, type: "application/pdf"
+        end
+
+        private
+
+        def pundit_user
+          current_employee
+        end
+
+        def set_employee
+          @employee = params[:employee_id].present? ? Employee.find(params[:employee_id]) : current_employee
+          authorize @employee, :view_payslips?
+        end
+      end
+  - path: app/policies/employee_policy.rb
+    after: |
+      class EmployeePolicy < ApplicationPolicy
+        def view_payslips?
+          return true if record == user
+          return true if user.hr_admin? && record.company_id == user.company_id
+
+          record.manager_chain.include?(user)
+        end
+      end

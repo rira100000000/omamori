@@ -1,0 +1,53 @@
+id: xss-safe-comment-list-stimulus
+description: Stimulus controller that live-loads ticket comments builds DOM nodes and assigns user text through textContent
+expected:
+  xss: false
+files:
+  - path: app/javascript/controllers/ticket_comments_controller.js
+    after: |
+      import { Controller } from "@hotwired/stimulus"
+
+      export default class extends Controller {
+        static targets = ["list", "counter"]
+        static values = { url: String, interval: { type: Number, default: 15000 } }
+
+        connect() {
+          this.load()
+          this.timer = setInterval(() => this.load(), this.intervalValue)
+        }
+
+        disconnect() {
+          clearInterval(this.timer)
+        }
+
+        async load() {
+          const response = await fetch(this.urlValue, { headers: { Accept: "application/json" } })
+          if (!response.ok) return
+
+          const comments = await response.json()
+          this.counterTarget.textContent = comments.length
+          this.listTarget.replaceChildren(...comments.map((c) => this.buildItem(c)))
+        }
+
+        buildItem(comment) {
+          const li = document.createElement("li")
+          li.className = "comment"
+          li.dataset.id = comment.id
+
+          const meta = document.createElement("div")
+          meta.className = "comment__meta"
+          const author = document.createElement("strong")
+          author.textContent = comment.author_name
+          const time = document.createElement("time")
+          time.setAttribute("datetime", comment.created_at)
+          time.textContent = comment.created_at_human
+          meta.append(author, time)
+
+          const body = document.createElement("div")
+          body.className = "comment__body"
+          body.textContent = comment.body
+
+          li.append(meta, body)
+          return li
+        }
+      }

@@ -1,0 +1,64 @@
+id: mass_assignment-safe-hr-preferences-json-column
+description: HR self-service form saves free-form display preferences as a hash into a single jsonb column alongside a fixed permit list
+expected:
+  mass_assignment: false
+files:
+  - path: app/controllers/self_service/profiles_controller.rb
+    before: |
+      module SelfService
+        class ProfilesController < ApplicationController
+          before_action :set_employee
+
+          def update
+            if @employee.update(profile_params)
+              redirect_to self_service_profile_path, notice: "Your details were updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def set_employee
+            @employee = current_user.employee
+          end
+
+          def profile_params
+            params.require(:employee).permit(:preferred_name, :phone, :emergency_contact_name, :emergency_contact_phone)
+          end
+        end
+      end
+    after: |
+      module SelfService
+        class ProfilesController < ApplicationController
+          before_action :set_employee
+
+          def update
+            if @employee.update(profile_params)
+              redirect_to self_service_profile_path, notice: "Your details were updated"
+            else
+              render :edit, status: :unprocessable_entity
+            end
+          end
+
+          private
+
+          def set_employee
+            @employee = current_user.employee
+          end
+
+          def profile_params
+            params.require(:employee).permit(
+              :preferred_name, :phone, :emergency_contact_name, :emergency_contact_phone,
+              ui_preferences: {}
+            )
+          end
+        end
+      end
+  - path: db/migrate/20261012080000_add_ui_preferences_to_employees.rb
+    after: |
+      class AddUiPreferencesToEmployees < ActiveRecord::Migration[7.2]
+        def change
+          add_column :employees, :ui_preferences, :jsonb, default: {}, null: false
+        end
+      end

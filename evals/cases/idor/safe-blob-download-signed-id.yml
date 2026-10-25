@@ -1,0 +1,44 @@
+id: idor-safe-blob-download-signed-id
+description: Adds a download endpoint for uploaded attachments that redirects to the ActiveStorage blob for the requested signed id
+expected:
+  idor: false
+files:
+  - path: app/controllers/attachments_controller.rb
+    after: |
+      class AttachmentsController < ApplicationController
+        before_action :authenticate_user!
+
+        def download
+          blob = ActiveStorage::Blob.find_signed!(params[:signed_id])
+          DownloadEvent.create!(user: current_user, blob_id: blob.id, downloaded_at: Time.current)
+          redirect_to rails_blob_path(blob, disposition: "attachment")
+        end
+      end
+  - path: app/views/expense_reports/_receipt.html.erb
+    before: |
+      <li class="receipt">
+        <%= image_tag receipt.variant(resize_to_limit: [160, 160]) if receipt.image? %>
+        <span><%= receipt.filename %></span>
+      </li>
+    after: |
+      <li class="receipt">
+        <%= image_tag receipt.variant(resize_to_limit: [160, 160]) if receipt.image? %>
+        <span><%= receipt.filename %></span>
+        <%= link_to "Download", download_attachment_path(receipt.blob.signed_id) %>
+      </li>
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resources :expense_reports do
+          resources :receipts, only: [:create, :destroy]
+        end
+        root "expense_reports#index"
+      end
+    after: |
+      Rails.application.routes.draw do
+        resources :expense_reports do
+          resources :receipts, only: [:create, :destroy]
+        end
+        get "attachments/:signed_id/download", to: "attachments#download", as: :download_attachment
+        root "expense_reports#index"
+      end

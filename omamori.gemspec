@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ['101010hayakawa@gmail']
 
   spec.summary = 'AI-powered security vulnerability scanner for Ruby projects.'
-  spec.description = 'omamori scans Ruby code and diffs using AI (Google Gemini) to detect security vulnerabilities often missed by traditional tools.'
+  spec.description = 'omamori scans Ruby code and diffs using AI (any LLM via RubyLLM, fast decision models such as Jev, or Claude Code / Codex) to detect security vulnerabilities often missed by traditional tools.'
   spec.homepage = 'https://github.com/rira100000000/omamori'
 
   spec.metadata['homepage_uri'] = spec.homepage
@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir.chdir(__dir__) do
     `git ls-files -z`.split("\x0").reject do |f|
       (f == __FILE__) ||
-        f.match(%r{\A(?:(?:test|spec|features)/|\.(?:git|travis|circleci)|appveyor)})
+        f.match(%r{\A(?:(?:test|spec|features|evals)/|\.(?:git|travis|circleci)|appveyor)})
     end
   end
   spec.bindir = 'exe'
@@ -33,7 +33,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'bundler-audit', '~> 0.9.2'
   spec.add_dependency 'colorize', '~> 0.8' # Add dependency for colorize
   spec.add_dependency 'dotenv', '~> 2.0' # Add dependency for dotenv
-  spec.add_dependency 'ruby-gemini-api', '~> 0.1.1' # Add dependency for Gemini API
+  spec.add_dependency 'ruby_llm', '~> 2.1' # LLM for reports (any provider)
   # Development dependencies
   spec.add_development_dependency 'bundler', '~> 2.0'
   spec.add_development_dependency 'rake', '~> 13.0'

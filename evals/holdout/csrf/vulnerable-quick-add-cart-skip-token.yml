@@ -1,0 +1,50 @@
+id: csrf-vulnerable-quick-add-cart-skip-token
+description: Storefront quick-add and one-click reorder endpoints called from fetch skip authenticity token verification while relying on the session cookie
+expected:
+  csrf: true
+files:
+  - path: app/controllers/cart_items_controller.rb
+    before: |
+      class CartItemsController < ApplicationController
+        before_action :require_customer!
+
+        def create
+          current_cart.add!(variant_id: params[:variant_id], quantity: params.fetch(:quantity, 1).to_i)
+          redirect_to cart_path, notice: "Added to cart"
+        end
+      end
+    after: |
+      class CartItemsController < ApplicationController
+        before_action :require_customer!
+        skip_before_action :verify_authenticity_token, only: %i[create reorder]
+
+        def create
+          item = current_cart.add!(variant_id: params[:variant_id], quantity: params.fetch(:quantity, 1).to_i)
+
+          respond_to do |format|
+            format.html { redirect_to cart_path, notice: "Added to cart" }
+            format.json { render json: { count: current_cart.items_count, item_id: item.id }, status: :created }
+          end
+        end
+
+        def reorder
+          order = current_customer.orders.find(params[:order_id])
+          checkout = Checkout::OneClick.new(customer: current_customer, payment_method: current_customer.default_payment_method)
+          new_order = checkout.place!(order.line_items.map { |li| { variant_id: li.variant_id, quantity: li.quantity } })
+          render json: { order_number: new_order.number }, status: :created
+        end
+      end
+  - path: app/javascript/quick_add.js
+    after: |
+      document.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-quick-add]")
+        if (!button) return
+
+        const response = await fetch("/cart_items", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ variant_id: button.dataset.variantId, quantity: 1 })
+        })
+        const data = await response.json()
+        document.querySelector("#cart-count").textContent = data.count
+      })

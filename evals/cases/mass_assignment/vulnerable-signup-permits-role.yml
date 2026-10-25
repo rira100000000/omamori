@@ -1,0 +1,73 @@
+id: mass_assignment-vulnerable-signup-permits-role
+description: Public self-signup starts permitting role and plan so the onboarding form can preselect a team plan
+expected:
+  mass_assignment: true
+files:
+  - path: app/controllers/registrations_controller.rb
+    before: |
+      class RegistrationsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+          @user = User.new
+        end
+
+        def create
+          @user = User.new(registration_params)
+          if @user.save
+            start_new_session_for(@user)
+            redirect_to onboarding_path
+          else
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def registration_params
+          params.expect(user: [:name, :email_address, :password, :password_confirmation])
+        end
+      end
+    after: |
+      class RegistrationsController < ApplicationController
+        skip_before_action :require_login, only: [:new, :create]
+
+        def new
+          @user = User.new(plan: params[:plan].presence || "free")
+        end
+
+        def create
+          @user = User.new(registration_params)
+          if @user.save
+            start_new_session_for(@user)
+            redirect_to onboarding_path
+          else
+            render :new, status: :unprocessable_entity
+          end
+        end
+
+        private
+
+        def registration_params
+          params.expect(user: [:name, :email_address, :password, :password_confirmation, :plan, :role])
+        end
+      end
+  - path: app/views/registrations/new.html.erb
+    before: |
+      <%= form_with model: @user, url: registration_path do |f| %>
+        <%= f.text_field :name, placeholder: "Your name" %>
+        <%= f.email_field :email_address, placeholder: "Email" %>
+        <%= f.password_field :password %>
+        <%= f.password_field :password_confirmation %>
+        <%= f.submit "Create account" %>
+      <% end %>
+    after: |
+      <%= form_with model: @user, url: registration_path do |f| %>
+        <%= f.hidden_field :plan %>
+        <%= f.hidden_field :role, value: "owner" %>
+        <%= f.text_field :name, placeholder: "Your name" %>
+        <%= f.email_field :email_address, placeholder: "Email" %>
+        <%= f.password_field :password %>
+        <%= f.password_field :password_confirmation %>
+        <%= f.submit "Create account" %>
+      <% end %>

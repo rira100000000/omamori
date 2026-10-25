@@ -3,9 +3,14 @@
 require 'optparse'
 require 'fileutils' # FileUtils を require する
 require 'pathname'  # Pathname を require する
-require_relative 'ai_analysis_engine/gemini_client'
+require 'shellwords'
+require_relative 'ai_analysis_engine/llm_client'
+require_relative 'ai_settings'
+require_relative 'setup_files'
+require_relative 'doctor'
 require_relative 'ai_analysis_engine/prompt_manager'
 require_relative 'ai_analysis_engine/diff_splitter'
+require_relative 'ai_analysis_engine/checklist_scanner'
 require_relative 'report_generator/console_formatter'
 require_relative 'report_generator/html_formatter'
 require_relative 'report_generator/json_formatter'
@@ -55,11 +60,8 @@ module Omamori
       "required": ['security_risks']
     }.freeze # Freeze the hash to make it immutable
 
-    # Default risks to check, can be overridden by config
-    DEFAULT_RISKS_TO_CHECK = [
-      :xss, :csrf, :idor, :open_redirect, :ssrf, :session_fixation
-      # TODO: Add other risks from requirements based on PromptManager::RISK_PROMPTS.keys
-    ].freeze
+
+    DEFAULT_MODEL = AIAnalysisEngine::LLMClient::DEFAULT_MODEL
 
     # Threshold for splitting large content (characters as a proxy for tokens)
     # Can be overridden by config
@@ -72,9 +74,6 @@ module Omamori
       @config = Omamori::Config.new
 
       # Initialize components with configuration
-      api_key = @config.get('api_key', ENV['GEMINI_API_KEY'])
-      @config.get('model', 'gemini-2.5-flash-preview-04-17')
-      @gemini_client = AIAnalysisEngine::GeminiClient.new(api_key)
       @prompt_manager = AIAnalysisEngine::PromptManager.new(@config)
 
       chunk_size = @config.get('chunk_size', DEFAULT_SPLIT_THRESHOLD)
@@ -100,6 +99,7 @@ module Omamori
 
       case @options[:command]
       when :scan
+        validate_ai_settings
         # Initialize results
         ai_analysis_result = { 'security_risks' => [] }
         brakeman_result = nil
@@ -126,6 +126,8 @@ module Omamori
 
             if files_to_scan.empty?
               puts 'No Ruby files found in the specified paths.'
+            elsif decision_engine?
+              ai_analysis_result = checklist_scanner.scan(read_units(files_to_scan), get_risks_to_check)
             else
               files_to_scan.each do |file_path|
                 file_content = File.read(file_path)
@@ -134,13 +136,13 @@ module Omamori
                 # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
                 if file_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
                   puts "File content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-                  file_ai_result = @diff_splitter.process_in_chunks(file_content, @gemini_client, JSON_SCHEMA,
-                                                                    @prompt_manager, current_risks_to_check, file_path: file_path, model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+                  file_ai_result = @diff_splitter.process_in_chunks(file_content, llm_client, JSON_SCHEMA,
+                                                                    @prompt_manager, current_risks_to_check, file_path: file_path, model: llm_model)
                 else
                   prompt = @prompt_manager.build_prompt(file_content, current_risks_to_check, JSON_SCHEMA,
                                                         file_path: file_path)
-                  file_ai_result = @gemini_client.analyze(prompt, JSON_SCHEMA,
-                                                          model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+                  file_ai_result = llm_client.analyze(prompt, JSON_SCHEMA,
+                                                          model: llm_model)
                 end
                 # Merge results
                 if file_ai_result && file_ai_result['security_risks']
@@ -152,28 +154,36 @@ module Omamori
             end
           end
         when :diff
-          # Scan staged differences
-          diff_content = get_staged_diff
+          # Scan staged differences, or the branch diff when --base is given
+          diff_content = get_diff
           if diff_content.empty?
-            puts 'No staged changes to scan.'
+            puts @options[:base] ? "No changes against #{@options[:base]} to scan." : 'No staged changes to scan.'
+          elsif decision_engine?
+            puts "Scanning differences (#{ai_settings.describe})..."
+            units = @diff_splitter.split_by_file(diff_content)
+            ai_analysis_result = checklist_scanner.scan(units, get_risks_to_check)
           else
-            puts 'Scanning staged differences with AI...'
+            puts 'Scanning differences with AI...'
             current_risks_to_check = get_risks_to_check
             # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
             if diff_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
               puts "Diff content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-              ai_analysis_result = @diff_splitter.process_in_chunks(diff_content, @gemini_client, JSON_SCHEMA,
-                                                                    @prompt_manager, current_risks_to_check, model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = @diff_splitter.process_in_chunks(diff_content, llm_client, JSON_SCHEMA,
+                                                                    @prompt_manager, current_risks_to_check, model: llm_model)
             else
               prompt = @prompt_manager.build_prompt(diff_content, current_risks_to_check, JSON_SCHEMA)
-              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA,
-                                                          model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = llm_client.analyze(prompt, JSON_SCHEMA,
+                                                          model: llm_model)
             end
           end
         when :all
           # Scan entire codebase
-          full_code_content = get_full_codebase
-          if full_code_content.strip.empty?
+          if decision_engine?
+            puts "Scanning entire codebase (#{ai_settings.describe})..."
+            files_to_scan = collect_files_from_paths(['.'], @config.ignore_patterns,
+                                                     @options.fetch(:force_scan_ignored, false))
+            ai_analysis_result = checklist_scanner.scan(read_units(files_to_scan), get_risks_to_check)
+          elsif (full_code_content = get_full_codebase).strip.empty?
             puts 'No code found to scan.'
           else
             puts 'Scanning entire codebase with AI...'
@@ -181,12 +191,12 @@ module Omamori
             # @diff_splitterのインスタンス変数 @chunk_size を参照して比較
             if full_code_content.length > @diff_splitter.instance_variable_get(:@chunk_size)
               puts "Full code content exceeds threshold (#{@diff_splitter.instance_variable_get(:@chunk_size)} chars), splitting..."
-              ai_analysis_result = @diff_splitter.process_in_chunks(full_code_content, @gemini_client, JSON_SCHEMA,
-                                                                    @prompt_manager, current_risks_to_check, model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = @diff_splitter.process_in_chunks(full_code_content, llm_client, JSON_SCHEMA,
+                                                                    @prompt_manager, current_risks_to_check, model: llm_model)
             else
               prompt = @prompt_manager.build_prompt(full_code_content, current_risks_to_check, JSON_SCHEMA)
-              ai_analysis_result = @gemini_client.analyze(prompt, JSON_SCHEMA,
-                                                          model: @config.get('model', 'gemini-2.5-flash-preview-04-17'))
+              ai_analysis_result = llm_client.analyze(prompt, JSON_SCHEMA,
+                                                          model: llm_model)
             end
           end
         else
@@ -203,10 +213,15 @@ module Omamori
         puts 'Scan complete.'
 
       when :ci_setup
+        validate_ai_settings
         generate_ci_setup(@options[:ci_service])
 
       when :init
         generate_initial_files
+
+      when :doctor
+        validate_ai_settings
+        exit 1 unless Doctor.new(ai_settings, json_schema: JSON_SCHEMA).run
 
       else
         puts "Unknown command: #{@options[:command]}"
@@ -233,9 +248,73 @@ module Omamori
 
     def get_risks_to_check
       # 設定ファイルからチェック対象のリスクを取得し、シンボルの配列に変換する
-      # 設定がない場合は DEFAULT_RISKS_TO_CHECK を使用する
-      configured_checks = @config.get('checks', DEFAULT_RISKS_TO_CHECK)
-      configured_checks.map(&:to_sym)
+      # 設定がない場合は全項目を使う（判定役なしでも、レポート役が全項目を一度に判定する）
+      configured_checks = @config.get('checks', AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys).map(&:to_sym)
+      configured_checks.filter_map do |risk|
+        if (reason = AIAnalysisEngine::PromptManager::RETIRED_RISKS[risk])
+          puts "Note: '#{risk}' is no longer checked by omamori. #{reason}"
+          next
+        end
+        AIAnalysisEngine::PromptManager::RISK_ALIASES.fetch(risk, risk)
+      end.uniq
+    end
+
+    # Which classifier and reporter to use, from .omamorirc and the command line
+    def ai_settings
+      @ai_settings ||= AISettings.new(@config, ai_overrides)
+    end
+
+    def ai_overrides
+      @ai_overrides ||= {}
+    end
+
+    # Stops before any scanning when the classifier or reporter settings are wrong or missing
+    def validate_ai_settings
+      return if ai_settings.reporter?
+
+      puts AISettings.reporter_missing_message
+      exit 1
+    rescue AISettings::Error => e
+      puts "Configuration error: #{e.message}"
+      exit 1
+    end
+
+    # The LLM that writes reports (and checks everything itself when there is no classifier)
+    def llm_client
+      @llm_client ||= ai_settings.build_reporter_client
+    end
+
+    def llm_model
+      ai_settings.reporter_model
+    end
+
+    def decision_engine?
+      ai_settings.classifier?
+    end
+
+    def checklist_scanner
+      AIAnalysisEngine::ChecklistScanner.new(
+        decision_client: ai_settings.build_classifier_client,
+        llm_client: llm_client,
+        prompt_manager: @prompt_manager,
+        diff_splitter: @diff_splitter,
+        json_schema: JSON_SCHEMA,
+        model: llm_model,
+        threshold: ai_settings.threshold,
+        concurrency: ai_settings.classifier_concurrency,
+        report_concurrency: ai_settings.reporter_concurrency,
+        sub_checks: ai_settings.sub_checks?
+      )
+    end
+
+    def read_units(file_paths)
+      file_paths.filter_map do |file_path|
+        relative_path = Pathname.new(file_path).relative_path_from(Pathname.pwd).to_s
+        [relative_path, File.read(file_path)]
+      rescue StandardError => e
+        puts "Error reading file #{file_path}: #{e.message}"
+        nil
+      end
     end
 
     def parse_options
@@ -244,8 +323,10 @@ module Omamori
         opts.separator ''
         opts.separator 'Commands:'
         opts.separator '  scan [PATH...] [options] : Scan specified files/directories or staged changes'
-        opts.separator '  ci-setup [options]       : Generate CI/CD setup files'
-        opts.separator '  init                     : Generate initial config file (.omamorirc) and .omamoriignore'
+        opts.separator '  init --reporter PROVIDER [options]'
+        opts.separator '                           : Write .omamorirc and .omamoriignore (and a CI file with --ci)'
+        opts.separator '  doctor                   : Send each configured classifier/reporter a small request to check the setup'
+        opts.separator '  ci-setup --ci SERVICE    : Generate CI/CD setup files from .omamorirc'
         opts.separator ''
         opts.separator 'Scan Options:'
         opts.on('--diff', 'Scan only the staged differences (default if no PATH is specified)') do
@@ -260,8 +341,49 @@ module Omamori
         opts.on('--ai', 'Run only AI analysis, skipping static analysers') do
           @options[:only_ai] = true
         end
+        opts.on('--base REF', 'Scan the diff between REF and HEAD (e.g. main) instead of staged changes') do |ref|
+          @options[:base] = ref
+          @options[:scan_mode_explicit] ||= :diff
+        end
+        opts.on('--classifier PROVIDER',
+                'Classifier that checks each risk as a yes/no question (typesafe, openai, ollama, or none)') do |provider|
+          ai_overrides[:classifier] = provider
+        end
+        opts.on('--classifier-model MODEL', 'Classifier model (e.g. jev-1.13.0, gpt-6-luna)') do |model|
+          ai_overrides[:classifier_model] = model
+        end
+        opts.on('--reporter PROVIDER',
+                'LLM that writes reports: any RubyLLM provider (gemini, anthropic, openai, ...), ' \
+                'or claude_code / codex to use a subscription CLI') do |provider|
+          ai_overrides[:reporter] = provider
+        end
+        opts.on('--reporter-model MODEL', 'Reporter model (e.g. gemini-3.8-flash, claude-sonnet-5-5, sonnet)') do |model|
+          ai_overrides[:reporter_model] = model
+        end
+        opts.on('--reporter-fallback PROVIDER',
+                'Reporter asked only when the reporter refuses or fails (e.g. claude_code), or none') do |provider|
+          ai_overrides[:reporter_fallback] = provider
+        end
+        opts.on('--reporter-fallback-model MODEL', 'Model for the fallback reporter') do |model|
+          ai_overrides[:reporter_fallback_model] = model
+        end
+        # Older options, kept for compatibility
+        opts.on('--engine ENGINE', %w[llm gemini jev openai], '(Deprecated) Use --classifier') do |engine|
+          ai_overrides[:classifier] = AISettings::LEGACY_ENGINES.fetch(engine, 'none')
+        end
+        opts.on('--llm LLM', %w[api gemini claude codex], '(Deprecated) Use --reporter') do |llm|
+          ai_overrides[:reporter] = AISettings::LEGACY_LLMS[llm] if AISettings::LEGACY_LLMS.key?(llm)
+        end
         opts.on('--force-scan-ignored', 'Force scan files and directories listed in .omamoriignore') do
           @options[:force_scan_ignored] = true
+        end
+        opts.separator ''
+        opts.separator 'Init Options (also --classifier, --classifier-model, --reporter, --reporter-model, ...):'
+        opts.on('--language LANG', 'Language of the report details written to .omamorirc (e.g. ja)') do |language|
+          @options[:language] = language
+        end
+        opts.on('--force', 'Overwrite an existing .omamorirc / CI file') do
+          @options[:force] = true
         end
         opts.separator ''
         opts.separator 'CI Setup Options:'
@@ -277,9 +399,9 @@ module Omamori
         end
       end
 
-      command_candidate = @args.first.to_s.downcase.to_sym
-      @options[:command] = if %i[scan ci_setup init].include?(command_candidate)
-                             @args.shift.to_sym
+      command_candidate = @args.first.to_s.downcase.tr('-', '_').to_sym
+      @options[:command] = if %i[scan ci_setup init doctor].include?(command_candidate)
+                             @args.shift.tr('-', '_').to_sym
                            else
                              :scan # Default command
                            end
@@ -376,8 +498,17 @@ module Omamori
       collected_files.uniq # 重複を除いて返す
     end
 
+    def get_diff
+      @options[:base] ? get_branch_diff(@options[:base]) : get_staged_diff
+    end
+
     def get_staged_diff
       `git diff --staged`
+    end
+
+    # Changes on the current branch since it diverged from base (what a pull request contains)
+    def get_branch_diff(base)
+      `git diff #{Shellwords.escape("#{base}...HEAD")}`
     end
 
     def get_full_codebase
@@ -422,237 +553,78 @@ module Omamori
       end
     end
 
-    def generate_ci_setup(ci_service)
+    def generate_ci_setup(ci_service, settings = ai_settings)
       case ci_service
       when :github_actions
-        generate_github_actions_workflow
+        generate_github_actions_workflow(settings)
       when :gitlab_ci
-        generate_gitlab_ci_workflow
+        generate_gitlab_ci_workflow(settings)
       else
         puts "Unsupported CI service: #{ci_service}. Supported: github_actions, gitlab_ci"
         puts @opt_parser # ヘルプメッセージを表示
       end
     end
 
-    def generate_github_actions_workflow
-      workflow_content = <<~YAML
-        # .github/workflows/omamori_scan.yml
-        name: Omamori Security Scan
-
-        on: [push, pull_request]
-
-        jobs:
-          security_scan:
-            runs-on: ubuntu-latest
-
-            steps:
-            - name: Checkout code
-              uses: actions/checkout@v4 # Recommended to use specific version
-
-            - name: Set up Ruby
-              uses: ruby/setup-ruby@v1 # Recommended to use specific version
-              with:
-                ruby-version: '3.0' # Specify your project's Ruby version
-
-            - name: Install dependencies
-              run: bundle install
-
-            # Optional: Cache gems to speed up future builds
-            # - name: Cache gems
-            #   uses: actions/cache@v3
-            #   with:
-            #     path: vendor/bundle
-            #     key: ${{ runner.os }}-gems-${{ hashFiles('**/Gemfile.lock') }}
-            #     restore-keys: |
-            #       ${{ runner.os }}-gems-
-
-            - name: Install Brakeman (if not in Gemfile)
-              run: gem install brakeman --no-document || true
-
-            - name: Install Bundler-Audit (if not in Gemfile)
-              run: gem install bundler-audit --no-document || true
-
-            - name: Run Omamori Scan
-              env:
-                GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # Ensure GEMINI_API_KEY is set in GitHub Secrets
-              # Example: Scan all files on push to main, diff on PRs
-              # This logic might need adjustment based on your workflow preference
-              run: |
-                if [ "$GITHUB_EVENT_NAME" == "pull_request" ]; then
-                  bundle exec omamori scan --diff --format console
-                else
-                  bundle exec omamori scan --all --format console
-                fi
-      YAML
-      ci_config = @config.get('ci_setup', {})
-      output_path = ci_config.fetch('github_actions_path', '.github/workflows/omamori_scan.yml')
-      FileUtils.mkdir_p(File.dirname(output_path)) # Ensure directory exists
-      File.write(output_path, workflow_content)
-      puts "GitHub Actions workflow generated: #{output_path}"
+    def generate_github_actions_workflow(settings = ai_settings)
+      path = @config.get('ci_setup', {}).fetch('github_actions_path', '.github/workflows/omamori_scan.yml')
+      write_setup_file(path, SetupFiles.github_actions(settings), 'GitHub Actions workflow')
+      puts "Register these as GitHub secrets: #{SetupFiles.secret_names(settings).join(', ')}" if SetupFiles.secret_names(settings).any?
+      puts "Note: #{SetupFiles::CLI_IN_CI_NOTE}" if SetupFiles.cli_providers(settings).any?
     end
 
-    def generate_gitlab_ci_workflow
-      workflow_content = <<~YAML
-        # .gitlab-ci.yml
-        stages:
-          - security_scan
-
-        omamori_security_scan:
-          stage: security_scan
-          image: ruby:3.0 # Specify your project's Ruby version
-          # Cache gems
-          cache:
-            key:
-              files:
-                - Gemfile.lock
-            paths:
-              - vendor/bundle
-          before_script:
-            - apt-get update -qq && apt-get install -y --no-install-recommends nodejs # If needed for JS runtime
-            - gem install bundler --no-document
-            - bundle install --jobs $(nproc) --retry 3 --path vendor/bundle
-            - gem install brakeman --no-document || true
-            - gem install bundler-audit --no-document || true
-          script:
-            # Example: Scan all files on pipelines for the default branch, diff on merge requests
-            - |
-              if [ "$CI_PIPELINE_SOURCE" == "merge_request_event" ]; then
-                bundle exec omamori scan --diff --format console
-              else
-                bundle exec omamori scan --all --format console
-              fi
-          variables:
-            GEMINI_API_KEY: $GEMINI_API_KEY # Set GEMINI_API_KEY as a CI/CD variable in GitLab
-          rules:
-            - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-            - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      YAML
-      ci_config = @config.get('ci_setup', {})
-      output_path = ci_config.fetch('gitlab_ci_path', '.gitlab-ci.yml')
-      File.write(output_path, workflow_content)
-      puts "GitLab CI workflow generated: #{output_path}"
+    def generate_gitlab_ci_workflow(settings = ai_settings)
+      path = @config.get('ci_setup', {}).fetch('gitlab_ci_path', '.gitlab-ci.yml')
+      write_setup_file(path, SetupFiles.gitlab_ci(settings), 'GitLab CI workflow')
+      puts "Register these as masked CI/CD variables: #{SetupFiles.secret_names(settings).join(', ')}" if SetupFiles.secret_names(settings).any?
+      puts "Note: #{SetupFiles::CLI_IN_CI_NOTE}" if SetupFiles.cli_providers(settings).any?
     end
 
-    DEFAULT_OMAMORIIGNORE_CONTENT = <<~IGNORE
-      # Omamori ignore file
-      # Add files and directories to ignore during Omamori scans.
-      # Lines starting with # are comments.
-      # Globs are supported (e.g., *.tmp, spec/fixtures/)
-      # Negation with ! (e.g., !important.log) - not fully implemented in current basic matcher
+    # Settings from the command line only, so `init` does not depend on an existing .omamorirc
+    EMPTY_CONFIG = Struct.new(:values) { def get(key, default = nil) = values.fetch(key.to_s, default) }.new({})
 
-      # Log files
-      log/
-      *.log
-
-      # Temporary files
-      tmp/
-      *.tmp
-      *.swp
-      *.swo
-
-      # OS-specific files
-      .DS_Store
-      Thumbs.db
-
-      # Vendor directory (often contains third-party code)
-      vendor/bundle/
-
-      # Coverage reports
-      coverage/
-
-      # Node.js dependencies
-      node_modules/
-
-      # Build artifacts
-      pkg/
-
-      # Test files and fixtures (optional, consider if they contain sensitive examples)
-      # spec/
-      # test/
-      # features/
-
-      # Database schema and migrations (usually not directly exploitable via code injection)
-      # db/schema.rb
-      # db/migrate/
-
-      # Assets (compiled or static, less likely to have Ruby vulnerabilities)
-      # app/assets/builds/
-      # public/assets/
-    IGNORE
-
+    # `omamori init --reporter PROVIDER [--reporter-model MODEL] [--classifier PROVIDER] [--language LANG] [--ci SERVICE]`
     def generate_initial_files
-      config_content = <<~YAML
-        # .omamorirc
-        # Configuration file for omamori gem
+      settings = init_settings
+      ok = write_setup_file(Omamori::Config::DEFAULT_CONFIG_PATH,
+                            SetupFiles.omamorirc(settings, language: @options[:language]), 'Config file')
+      unless File.exist?(Omamori::Config::DEFAULT_IGNORE_PATH)
+        File.write(Omamori::Config::DEFAULT_IGNORE_PATH, SetupFiles::OMAMORIIGNORE)
+        puts ".omamoriignore file generated: #{Omamori::Config::DEFAULT_IGNORE_PATH}"
+      end
+      exit 1 unless ok
+      generate_ci_setup(@options[:ci_service], settings) if @options[:ci_service]
 
-        # Gemini API Key (required for AI analysis)
-        # You can also set this via the GEMINI_API_KEY environment variable.
-        # Example: api_key: "YOUR_GEMINI_API_KEY_HERE"
-        api_key: YOUR_GEMINI_API_KEY
+      puts ''
+      puts 'Next steps:'
+      SetupFiles.credential_steps(settings).each { |step| puts "  - #{step}" }
+      puts '  - Run `omamori doctor` to check the setup'
+      puts '  - Run `omamori scan --base main` to scan a branch'
+    end
 
-        # Gemini Model to use (optional, default: g emini-2.5-flash-preview-04-17)
-        # Example: model: "gemini-2.5-pro-preview-05-06"
-        # model: "gemini-2.5-flash-preview-04-17"
-
-        # Security checks to enable (optional, default: all implemented checks).
-        # Provide a list of symbols. Example:
-        # checks:
-        #   - xss
-        #   - csrf
-        #   - idor
-        #   - open_redirect
-        #   # Add other risk symbols from Omamori::AIAnalysisEngine::PromptManager::RISK_PROMPTS.keys
-
-        # Custom prompt templates (optional).
-        # prompt_templates:
-        #   default: |
-        #     Analyze the following Ruby code for security vulnerabilities.
-        #     Focus on: %<risk_list>s.
-        #     Report in JSON format: %<json_schema>s.
-        #     Code:
-        #     %<code_content>s
-
-        # Report output settings (optional).
-        # report:
-        #   output_path: "./omamori_scan_results" # Prefix for html/json reports
-        #   html_template: "custom_report_template.erb" # Path to custom ERB template
-
-        # Static analyser options (optional).
-        # Provide options as a hash.
-        # static_analysers:
-        #   brakeman:
-        #     options: {"--skip-checks": "BasicAuth", "--no-progress": true}
-        #   bundler_audit:
-        #     options: {quiet: true}
-
-        # Language for AI analysis details (optional, default: "en").
-        # Supported languages depend on the AI model.
-        # language: "ja"
-
-        # Chunk size for splitting large code content for AI analysis (optional, default: 8000 characters).
-        # chunk_size: 10000
-
-        # CI setup file paths (optional).
-        # ci_setup:
-        #   github_actions_path: ".github/workflows/custom_omamori_scan.yml"
-        #   gitlab_ci_path: ".custom-gitlab-ci.yml"
-      YAML
-      config_output_path = Omamori::Config::DEFAULT_CONFIG_PATH
-      if File.exist?(config_output_path)
-        puts "Config file already exists at #{config_output_path}. Aborting .omamorirc generation."
-      else
-        File.write(config_output_path, config_content)
-        puts "Config file generated: #{config_output_path}"
-        puts "IMPORTANT: Please open #{config_output_path} and replace 'YOUR_GEMINI_API_KEY' with your actual Gemini API key."
+    def init_settings
+      unless ai_overrides[:reporter]
+        puts AISettings.reporter_missing_message(command: 'init')
+        puts "Reporter providers: claude_code, codex, or a RubyLLM provider (#{RubyLLM::Provider.providers.keys.join(', ')})"
+        exit 1
       end
 
-      ignore_output_path = Omamori::Config::DEFAULT_IGNORE_PATH
-      if File.exist?(ignore_output_path)
-        puts ".omamoriignore file already exists at #{ignore_output_path}. Aborting .omamoriignore generation."
-      else
-        File.write(ignore_output_path, DEFAULT_OMAMORIIGNORE_CONTENT)
-        puts ".omamoriignore file generated: #{ignore_output_path}"
+      AISettings.new(EMPTY_CONFIG, ai_overrides)
+    rescue AISettings::Error => e
+      puts "Configuration error: #{e.message}"
+      exit 1
+    end
+
+    # Writes a file unless it exists (or --force). Returns false when it was left as it was.
+    def write_setup_file(path, content, label)
+      if File.exist?(path) && !@options[:force]
+        puts "#{label} already exists at #{path}. Use --force to overwrite it."
+        return false
       end
+
+      FileUtils.mkdir_p(File.dirname(path))
+      File.write(path, content)
+      puts "#{label} generated: #{path}"
+      true
     end
   end
 end

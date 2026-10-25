@@ -1,0 +1,12 @@
+# Concrete patterns that are each enough to make missing audit logging real on their own.
+# Each question asks for the pattern AND a missing defense, so that code which uses the same construct safely is a no.
+record_removed: >-
+  Does the change delete an audit or security event record (AuditLog, SecurityEvent, PaperTrail, or a logging call
+  that records who did what) from an action such as sign-in, a role or permission change, API key creation or
+  revocation, or access to sensitive data? Answer no when the same record is still written somewhere else, for
+  example moved into a service object, a callback, or the controller.
+new_action_without_record: >-
+  Does the change add a security-relevant action (a role or permission change, granting or revoking access, creating
+  or revoking credentials, exporting or deleting data) next to existing actions that write an audit or security event
+  record, while the new action writes none? Answer no when the new action records the same kind of event as its
+  neighbours.

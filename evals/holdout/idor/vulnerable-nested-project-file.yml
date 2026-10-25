@@ -1,0 +1,75 @@
+id: idor-vulnerable-nested-project-file
+description: New project file download action scopes the parent project to the user but looks up the file by its global id
+expected:
+  idor: true
+files:
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resources :projects do
+          resources :files, controller: "project_files", only: %i[index create destroy]
+        end
+      end
+    after: |
+      Rails.application.routes.draw do
+        resources :projects do
+          resources :files, controller: "project_files", only: %i[index create destroy] do
+            get :download, on: :member
+          end
+        end
+      end
+  - path: app/controllers/project_files_controller.rb
+    before: |
+      class ProjectFilesController < ApplicationController
+        before_action :set_project
+
+        def index
+          @files = @project.files.with_attached_blob.order(created_at: :desc)
+        end
+
+        def create
+          @project.files.create!(blob: params.require(:file), uploaded_by: current_user)
+          redirect_to project_files_path(@project)
+        end
+
+        def destroy
+          @project.files.find(params[:id]).destroy!
+          redirect_to project_files_path(@project), status: :see_other
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+      end
+    after: |
+      class ProjectFilesController < ApplicationController
+        before_action :set_project
+
+        def index
+          @files = @project.files.with_attached_blob.order(created_at: :desc)
+        end
+
+        def create
+          @project.files.create!(blob: params.require(:file), uploaded_by: current_user)
+          redirect_to project_files_path(@project)
+        end
+
+        def destroy
+          @project.files.find(params[:id]).destroy!
+          redirect_to project_files_path(@project), status: :see_other
+        end
+
+        def download
+          file = ProjectFile.find(params[:id])
+          file.increment!(:download_count)
+          redirect_to rails_blob_path(file.blob, disposition: "attachment")
+        end
+
+        private
+
+        def set_project
+          @project = current_user.projects.find(params[:project_id])
+        end
+      end

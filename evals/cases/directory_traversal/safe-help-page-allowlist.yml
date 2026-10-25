@@ -1,0 +1,44 @@
+id: directory_traversal-safe-help-page-allowlist
+description: Help pages are read from disk by a page param, but only names from a fixed list of known pages are accepted
+expected:
+  directory_traversal: false
+files:
+  - path: app/controllers/help_controller.rb
+    before: |
+      class HelpController < ApplicationController
+        skip_before_action :authenticate_user!
+
+        def index
+          @sections = HelpSection.ordered
+        end
+
+        def show
+          @section = HelpSection.find_by!(slug: params[:id])
+          @body_html = Markdown.render(@section.body)
+        end
+      end
+    after: |
+      class HelpController < ApplicationController
+        skip_before_action :authenticate_user!
+
+        DOCS_DIR = Rails.root.join("docs", "help")
+        PAGES = Dir.children(DOCS_DIR).filter_map { |f| File.basename(f, ".md") if f.end_with?(".md") }.freeze
+
+        def index
+          @sections = HelpSection.ordered
+          @pages = PAGES
+        end
+
+        def show
+          @section = HelpSection.find_by!(slug: params[:id])
+          @body_html = Markdown.render(@section.body)
+        end
+
+        def page
+          name = PAGES.find { |p| p == params[:page] }
+          raise ActionController::RoutingError, "Not Found" unless name
+
+          @body_html = Markdown.render(File.read(DOCS_DIR.join("#{name}.md")))
+          render :show
+        end
+      end

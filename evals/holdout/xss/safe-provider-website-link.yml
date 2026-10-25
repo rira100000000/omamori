@@ -1,0 +1,35 @@
+id: xss-safe-provider-website-link
+description: Clinic directory renders a provider website link only after a helper parses it and confirms an http or https URL
+expected:
+  xss: false
+files:
+  - path: app/helpers/directory_helper.rb
+    after: |
+      module DirectoryHelper
+        def external_website_link(url, label)
+          uri = URI.parse(url.to_s.strip)
+          return unless uri.is_a?(URI::HTTP) && uri.host.present?
+
+          link_to label, uri.to_s, rel: "noopener nofollow", target: "_blank"
+        rescue URI::InvalidURIError
+          nil
+        end
+      end
+  - path: app/views/directory/providers/show.html.erb
+    before: |
+      <section class="provider">
+        <h1><%= @provider.display_name %></h1>
+        <p class="specialty"><%= @provider.specialty %></p>
+        <p><%= simple_format(@provider.bio) %></p>
+        <%= link_to "Book an appointment", new_directory_provider_booking_path(@provider), class: "btn" %>
+      </section>
+    after: |
+      <section class="provider">
+        <h1><%= @provider.display_name %></h1>
+        <p class="specialty"><%= @provider.specialty %></p>
+        <p><%= simple_format(@provider.bio) %></p>
+        <% if (website = external_website_link(@provider.website_url, "Practice website")) %>
+          <p><%= website %></p>
+        <% end %>
+        <%= link_to "Book an appointment", new_directory_provider_booking_path(@provider), class: "btn" %>
+      </section>

@@ -1,0 +1,48 @@
+id: xss-vulnerable-search-highlight-helper
+description: Forum search helper wraps matches in mark tags by string substitution and marks the whole post body and query html_safe
+expected:
+  xss: true
+files:
+  - path: app/helpers/search_helper.rb
+    before: |
+      module SearchHelper
+        def result_count_label(count)
+          t("search.results", count: count)
+        end
+
+        def excerpt_for(post, query)
+          excerpt(post.body, query, radius: 80) || truncate(post.body, length: 160)
+        end
+      end
+    after: |
+      module SearchHelper
+        def result_count_label(count)
+          t("search.results", count: count)
+        end
+
+        def excerpt_for(post, query)
+          text = excerpt(post.body, query, radius: 80) || truncate(post.body, length: 160)
+          return text if query.blank?
+
+          text.gsub(/#{Regexp.escape(query)}/i) { |match| "<mark>#{match}</mark>" }.html_safe
+        end
+      end
+  - path: app/views/search/index.html.erb
+    before: |
+      <h1><%= result_count_label(@posts.total_count) %></h1>
+      <% @posts.each do |post| %>
+        <article class="search-result">
+          <h2><%= link_to post.title, forum_post_path(post.forum, post) %></h2>
+          <p><%= excerpt_for(post, params[:q]) %></p>
+        </article>
+      <% end %>
+      <%= paginate @posts %>
+    after: |
+      <h1><%= result_count_label(@posts.total_count) %></h1>
+      <% @posts.each do |post| %>
+        <article class="search-result">
+          <h2><%= link_to post.title, forum_post_path(post.forum, post) %></h2>
+          <p class="excerpt"><%= excerpt_for(post, params[:q]) %></p>
+        </article>
+      <% end %>
+      <%= paginate @posts %>

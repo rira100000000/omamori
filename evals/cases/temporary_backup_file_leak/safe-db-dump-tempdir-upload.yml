@@ -1,0 +1,43 @@
+id: temporary_backup_file_leak-safe-db-dump-tempdir-upload
+description: Nightly backup job dumps into a private temp directory, uploads to object storage, and the temp dir is removed afterwards
+expected:
+  temporary_backup_file_leak: false
+files:
+  - path: app/jobs/database_backup_job.rb
+    before: |
+      class DatabaseBackupJob < ApplicationJob
+        queue_as :maintenance
+
+        def perform
+          config = ActiveRecord::Base.connection_db_config.configuration_hash
+          stamp = Time.current.strftime("%Y%m%d%H%M")
+
+          Rails.logger.info("[backup] starting dump #{stamp}")
+          BackupRecord.create!(taken_at: Time.current, status: "pending")
+        end
+      end
+    after: |
+      class DatabaseBackupJob < ApplicationJob
+        queue_as :maintenance
+
+        def perform
+          config = ActiveRecord::Base.connection_db_config.configuration_hash
+          stamp = Time.current.strftime("%Y%m%d%H%M")
+
+          Dir.mktmpdir("db-backup") do |dir|
+            path = File.join(dir, "#{config[:database]}-#{stamp}.sql.gz.bak")
+
+            Rails.logger.info("[backup] starting dump #{stamp}")
+            system(
+              { "PGPASSWORD" => config[:password].to_s },
+              "pg_dump", "-Z", "9", "-h", config[:host].to_s, "-U", config[:username].to_s,
+              "-f", path, config[:database].to_s,
+              exception: true
+            )
+
+            key = "db/#{File.basename(path)}"
+            BackupBucket.upload(key: key, io: File.open(path, "rb"))
+            BackupRecord.create!(taken_at: Time.current, status: "done", location: "s3://#{BackupBucket.name}/#{key}")
+          end
+        end
+      end

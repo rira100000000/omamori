@@ -1,0 +1,38 @@
+id: sql_injection-vulnerable-reorder-arel-sql-params
+description: Member directory replaces the default ordering with reorder, wrapping the interpolated sort and direction params in Arel.sql
+expected:
+  sql_injection: true
+files:
+  - path: app/controllers/members_controller.rb
+    before: |
+      class MembersController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          @members = current_organization.memberships
+                                         .includes(:user)
+                                         .page(params[:page])
+        end
+
+        def show
+          @member = current_organization.memberships.find(params[:id])
+        end
+      end
+    after: |
+      class MembersController < ApplicationController
+        before_action :authenticate_user!
+
+        def index
+          sort = params.fetch(:sort, "created_at")
+          direction = params.fetch(:direction, "desc")
+
+          @members = current_organization.memberships
+                                         .includes(:user)
+                                         .reorder(Arel.sql("#{sort} #{direction}"))
+                                         .page(params[:page])
+        end
+
+        def show
+          @member = current_organization.memberships.find(params[:id])
+        end
+      end

@@ -1,0 +1,35 @@
+id: ssrf-vulnerable-link-preview
+description: New link preview endpoint fetches any user-supplied URL with Faraday and returns its title and response details
+expected:
+  ssrf: true
+files:
+  - path: app/controllers/link_previews_controller.rb
+    after: |
+      class LinkPreviewsController < ApplicationController
+        before_action :require_login
+
+        def show
+          response = Faraday.new(request: { timeout: 5 }) { |f| f.response :follow_redirects }.get(params[:url])
+          doc = Nokogiri::HTML(response.body)
+
+          render json: {
+            url: params[:url],
+            status: response.status,
+            title: doc.at("title")&.text&.strip,
+            description: doc.at('meta[name="description"]')&.[]("content"),
+            image: doc.at('meta[property="og:image"]')&.[]("content")
+          }
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        root "posts#index"
+        resources :posts
+      end
+    after: |
+      Rails.application.routes.draw do
+        root "posts#index"
+        resources :posts
+        get "link_preview", to: "link_previews#show"
+      end

@@ -1,0 +1,780 @@
+---
+entries:
+- id: ordinary-mastodon-77f42b6
+  repo: mastodon/mastodon
+  commit: 77f42b61dbdc35b9ed4c621f4b729202fddca6ed
+  parent: 16524aaba202d60c63419d81175ab4a9cf30ac0e
+  message: 'Redesign: Handle vertical writing styles (#40982)'
+  files:
+  - app/javascript/mastodon/components/status/content.tsx
+- id: ordinary-mastodon-16524aa
+  repo: mastodon/mastodon
+  commit: 16524aaba202d60c63419d81175ab4a9cf30ac0e
+  parent: 0d10e7b3d956e391d4e40e1ae0ef265152ccca85
+  message: Provide only used values to i18n strings in v2 notification admin report
+    (#40953)
+  files:
+  - app/javascript/mastodon/features/notifications_v2/components/notification_admin_report.tsx
+- id: ordinary-mastodon-0d10e7b
+  repo: mastodon/mastodon
+  commit: 0d10e7b3d956e391d4e40e1ae0ef265152ccca85
+  parent: 5204e8ab940f870dbf13863ee92c48febfc4eedb
+  message: Fix hashtag auto-suggest on Safari (#41170)
+  files:
+  - app/javascript/mastodon/components/autosuggest/hooks.tsx
+- id: ordinary-mastodon-c9f4bb2
+  repo: mastodon/mastodon
+  commit: c9f4bb23ea528f7613adb81356848a22a60af0ea
+  parent: 8ca3605db0e8e03359d890d63316c9c7341bc3cc
+  message: 'Composer redesign: Warn on closing tab (#41159)'
+  files:
+  - app/javascript/mastodon/features/compose/redesign/index.tsx
+  - app/javascript/mastodon/reducers/slices/composer.ts
+- id: ordinary-mastodon-8ca3605
+  repo: mastodon/mastodon
+  commit: 8ca3605db0e8e03359d890d63316c9c7341bc3cc
+  parent: 9753f4ce7e677ff556fb83a12f3390be317b9967
+  message: 'Status redesign: Show quoted status design in notifications (#41162)'
+  files:
+  - app/javascript/mastodon/features/notifications_v2/components/notification_group_with_status.tsx
+- id: ordinary-mastodon-afdbc45
+  repo: mastodon/mastodon
+  commit: afdbc45ad4f3f29dec476855f751c1f0c16359e6
+  parent: 28470176919692b98245e951e525c6c1448c3cbb
+  message: 'Redesign: Re-add quick-boost via Shift+Click (#41157)'
+  files:
+  - app/javascript/mastodon/components/menu/index.tsx
+  - app/javascript/mastodon/components/status/action_bar.tsx
+- id: ordinary-mastodon-2847017
+  repo: mastodon/mastodon
+  commit: 28470176919692b98245e951e525c6c1448c3cbb
+  parent: 3778dd6bc6911c45acd802f4cb4c0b1e29df42bc
+  message: 'Composer redesign: Show composer on header click (#41155)'
+  files:
+  - app/javascript/mastodon/features/compose/redesign/header.tsx
+  - app/javascript/mastodon/features/compose/redesign/trigger.tsx
+- id: ordinary-mastodon-923e082
+  repo: mastodon/mastodon
+  commit: 923e082044f7e1cc7456866594e6db905afbad61
+  parent: ee95264639c27a2476edbcb05ee3acee3ffab26f
+  message: Constrain ruby support to single version (#40603)
+  files:
+  - app/controllers/concerns/cache_concern.rb
+  - app/controllers/concerns/deprecation_concern.rb
+- id: ordinary-mastodon-ee95264
+  repo: mastodon/mastodon
+  commit: ee95264639c27a2476edbcb05ee3acee3ffab26f
+  parent: 5e1a1c3af0027bf4acb16fd3048866d81af60799
+  message: Fix posts not being shown on search results page (#41151)
+  files:
+  - app/javascript/mastodon/features/search/index.tsx
+- id: ordinary-mastodon-5e1a1c3
+  repo: mastodon/mastodon
+  commit: 5e1a1c3af0027bf4acb16fd3048866d81af60799
+  parent: 2a3b728653dd6b067650358133f92bee956f6da0
+  message: 'Redesign: Theme and shadow tweaks (#41148)'
+  files:
+  - app/javascript/mastodon/features/navigation_panel/redesign/account_card_and_menu.tsx
+- id: ordinary-mastodon-2a3b728
+  repo: mastodon/mastodon
+  commit: 2a3b728653dd6b067650358133f92bee956f6da0
+  parent: c85f1708420014477f43b82cfa0a708ec0b6c30c
+  message: Bump version to 5.0 (#41147)
+  files:
+  - lib/mastodon/version.rb
+- id: ordinary-mastodon-c85f170
+  repo: mastodon/mastodon
+  commit: c85f1708420014477f43b82cfa0a708ec0b6c30c
+  parent: 00fd34f6f62c8024b824528fb63b71680daf1a2d
+  message: Resolve `no-named-as-default-member` JS lint warnings (#40946)
+  files:
+  - app/javascript/mastodon/features/compose/components/language_dropdown.tsx
+  - app/javascript/mastodon/features/filters/select_filter.jsx
+- id: ordinary-mastodon-00fd34f
+  repo: mastodon/mastodon
+  commit: 00fd34f6f62c8024b824528fb63b71680daf1a2d
+  parent: 470a4e2f228f09b5d5c124a73638f14eebff0922
+  message: Avoid id/key naming collision in autosuggest stories (#40929)
+  files:
+  - app/javascript/mastodon/components/autosuggest/autosuggest.stories.tsx
+- id: ordinary-discourse-5370a6c
+  repo: discourse/discourse
+  commit: 5370a6c4fed981028109defb1dace786f1807791
+  parent: 63423a5e4d41703c4b5e6c580b17215120d7602c
+  message: 'UX: Show creator avatar and user card in data explorer queries list (#44809)'
+  files:
+  - plugins/discourse-data-explorer/app/controllers/discourse_data_explorer/query_controller.rb
+  - plugins/discourse-data-explorer/app/serializers/discourse_data_explorer/query_serializer.rb
+- id: ordinary-discourse-12c0379
+  repo: discourse/discourse
+  commit: 12c0379cd609715de901dce869bee84556cc1feb
+  parent: a004057f7001959f0aba358cb54bba64fc937a1a
+  message: 'FIX: Remove deleted Data Explorer queries from the admin dashboard (#44807)'
+  files:
+  - plugins/discourse-data-explorer/app/controllers/discourse_data_explorer/query_controller.rb
+  - plugins/discourse-data-explorer/app/jobs/scheduled/delete_hidden_queries.rb
+  - plugins/discourse-data-explorer/assets/javascripts/discourse/controllers/admin-plugins/show/explorer/edit.js
+- id: ordinary-discourse-a004057
+  repo: discourse/discourse
+  commit: a004057f7001959f0aba358cb54bba64fc937a1a
+  parent: 224da1ec96a863c3dfd92a214bbff8e5c2a9edc3
+  message: 'UX: move gamification leaderboard delete action into a row actions menu
+    (#44752)'
+  files:
+  - plugins/discourse-gamification/admin/assets/javascripts/discourse/controllers/admin-plugins/show/discourse-gamification-leaderboards/index.js
+- id: ordinary-discourse-8ae745b
+  repo: discourse/discourse
+  commit: 8ae745b02c29f024d50dc4f4a36d0abc8075b4c6
+  parent: d4c675a92e25d4a08bb32ae9140fff4abe34c6cd
+  message: 'FIX: Retry shared image worker connections within the timeout (#44625)'
+  files:
+  - lib/discourse_vips/client.rb
+- id: ordinary-discourse-d4c675a
+  repo: discourse/discourse
+  commit: d4c675a92e25d4a08bb32ae9140fff4abe34c6cd
+  parent: 0033da0c202eb5e94dbbe5769a11b7707480aff1
+  message: 'FIX: Skip unsupported email CSS selectors (#44806)'
+  files:
+  - lib/email/styles.rb
+- id: ordinary-discourse-0033da0
+  repo: discourse/discourse
+  commit: 0033da0c202eb5e94dbbe5769a11b7707480aff1
+  parent: 9f191e4f8a628263238b728766d1ae72da9127d7
+  message: 'FEATURE: Change channel priority sorting logic (#44743)'
+  files:
+  - plugins/chat/assets/javascripts/discourse/services/chat-channels-manager.js
+- id: ordinary-discourse-5e11656
+  repo: discourse/discourse
+  commit: 5e11656cae4aca6061259d2d89bf2d7d2dad1955
+  parent: 1996a4f5ff31763df4c54a368fc141911bb1b223
+  message: 'FIX: Gate AI bot user provisioning on feature settings (#44803)'
+  files:
+  - plugins/discourse-ai/app/models/ai_agent.rb
+  - plugins/discourse-ai/lib/ai_bot/entry_point.rb
+- id: ordinary-discourse-3f2bf92
+  repo: discourse/discourse
+  commit: 3f2bf92368c78a7fa9a755f3d046adf35dd4459b
+  parent: ba38637a8e0f3d5ec34585fe58ab6ab9abe37f03
+  message: 'FIX: Resolve theme colors before passing them to charts (#44241)'
+  files:
+  - plugins/poll/assets/javascripts/lib/chart-colors.js
+- id: ordinary-discourse-ba38637
+  repo: discourse/discourse
+  commit: ba38637a8e0f3d5ec34585fe58ab6ab9abe37f03
+  parent: '08a56b5b11e2cc99ab808d2d5cd8318f4fadbb03'
+  message: 'FIX: Preserve the default leaderboard period when saving settings (#44797)'
+  files:
+  - plugins/discourse-gamification/assets/javascripts/discourse/models/gamification-leaderboard.js
+- id: ordinary-discourse-0fdc202
+  repo: discourse/discourse
+  commit: 0fdc20224927208ddc190baa8a96b3bb95f0b8b0
+  parent: 94586bf2945b4683ae14bd712fd4ee10935a56dd
+  message: 'FIX: Stop browsers from clipping icons that draw outside their viewBox
+    (#44786)'
+  files:
+  - lib/svg_sprite.rb
+- id: ordinary-discourse-2ab87d8
+  repo: discourse/discourse
+  commit: 2ab87d85ce39321686082dc2bff17d6ca423e190
+  parent: ab1b8fcc79eec9bb9bb4a586a154db6c4b5a995f
+  message: 'PERF: Keep admin report UI out of the initial bundle (#44771)'
+  files:
+  - frontend/discourse/admin/lib/admin-dashboard-report-renderers.js
+  - frontend/discourse/app/lib/registry/transformers.js
+- id: ordinary-discourse-d6554b2
+  repo: discourse/discourse
+  commit: d6554b2f6f80a9ab689eab49e835eba34013fe0d
+  parent: b830fdafd794e1f2dbb7dcf9af9721fbf9a176ef
+  message: 'DEV: Fix running qunit on test directories (#44689)'
+  files:
+  - frontend/discourse/testem.js
+- id: ordinary-discourse-b830fda
+  repo: discourse/discourse
+  commit: b830fdafd794e1f2dbb7dcf9af9721fbf9a176ef
+  parent: 2cc7b8515fee0860d1e54bf2080e2552e54ca937
+  message: 'FIX: Keep focus moved by a select-kit onChange (#44688)'
+  files:
+  - frontend/discourse/select-kit/components/select-kit.js
+- id: ordinary-decidim-8c4eca8
+  repo: decidim/decidim
+  commit: 8c4eca8e2d11edb66977d62e5146e6de832e9631
+  parent: aae4243ad230941c1f27ac3d21a49897070937f4
+  message: Fix conversation's new missing redirection after creation (#17803)
+  files:
+  - decidim-core/app/controllers/decidim/messaging/conversations_controller.rb
+  - decidim-core/app/views/decidim/messaging/conversations/create.js.erb
+- id: ordinary-decidim-3649e00
+  repo: decidim/decidim
+  commit: 3649e00eb293a1cfd8eb8aeb8dfd8fdc63c4750c
+  parent: 847938c695c8b1e01a63769ed80432a3bbab0e70
+  message: Fix bug with conferences admins and registrations (#17810)
+  files:
+  - decidim-conferences/app/permissions/decidim/conferences/permissions.rb
+- id: ordinary-decidim-8e2071f
+  repo: decidim/decidim
+  commit: 8e2071fdf9a9d838381c763add0a006e7bd47024
+  parent: bca0af173d2a812799f3e6c81bed056796c39c5a
+  message: Improve performance for UserRoleChecker (#17777)
+  files:
+  - decidim-core/app/helpers/concerns/decidim/user_role_checker.rb
+- id: ordinary-decidim-0b96a5a
+  repo: decidim/decidim
+  commit: 0b96a5a10e214a5d6d4a2d03b6893cf046e0a610
+  parent: 3a574c900d7a866cb88e9a2256eb867f0fcdf126
+  message: Fix meetings directory lack of locale in URL (#17782)
+  files:
+  - decidim-core/config/routes.rb
+- id: ordinary-decidim-ac965df
+  repo: decidim/decidim
+  commit: ac965df4891af13680df76aa4951aac3a5adccd5
+  parent: efaf6f106caece4bb24dcafb9baf3dd531982e55
+  message: Use enqueue_after_transaction_commit in ActiveJob (#17678)
+  files:
+  - decidim-admin/app/jobs/decidim/admin/newsletter_job.rb
+  - decidim-core/app/jobs/decidim/application_job.rb
+- id: ordinary-decidim-1204060
+  repo: decidim/decidim
+  commit: 1204060bab026869c5a64ce5c8902a315e8dc3b6
+  parent: 2752747b5cc242edab6060eacee7fde67edeae7a
+  message: Fix blog posts ordering by publication time (#17575)
+  files:
+  - decidim-blogs/app/cells/decidim/blogs/content_blocks/highlighted_posts_cell.rb
+  - decidim-blogs/app/controllers/decidim/blogs/admin/application_controller.rb
+  - decidim-blogs/app/models/decidim/blogs/post.rb
+- id: ordinary-decidim-0cdabbd
+  repo: decidim/decidim
+  commit: 0cdabbddd92ec24d5f046945d6ac8fcec7833605
+  parent: d3282fa084f55b5554d94d443d2f045e614bc455
+  message: Fix long component name display (#17689)
+  files:
+  - decidim-core/app/cells/decidim/nav_links/show.erb
+- id: ordinary-decidim-d3282fa
+  repo: decidim/decidim
+  commit: d3282fa084f55b5554d94d443d2f045e614bc455
+  parent: 84b3fcdfb8e799e9b187ee2b3a79cb0790173e19
+  message: Fix edit participatory space member (#17716)
+  files:
+  - decidim-admin/app/forms/decidim/admin/participatory_space/member_form.rb
+  - decidim-admin/app/views/decidim/admin/members/_form.html.erb
+- id: ordinary-decidim-97b40f2
+  repo: decidim/decidim
+  commit: 97b40f2e623b65c2e9cfc402af46820f7c7381dc
+  parent: 24795f96b84fdc058a3bbb66400cf376c5130840
+  message: Fix hour picker display in admin when on page's bottom (#17643)
+  files:
+  - decidim-core/app/packs/src/decidim/controllers/date_picker/datepicker/datepicker_functions.js
+- id: ordinary-decidim-1a9c335
+  repo: decidim/decidim
+  commit: 1a9c3352f2d8bb5c483d1778412a29781c504ee7
+  parent: 5aee627e3c8d4f3882888e2f1b5efc9cb77593cc
+  message: Fix member role text being capitalized per word on members page (#17585)
+  files:
+  - decidim-core/app/cells/decidim/member/show.erb
+- id: ordinary-decidim-de78770
+  repo: decidim/decidim
+  commit: de7877021f57cc915810b5af7ccd936fc85d2c78
+  parent: 71754d5b82130b536e920c619b1745e6bdbeb114
+  message: Query only the necessary amount of users on the profile following page
+    (#17700)
+  files:
+  - decidim-core/app/cells/decidim/following_cell.rb
+  - decidim-core/app/models/decidim/user_base_entity.rb
+- id: ordinary-decidim-77b9427
+  repo: decidim/decidim
+  commit: 77b9427c85681680133cf68d97da34247a205055
+  parent: b386d9ff8c075a1cbfb9e3b3f3c172d9150240d4
+  message: Remove unnecessary `npm uninstall` during `decidim:shakapacker:install`
+    (#17646)
+  files:
+  - decidim-core/lib/tasks/decidim_shakapacker_tasks.rake
+- id: ordinary-decidim-b386d9f
+  repo: decidim/decidim
+  commit: b386d9ff8c075a1cbfb9e3b3f3c172d9150240d4
+  parent: 62ef9230ff8813f534ac05b5af8954dfc2db4f66
+  message: Remove invalid `super` calls from `ApplicationUploader` (#17697)
+  files:
+  - decidim-core/app/uploaders/decidim/application_uploader.rb
+- id: ordinary-solidus-18dad6f
+  repo: solidusio/solidus
+  commit: 18dad6ff917e724a77ac2b651a1325f44d8b3347
+  parent: bafb57f3321a2da5426a760e581a6b79e78a2f3f
+  message: Translate test helper error strings
+  files:
+  - api/lib/spree/api/testing_support/helpers.rb
+- id: ordinary-solidus-068834f
+  repo: solidusio/solidus
+  commit: '068834f48c3d432d84e58946946152105d8942ed'
+  parent: d1f64a6605ef392b087b704f71fa7dde4c89c314
+  message: Guard admin generator against frozen inflections
+  files:
+  - admin/lib/generators/solidus_admin/component/component_generator.rb
+- id: ordinary-solidus-f56003b
+  repo: solidusio/solidus
+  commit: f56003bf20fce9df71aaba40f6bebaa1cf61b253
+  parent: 191e2d07666c1d945ab4b16160f3ff73cd4a2db0
+  message: Use update instead of deprecated exec_update
+  files:
+  - core/lib/tasks/payment_method.rake
+- id: ordinary-solidus-13bc294
+  repo: solidusio/solidus
+  commit: 13bc29411e6a10feb8a89d6817b529b2fdcf1d5b
+  parent: c445647f42f846f30e1d293b012e7fe21eed462b
+  message: Add all preference types to test payment method
+  files:
+  - core/app/models/spree/payment_method/bogus_credit_card.rb
+- id: ordinary-solidus-5f83154
+  repo: solidusio/solidus
+  commit: 5f8315446bdade311897869a8e373969dab8663b
+  parent: 78fb02ba19a443a6648aa870634700eb2c1a0a94
+  message: Scope admin payment card lookup to order
+  files:
+  - backend/app/controllers/spree/admin/payments_controller.rb
+- id: ordinary-solidus-7487b9a
+  repo: solidusio/solidus
+  commit: 7487b9a830f960ec846cd3e13de063cb818db2da
+  parent: 78fb02ba19a443a6648aa870634700eb2c1a0a94
+  message: Handle different line item/inventory unit variants
+  files:
+  - core/app/models/spree/stock/availability_validator.rb
+- id: ordinary-solidus-ca6bda4
+  repo: solidusio/solidus
+  commit: ca6bda431c6165d58eb5d257511a725bc358143e
+  parent: 78fb02ba19a443a6648aa870634700eb2c1a0a94
+  message: Fix UnitCancel stale order/order recalculation
+  files:
+  - core/app/models/spree/order_cancellations.rb
+  - core/app/models/spree/unit_cancel.rb
+- id: ordinary-solidus-b4dfa91
+  repo: solidusio/solidus
+  commit: b4dfa918338ae1d968a9866ba1275062688acb51
+  parent: 78fb02ba19a443a6648aa870634700eb2c1a0a94
+  message: Make shipping rate filtering pluggable
+  files:
+  - core/app/models/spree/stock/estimator.rb
+  - core/lib/spree/app_configuration.rb
+- id: ordinary-solidus-fffdb17
+  repo: solidusio/solidus
+  commit: fffdb170b05ef014ad073af3fe1ffab7158cdf1a
+  parent: 53f70152fd8d172e81ca4e76d51b84013ab40060
+  message: Translate admin page titles and order state badges
+  files:
+  - admin/app/components/solidus_admin/orders/index/component.rb
+  - admin/app/components/solidus_admin/ui/pages/index/component.rb
+- id: ordinary-solidus-7d43dc4
+  repo: solidusio/solidus
+  commit: 7d43dc4582dbc0804fd06f3e1cfd4c5a8e3b0b35
+  parent: 251b1242916c4005c05bae381575a2e4289f13bb
+  message: Release solidus_admin/v0.5.0
+  files:
+  - admin/lib/solidus_admin/version.rb
+- id: ordinary-solidus-8a1255a
+  repo: solidusio/solidus
+  commit: 8a1255a751688a1353fa9749e4d055ebc0747747
+  parent: f3f4aad6a3107cf285da11059ee7f8b03cee1dcd
+  message: Guard store address editing for solidus_core < 4.8
+  files:
+  - admin/app/components/solidus_admin/stores/form/component.html.erb
+  - admin/app/controllers/solidus_admin/stores_controller.rb
+- id: ordinary-solidus-ed137d7
+  repo: solidusio/solidus
+  commit: ed137d7b540b6c9b308204b58082940a04ab0210
+  parent: ccabf6b2f95c05aaea2eb930c93fe24202f0612c
+  message: Remove db-query-matchers runtime dependency
+  files:
+  - core/lib/spree/manipulative_query_monitor.rb
+- id: ordinary-solidus-4f4d584
+  repo: solidusio/solidus
+  commit: 4f4d584a1e92ca436c1020aa98ba1ef390023d8e
+  parent: 926b5f256aa4244c827da324f5ff531feadd59f5
+  message: Fix tier fields template that Herb rejects
+  files:
+  - promotions/lib/views/backend/solidus_promotions/admin/calculator_fields/tiered_percent_on_eligible_item_quantity/_tier_fields.html.erb
+- id: ordinary-chatwoot-4fb7c05
+  repo: chatwoot/chatwoot
+  commit: 4fb7c05f95e04e70b65141ff19bbdb9328095da8
+  parent: dac03318c737bf76846298534ca3368e8afd9b97
+  message: 'fix: fall back to SQL search on OpenSearch errors (#16185)'
+  files:
+  - app/services/search_service.rb
+- id: ordinary-chatwoot-7893c1e
+  repo: chatwoot/chatwoot
+  commit: 7893c1e21fd1574a971462b4cbd3cddde2914cbf
+  parent: 9e916a2d7a5ff39e999aa346506a15d9a36c9255
+  message: 'fix: send auto-translated templates in email inboxes (#16326)'
+  files:
+  - enterprise/app/services/captain/conversation/agent_message_translation_service.rb
+- id: ordinary-chatwoot-9e916a2
+  repo: chatwoot/chatwoot
+  commit: 9e916a2d7a5ff39e999aa346506a15d9a36c9255
+  parent: e952d7555836ec72af5f7c4b2d5dce082cae9141
+  message: 'fix: auto translate label and shimmer polish (#16320)'
+  files:
+  - app/javascript/dashboard/components-next/message/specs/TranslationToggle.spec.js
+  - app/javascript/dashboard/store/modules/conversations/getters.js
+  - app/javascript/dashboard/store/modules/specs/conversations/getters.spec.js
+- id: ordinary-chatwoot-7a86dea
+  repo: chatwoot/chatwoot
+  commit: 7a86dea8d0befa545c0ba2501b9f8c1f7e3089bd
+  parent: 2ffa9bb0883fbe7005ad0fe563bdaa01a500f757
+  message: 'chore: add index on articles category_id (#16319)'
+  files:
+  - app/models/article.rb
+  - db/schema.rb
+- id: ordinary-chatwoot-2ffa9bb
+  repo: chatwoot/chatwoot
+  commit: 2ffa9bb0883fbe7005ad0fe563bdaa01a500f757
+  parent: ab70480485a6a9688fa5767b0ca6b6ca637d2473
+  message: 'perf: skip loading contact inboxes when dispatching contact merged event
+    (#16317)'
+  files:
+  - app/actions/contact_merge_action.rb
+- id: ordinary-chatwoot-96a38ac
+  repo: chatwoot/chatwoot
+  commit: 96a38ac00d1bdce237f4881cbb29c7b5934402a6
+  parent: '00960a09d1a19a4d954cd20c5ad5b8b8d01a6472'
+  message: 'fix(voice): stop chat auto-replies on calls and default call conversations
+    to private note (#16312)'
+  files:
+  - app/services/message_templates/hook_execution_service.rb
+- id: ordinary-chatwoot-61c9ef4
+  repo: chatwoot/chatwoot
+  commit: 61c9ef44af538507f3ce242981ce640d4a9ef0cc
+  parent: 6fee46cf65f2dea13ca783e1f9828a91db5f06b4
+  message: 'fix: keep current locale on help center logo link (#16301)'
+  files:
+  - app/views/public/api/v1/portals/_header.html.erb
+- id: ordinary-chatwoot-972567d
+  repo: chatwoot/chatwoot
+  commit: 972567d7442b267334bb6101823e36f299191247
+  parent: 7ab47e2ca1be171cd906ba02d7c618e44a805ac8
+  message: 'fix: strip table syntax from help center article previews (#16299)'
+  files:
+  - lib/chatwoot_markdown_renderer.rb
+- id: ordinary-chatwoot-96b13cc
+  repo: chatwoot/chatwoot
+  commit: 96b13cc2060d4aaf63ba61a2a1d92665e0d743f1
+  parent: a0dfab92823f158569d7fcaa0aba5b154907e069
+  message: 'fix(campaigns): show campaigns sent before the first reply (#16272)'
+  files:
+  - enterprise/app/controllers/api/v1/accounts/conversations/campaign_history_controller.rb
+- id: ordinary-chatwoot-012bb8e
+  repo: chatwoot/chatwoot
+  commit: 012bb8edb8f7de1454cd11ced1e1136b3656d694
+  parent: 8cd119304610c3c3b5f76ae4bfa45799a3d747a0
+  message: 'feat: notify administrators when Captain credits run low (#16226)'
+  files:
+  - enterprise/app/models/enterprise/account/plan_usage_and_limits.rb
+- id: ordinary-chatwoot-8cd1193
+  repo: chatwoot/chatwoot
+  commit: 8cd119304610c3c3b5f76ae4bfa45799a3d747a0
+  parent: cacfdfdd5ea93d29ec5a3e33688404b53b14024a
+  message: 'fix(super-admin): show why a call does not ring an agent''s phone in user
+    diagnostics (#16270)'
+  files:
+  - app/views/super_admin/user_diagnostics/_calls.html.erb
+  - enterprise/app/services/voice/ring_readiness.rb
+- id: ordinary-forem-389a49c
+  repo: forem/forem
+  commit: 389a49ccbfb3c0ade8aa178549e34e6a2d931179
+  parent: 95d93b9bd3c1a45afb1a02fd22f89329226c909b
+  message: 'perf(reactions): look up only the id, once, for signed-out GET /reactions
+    surrogate key (#24000)'
+  files:
+  - app/controllers/reactions_controller.rb
+- id: ordinary-forem-95d93b9
+  repo: forem/forem
+  commit: 95d93b9bd3c1a45afb1a02fd22f89329226c909b
+  parent: 29263f54b8ffdc0ebde9b4e0194ee19cc34905b1
+  message: 'perf(feed_events): compute article feed counters in one aggregate query
+    (#23998)'
+  files:
+  - app/models/feed_event.rb
+- id: ordinary-forem-29263f5
+  repo: forem/forem
+  commit: 29263f54b8ffdc0ebde9b4e0194ee19cc34905b1
+  parent: cf04f122008bb5b0ff868c3c630d8ed3e789f57a
+  message: 'perf(api): pluck tag requires_approval instead of loading full Tag in
+    /api/articles?tag= (#23999)'
+  files:
+  - app/services/article_api_index_service.rb
+- id: ordinary-forem-cf04f12
+  repo: forem/forem
+  commit: cf04f122008bb5b0ff868c3c630d8ed3e789f57a
+  parent: 4d9cf138264e81318f9a896998e11416cd046994
+  message: 'perf(notifications): add partial (user_id) index on unread notifications
+    (#23995)'
+  files:
+  - db/schema.rb
+- id: ordinary-forem-4d9cf13
+  repo: forem/forem
+  commit: 4d9cf138264e81318f9a896998e11416cd046994
+  parent: 8e874e86938e2677c502d97e16af60b1ba084f18
+  message: Don't edge cache pages that render a pending flash message (#23993)
+  files:
+  - app/controllers/concerns/caching_headers.rb
+- id: ordinary-forem-8e874e8
+  repo: forem/forem
+  commit: 8e874e86938e2677c502d97e16af60b1ba084f18
+  parent: 2368084861b9253a2d7f8fad257838e475ce037c
+  message: 'perf(api): skip redundant COUNT query in /api/articles/search (#23994)'
+  files:
+  - app/controllers/concerns/api/articles_controller.rb
+- id: ordinary-forem-2368084
+  repo: forem/forem
+  commit: 2368084861b9253a2d7f8fad257838e475ce037c
+  parent: 6dba3a2d55c318d1695ffe6a1db766b74c3349ea
+  message: 'perf(audit_log): use exists? instead of present? in UnpublishAllsQuery#exists?
+    (#23990)'
+  files:
+  - app/queries/audit_log/unpublish_alls_query.rb
+- id: ordinary-forem-6dba3a2
+  repo: forem/forem
+  commit: 6dba3a2d55c318d1695ffe6a1db766b74c3349ea
+  parent: 1a6ac92aa78aebd1c5ab9e3bbacb556875480654
+  message: 'perf(reactions): fetch current user''s article reactions in one query
+    (#23991)'
+  files:
+  - app/controllers/reactions_controller.rb
+- id: ordinary-forem-1a6ac92
+  repo: forem/forem
+  commit: 1a6ac92aa78aebd1c5ab9e3bbacb556875480654
+  parent: ef6169234a57e044bf43f11e31004280d9aca940
+  message: 'perf(user_activity): select only needed article columns in set_activity
+    (#23989)'
+  files:
+  - app/models/user_activity.rb
+- id: ordinary-forem-ef61692
+  repo: forem/forem
+  commit: ef6169234a57e044bf43f11e31004280d9aca940
+  parent: 0d0d47de78d8940b2271d89c33a79b811bb34b5d
+  message: Recognize @private.icloud.com in Apple private relay checks (#23933) (#23988)
+  files:
+  - app/models/async_info.rb
+  - app/models/user_subscription.rb
+- id: ordinary-forem-0d0d47d
+  repo: forem/forem
+  commit: 0d0d47de78d8940b2271d89c33a79b811bb34b5d
+  parent: 8d4f37412421a6bbc6af097ece4b34d74c148220
+  message: 'perf(concepts): load existing concept memberships in one query in Classifier
+    (#23987)'
+  files:
+  - app/services/concepts/classifier.rb
+- id: ordinary-forem-4b6a23b
+  repo: forem/forem
+  commit: 4b6a23b8f0debd4c1a9b3e0648ba7f3910dc458a
+  parent: b042765feee028e21f92159c845f615354e24a62
+  message: Add CSS comment depth indicator lines and dots with click-to-collapse (#23986)
+  files:
+  - app/assets/javascripts/initializers/initializeCommentsPage.js.erb
+- id: ordinary-forem-9a3aa88
+  repo: forem/forem
+  commit: 9a3aa88869358ef866e41aedf7443cebd5d88a70
+  parent: eb6aa506850d8b3e8caf4519889586cf19a1bfd1
+  message: Send billboard impression updates as one async-commit statement (#23982)
+  files:
+  - app/controllers/billboard_events_controller.rb
+  - app/models/billboard_event.rb
+- id: ordinary-openproject-f84e3a9
+  repo: opf/openproject
+  commit: f84e3a9e04a7ee194bfd9b8279247baf85ab003d
+  parent: 149a28f03a3154ff66019d6c996a29745214586d
+  message: Remove duplicated styling that caused calendar events to have slightly
+    less padding
+  files:
+  - frontend/src/stimulus/controllers/dynamic/my/work.controller.ts
+- id: ordinary-openproject-fc7d2ad
+  repo: opf/openproject
+  commit: fc7d2ada49aa182c7d95a46afdde777a06ee6c37
+  parent: 5c9aff0f74ace973fb10a22a53474fca77cef53c
+  message: Add border to overview inset box
+  files:
+  - app/components/custom_fields/overview_component.html.erb
+- id: ordinary-openproject-ae8c141
+  repo: opf/openproject
+  commit: ae8c14103ac2aa66b45133247a1c94cadf62f15c
+  parent: 4edfdae48aa0322d87514f52783326d0c1ecacf4
+  message: Add conversion action to page header for project-specific variants
+  files:
+  - app/components/types/edit_page_header_component.html.erb
+  - app/components/types/edit_page_header_component.rb
+- id: ordinary-openproject-4edfdae
+  repo: opf/openproject
+  commit: 4edfdae48aa0322d87514f52783326d0c1ecacf4
+  parent: 3d0a4ad66944183cdbfbd5084f57567b837fce31
+  message: Update overview tab
+  files:
+  - app/components/work_package_types/overview/row_component.rb
+  - app/views/work_package_types/settings_tab/index.html.erb
+- id: ordinary-openproject-cdc04db
+  repo: opf/openproject
+  commit: cdc04db220e73f3f3de026cc3583e19ef0fbb6e4
+  parent: 166d4d44a143c70e15f36ea8325992cf7d5752b5
+  message: Share JSON lint config across ESLint configs
+  files:
+  - extensions/op-blocknote-extensions/eslint.config.js
+- id: ordinary-openproject-9492d69
+  repo: opf/openproject
+  commit: 9492d6951d1c292171a63dbf9226e8b11de578da
+  parent: 249be29c7ef6d4ba7c9872c0795bbcf7c9b3444e
+  message: Share group row state with the sums row
+  files:
+  - frontend/src/app/features/work-packages/components/wp-fast-table/builders/modes/grouped/grouped-render-pass.ts
+- id: ordinary-openproject-249be29
+  repo: opf/openproject
+  commit: 249be29c7ef6d4ba7c9872c0795bbcf7c9b3444e
+  parent: 8b30fa626531ee5d7e35b9034482e468a680f042
+  message: Type group fixture sums as GroupObject sums
+  files:
+  - frontend/src/app/features/work-packages/components/wp-fast-table/testing/work-package-fixture.ts
+- id: ordinary-openproject-8b30fa6
+  repo: opf/openproject
+  commit: 8b30fa626531ee5d7e35b9034482e468a680f042
+  parent: 7d0a9618da450e8c8b2c2a332068b80ccc25b635
+  message: Drop unnecessary grouped property cast
+  files:
+  - frontend/src/app/features/work-packages/components/wp-fast-table/builders/modes/grouped/grouped-render-pass.ts
+- id: ordinary-openproject-7d0a961
+  repo: opf/openproject
+  commit: 7d0a9618da450e8c8b2c2a332068b80ccc25b635
+  parent: 166d4d44a143c70e15f36ea8325992cf7d5752b5
+  message: "[OP-20402] Keep collapsed group sums row hidden"
+  files:
+  - frontend/src/app/features/work-packages/components/wp-fast-table/builders/modes/grouped/grouped-render-pass.ts
+  - frontend/src/app/features/work-packages/components/wp-fast-table/testing/table-harness.ts
+  - frontend/src/app/features/work-packages/components/wp-fast-table/testing/work-package-fixture.ts
+- id: ordinary-openproject-229284a
+  repo: opf/openproject
+  commit: 229284a4a24ef14ef7b7442b88d9ab09ee030ff6
+  parent: 02bb03e3ebbbcc57757d02b9ab7f083cc24c03c0
+  message: remove dead text referrence
+  files:
+  - frontend/src/app/shared/components/storages/location-picker-modal/location-picker-modal.component.ts
+- id: ordinary-openproject-02bb03e
+  repo: opf/openproject
+  commit: 02bb03e3ebbbcc57757d02b9ab7f083cc24c03c0
+  parent: 2e3ab2b7fe723e04f4295cf61c84a50b543b52ed
+  message: use non conflicting key for no selection made
+  files:
+  - frontend/src/app/shared/components/storages/file-picker-modal/file-picker-modal.component.ts
+- id: ordinary-openproject-d3d0fad
+  repo: opf/openproject
+  commit: d3d0fad57ea4f8e774ac2446bb6cdc324cd8eb45
+  parent: e5aecd3ffaf2ad758359278cb0b363980f7b7b5a
+  message: Store ScheduledEntry in the database
+  files:
+  - modules/resource_management/app/models/resource_allocations/scheduled_entry.rb
+- id: ordinary-openproject-e5aecd3
+  repo: opf/openproject
+  commit: e5aecd3ffaf2ad758359278cb0b363980f7b7b5a
+  parent: 2e3ab2b7fe723e04f4295cf61c84a50b543b52ed
+  message: Allow the `FitCalculator` to resume from a given date
+  files:
+  - modules/resource_management/app/services/resource_allocations/fit_calculator.rb
+- id: ordinary-zammad-e4357d1
+  repo: zammad/zammad
+  commit: e4357d17a61beae8896c10db99f638f46bc526b6
+  parent: 9686d128c93e3cb3b3f3c3ac056e57db0ef8f374
+  message: 'Maintenance: Log rejected origins of the legacy WebSocket login.'
+  files:
+  - lib/sessions/event/login.rb
+- id: ordinary-zammad-9686d12
+  repo: zammad/zammad
+  commit: 9686d128c93e3cb3b3f3c3ac056e57db0ef8f374
+  parent: 2248c567d8369d91748f19bd669517e0cfda51c6
+  message: 'Follow-up aed47b2ab6fd79b60ffdb88ec75aaa2383044651 - Feature: Mobile view
+    - Receive push notifications in Zammad PWA mode'
+  files:
+  - app/frontend/apps/mobile/pages/authentication/routes.ts
+  - app/frontend/shared/composables/useDocumentVisibility.ts
+- id: ordinary-zammad-719d29d
+  repo: zammad/zammad
+  commit: 719d29d773e5cbfddc28e0a8f124a2ff4ae1a05a
+  parent: a67781a0229747ef86b6e65bf6956716532bec62
+  message: 'Maintenance: Desktop view - Adjust UI color of the open signal for better
+    consistency.'
+  files:
+  - app/frontend/apps/desktop/initializer/initializeGlobalComponentStyles.ts
+  - app/frontend/shared/components/CommonBadge/types.ts
+  - app/frontend/shared/initializer/initializeBadgeClasses.ts
+- id: ordinary-zammad-1a0be87
+  repo: zammad/zammad
+  commit: 1a0be872d6ad0a2da6825b8c60a692d89e63cd58
+  parent: 7bcf1f94bcd7b2ef24db7fcb0e3e382c69551689
+  message: 'Fixes #6437 - Quote missing line breaks in some cases.'
+  files:
+  - app/frontend/shared/utils/selection.ts
+- id: ordinary-zammad-4924741
+  repo: zammad/zammad
+  commit: 49247416c5330158db852b97217884abacb74c86
+  parent: fb2f792c654353206f0f47263c7f7b5cf5501faa
+  message: 'Fixes #6451 - Tag names and tag assignments are not unique at database
+    level.'
+  files:
+  - app/models/tag.rb
+  - app/models/tag/item.rb
+- id: ordinary-zammad-fb3378c
+  repo: zammad/zammad
+  commit: fb3378cfb6148413530a5ddd719b84e1756d39e5
+  parent: dfb7a2d2610321a76f67830ebd36938874c7c862
+  message: 'Maintenance: Clicking the translation feedback comment field opens the
+    article''s meta information header.'
+  files:
+  - app/frontend/apps/desktop/pages/ticket/components/TicketDetailView/ArticleBubble/useBubbleHeader.ts
+- id: ordinary-zammad-f636729
+  repo: zammad/zammad
+  commit: f63672910e56c2c6ea42cdbe717a9b3be2a40908
+  parent: 8198453cb409cb5aa280901dafd2965494a6af47
+  message: 'Fixes #6448 - OTRS import creates customer accounts from articles that
+    were not written by a customer.'
+  files:
+  - lib/import/otrs/article_customer_factory.rb
+- id: ordinary-zammad-8198453
+  repo: zammad/zammad
+  commit: 8198453cb409cb5aa280901dafd2965494a6af47
+  parent: 3f153c5daaf6efa359c58c3f413171073902afca
+  message: 'Maintenance - Mobile View: Route pre-caching in the service worker loads
+    non-mobile chunks.'
+  files:
+  - app/frontend/apps/mobile/main.ts
+  - app/frontend/apps/mobile/sw/sw.ts
+- id: ordinary-zammad-3f153c5
+  repo: zammad/zammad
+  commit: 3f153c5daaf6efa359c58c3f413171073902afca
+  parent: f9d4a8ba0add5ccc2f2bbb6f7856ded38fbff9c6
+  message: 'Maintenance - Desktop View: Customers trigger a forbidden `ticketArticleTranslationTargetLocales`
+    query when opening a ticket.'
+  files:
+  - app/frontend/shared/entities/ticket-article/stores/articleTranslation.ts
+- id: ordinary-zammad-f9d4a8b
+  repo: zammad/zammad
+  commit: f9d4a8ba0add5ccc2f2bbb6f7856ded38fbff9c6
+  parent: 428b8119c11a15a770fde0094bca9922ed6d7d5b
+  message: 'Fixes #6419 - Telegram webhook fails with 500 on updates without a message
+    (e.g. when a user blocks the bot).'
+  files:
+  - lib/telegram_helper.rb
+- id: ordinary-zammad-08ade93
+  repo: zammad/zammad
+  commit: '08ade93909ea8d54d9fa72e333bbea4869b17609'
+  parent: f26e9e739e9d13ccf765f736b050f8002c510f61
+  message: 'Maintenance: Custom KB CSS detection ignores subdirectories.'
+  files:
+  - config/initializers/knowledge_base_custom_css_presence.rb
+- id: ordinary-zammad-0c0e55b
+  repo: zammad/zammad
+  commit: 0c0e55b60e25fb1ec2ffa4a2ff7ec63cd21a42ee
+  parent: eb51595e5e278d17ab9e7258780b9e12cfea35cc
+  message: 'Maintenance: Log text module load failures during first admin setup instead
+    of failing.'
+  files:
+  - app/services/service/user/add_first_admin.rb
+- id: ordinary-zammad-767658c
+  repo: zammad/zammad
+  commit: 767658ce1b6c9458b6edb43985ac3e446c253c3d
+  parent: 3c153fe5d489927319be765f693e2eaccc460356
+  message: 'Fixes #6431 - Resend verification email for an inactive user claims success,
+    but the link cannot be used.'
+  files:
+  - app/frontend/apps/desktop/components/CommonPopoverMenu/types.ts
+  - app/frontend/apps/desktop/pages/user/components/UserDetailTopBar/actions/resendVerificationEmail.ts
+  - app/services/service/user/signup.rb

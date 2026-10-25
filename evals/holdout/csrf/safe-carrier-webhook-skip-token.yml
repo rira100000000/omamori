@@ -1,0 +1,49 @@
+id: csrf-safe-carrier-webhook-skip-token
+description: Shipping carrier webhook skips authenticity token verification but authenticates each request by HMAC signature and uses no session
+expected:
+  csrf: false
+files:
+  - path: app/controllers/webhooks/carrier_events_controller.rb
+    after: |
+      module Webhooks
+        class CarrierEventsController < ActionController::Base
+          skip_before_action :verify_authenticity_token
+          before_action :verify_signature!
+
+          def create
+            event = JSON.parse(request.raw_post)
+            shipment = Shipment.find_by!(tracking_number: event.fetch("tracking_number"))
+            shipment.events.create!(
+              status: event.fetch("status"),
+              occurred_at: Time.iso8601(event.fetch("occurred_at")),
+              location: event["location"]
+            )
+            head :no_content
+          rescue KeyError, JSON::ParserError
+            head :bad_request
+          end
+
+          private
+
+          def verify_signature!
+            secret = Rails.application.credentials.dig(:carrier, :webhook_secret)
+            expected = OpenSSL::HMAC.hexdigest("SHA256", secret, request.raw_post)
+            provided = request.headers["X-Carrier-Signature"].to_s
+
+            head :unauthorized unless ActiveSupport::SecurityUtils.secure_compare(expected, provided)
+          end
+        end
+      end
+  - path: config/routes.rb
+    before: |
+      Rails.application.routes.draw do
+        resources :shipments, only: %i[index show]
+      end
+    after: |
+      Rails.application.routes.draw do
+        resources :shipments, only: %i[index show]
+
+        namespace :webhooks do
+          post "carrier", to: "carrier_events#create"
+        end
+      end

@@ -1,0 +1,55 @@
+id: xss-safe-url-attribute-website-link
+description: Profile page links to the user-entered website field only after parsing it and allowing http and https schemes
+expected:
+  xss: false
+files:
+  - path: app/helpers/users_helper.rb
+    before: |
+      module UsersHelper
+        def member_since(user)
+          "Member since #{user.created_at.strftime('%B %Y')}"
+        end
+      end
+    after: |
+      module UsersHelper
+        WEBSITE_SCHEMES = %w[http https].freeze
+
+        def member_since(user)
+          "Member since #{user.created_at.strftime('%B %Y')}"
+        end
+
+        def website_url(user)
+          return if user.website.blank?
+
+          uri = URI.parse(user.website)
+          uri.to_s if WEBSITE_SCHEMES.include?(uri.scheme&.downcase)
+        rescue URI::InvalidURIError
+          nil
+        end
+      end
+  - path: app/views/users/show.html.erb
+    before: |
+      <div class="profile">
+        <%= image_tag @user.avatar, class: "profile-avatar" if @user.avatar.attached? %>
+        <h1><%= @user.display_name %></h1>
+        <p class="profile-bio"><%= @user.bio %></p>
+        <p class="profile-since"><%= member_since(@user) %></p>
+      </div>
+
+      <h2>Posts</h2>
+      <%= render @user.posts.order(created_at: :desc) %>
+    after: |
+      <div class="profile">
+        <%= image_tag @user.avatar, class: "profile-avatar" if @user.avatar.attached? %>
+        <h1><%= @user.display_name %></h1>
+        <p class="profile-bio"><%= @user.bio %></p>
+        <p class="profile-since"><%= member_since(@user) %></p>
+        <% if (url = website_url(@user)) %>
+          <p class="profile-website">
+            <%= link_to @user.website, url, rel: "nofollow noopener", target: "_blank" %>
+          </p>
+        <% end %>
+      </div>
+
+      <h2>Posts</h2>
+      <%= render @user.posts.order(created_at: :desc) %>
