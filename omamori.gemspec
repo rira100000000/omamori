@@ -11,6 +11,8 @@ Gem::Specification.new do |spec|
   spec.summary = 'AI-powered security vulnerability scanner for Ruby projects.'
   spec.description = 'omamori scans Ruby code and diffs using AI (any LLM via RubyLLM, fast decision models such as Jev, or Claude Code / Codex) to detect security vulnerabilities often missed by traditional tools.'
   spec.homepage = 'https://github.com/rira100000000/omamori'
+  spec.license = 'MIT'
+  spec.required_ruby_version = '>= 3.2' # ruby_llm and brakeman require 3.2
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = spec.homepage
